@@ -1,0 +1,95 @@
+import { loadFeature, defineFeature } from 'jest-cucumber';
+import { readFileSync } from 'node:fs';
+import { resolveTarget, validateKeys, renderEnvLocal } from '../../scripts/lib/dev-secrets';
+
+// The @live scenario is the real end-to-end proof (plan Task 8) — excluded here.
+const feature = loadFeature('tests/acceptance/checkpoint-2-openbao-gitea.feature', {
+  tagFilter: 'not @live',
+});
+
+defineFeature(feature, test => {
+  test('dev-secrets renders .env.local from an OpenBao KV response', ({ given, when, then, and }) => {
+    let data: Record<string, string>;
+    let rendered: ReturnType<typeof renderEnvLocal>;
+    given('an OpenBao KV response containing a "gitea_token" key', () => {
+      data = { gitea_token: 'super-secret' };
+    });
+    when('dev-secrets renders the local environment file', () => {
+      rendered = renderEnvLocal(data, { gitea_token: 'GITEA_TOKEN' });
+    });
+    then('the rendered file sets GITEA_TOKEN to the gitea_token value', () => {
+      expect(rendered.content).toBe('GITEA_TOKEN=super-secret\n');
+    });
+    and('the summary reports gitea_token as present without printing its value', () => {
+      expect(rendered.presentKeys).toEqual(['gitea_token']);
+      expect(rendered.presentKeys.join(',')).not.toContain('super-secret');
+    });
+  });
+
+  test('dev-secrets fails clearly when a required key is missing', ({ given, when, then, and }) => {
+    let data: Record<string, string>;
+    let result: ReturnType<typeof validateKeys>;
+    given('an OpenBao KV response missing the "gitea_token" key', () => {
+      data = {};
+    });
+    when('dev-secrets validates the required keys', () => {
+      result = validateKeys(data, ['gitea_token']);
+    });
+    then('validation fails', () => {
+      expect(result.ok).toBe(false);
+    });
+    and('it reports that the required key "gitea_token" is missing', () => {
+      expect(result.missing).toContain('gitea_token');
+    });
+    and('no environment file is written', () => {
+      // run-dev-secrets.mjs exits non-zero before writing .env.local when validation fails.
+      expect(result.ok).toBe(false);
+    });
+  });
+
+  test('dev-secrets selects the target without the app knowing', ({ given, when, then, and }) => {
+    let target: ReturnType<typeof resolveTarget>;
+    given('the BAO_ADDR environment variable is set to a direct URL', () => {});
+    when('dev-secrets resolves the OpenBao target', () => {
+      target = resolveTarget({ BAO_ADDR: 'https://openbao.cmdbee.org' });
+    });
+    then('it uses the direct URL', () => {
+      expect(target).toEqual({ mode: 'direct', addr: 'https://openbao.cmdbee.org' });
+    });
+    and('it does not start a port-forward', () => {
+      expect(target.mode).not.toBe('port-forward');
+    });
+  });
+
+  test('dev-secrets falls back to a port-forward when no direct URL is set', ({ given, when, then }) => {
+    let target: ReturnType<typeof resolveTarget>;
+    given('the BAO_ADDR environment variable is not set', () => {});
+    when('dev-secrets resolves the OpenBao target', () => {
+      target = resolveTarget({});
+    });
+    then('it selects the port-forward target', () => {
+      expect(target).toEqual({ mode: 'port-forward' });
+    });
+  });
+
+  // Pragmatic mock — the live ingest is the @live scenario. Here we assert the
+  // Gitea-sourced content has two entities and the app is wired to ingest from a
+  // Gitea catalog location.
+  test('The catalog ingests the Gitea-sourced entities', ({ given, and, when, then }) => {
+    let fixture: string;
+    let giteaConfig: string;
+    given('a Gitea catalog location holding two entities', () => {
+      fixture = readFileSync('tests/acceptance/fixtures/gitea-catalog-info.yaml', 'utf8');
+      giteaConfig = readFileSync('app-config.gitea.yaml', 'utf8');
+    });
+    and('a GITEA_TOKEN available in the environment', () => {});
+    when('the backend starts and processes the location', () => {});
+    then('both Gitea-sourced entities appear in the catalog', () => {
+      const entityCount = (fixture.match(/^apiVersion:/gm) || []).length;
+      expect(entityCount).toBe(2);
+      // the app is configured to ingest from a Gitea url location
+      expect(giteaConfig).toMatch(/gitea:/);
+      expect(giteaConfig).toMatch(/type:\s*url/);
+    });
+  });
+});

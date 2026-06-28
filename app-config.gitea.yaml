@@ -1,0 +1,21 @@
+# app-config.gitea.yaml — Gitea catalog source overlay.
+#
+# Loaded ONLY in local-secrets mode (after `make secrets` renders .env.local with
+# GITEA_USER + GITEA_TOKEN): run `make dev-gitea`. Deliberately kept OUT of the base
+# app-config.yaml so the zero-secret stub boot never tries to reach Gitea.
+#
+# Backstage's Gitea integration authenticates with username + password; a Gitea
+# access token is supplied as the password.
+integrations:
+  gitea:
+    - host: gitea.localhost
+      baseUrl: http://gitea.localhost
+      username: ${GITEA_USER}
+      password: ${GITEA_TOKEN}
+
+catalog:
+  locations:
+    - type: url
+      target: http://gitea.localhost/leidangr/catalog-seed/raw/branch/main/catalog-info.yaml
+      rules:
+        - allow: [Component, System, API, Resource, Location]

@@ -4,8 +4,10 @@
 import { writeFileSync, readFileSync } from 'node:fs';
 import { validateKeys, renderEnvLocal } from './dev-secrets.ts';
 
-const REQUIRED = ['gitea_token'];
-const MAPPING = { gitea_token: 'GITEA_TOKEN' };
+// Gitea's Backstage integration authenticates with username + password (the
+// access token is the password), so both are rendered into .env.local.
+const REQUIRED = ['gitea_user', 'gitea_token'];
+const MAPPING = { gitea_user: 'GITEA_USER', gitea_token: 'GITEA_TOKEN' };
 
 const raw = readFileSync(0, 'utf8'); // fd 0 = stdin
 

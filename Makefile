@@ -6,7 +6,7 @@
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev test test-app lint config-check secrets ci
+.PHONY: doctor deps dev dev-gitea test test-app lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -16,9 +16,13 @@ doctor:
 deps:
 	corepack yarn install --immutable
 
-## dev — start Backstage (frontend + backend) in the local config stack
+## dev — start Backstage in stub mode (zero secrets)
 dev:
 	corepack yarn start
+
+## dev-gitea — start Backstage with the Gitea catalog source (after `make secrets`)
+dev-gitea:
+	corepack yarn start --config app-config.yaml --config app-config.gitea.yaml
 
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:
