@@ -32,11 +32,10 @@ export function runDoctor(deps: DoctorDeps): ToolCheck[] {
     const path = deps.which(name);
     return { name, ok: path !== null, detail: path ?? 'not found on PATH' };
   };
-  const port = (p: number): ToolCheck => ({
-    name: `port:${p}`,
-    ok: deps.portFree(p),
-    detail: deps.portFree(p) ? 'free' : 'in use',
-  });
+  const port = (p: number): ToolCheck => {
+    const free = deps.portFree(p);
+    return { name: `port:${p}`, ok: free, detail: free ? 'free' : 'in use' };
+  };
   return [
     checkNode(deps.nodeVersion(), 22),
     bin('corepack'),

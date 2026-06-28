@@ -51,7 +51,7 @@ defineFeature(feature, test => {
       const mjs = resolve(__dirname, '../../scripts/lib/run-dev-secrets.mjs');
       let failed = false;
       try {
-        execFileSync('node', [mjs], { input: JSON.stringify({ data: { data } }), cwd: tmp, stdio: 'pipe' });
+        execFileSync(process.execPath, [mjs], { input: JSON.stringify({ data: { data } }), cwd: tmp, stdio: 'pipe' });
       } catch {
         failed = true;
       }

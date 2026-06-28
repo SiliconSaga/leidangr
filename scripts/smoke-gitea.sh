@@ -39,6 +39,13 @@ corepack yarn workspace backend start \
   --config "$ROOT/app-config.gitea.yaml" \
   --config "$ROOT/.dev/app-config.smoke.yaml" >"$LOG" 2>&1 &
 PID=$!
+# Always reap the backend, even on interrupt, so a stray process can't keep
+# port 7007 occupied and poison later make smoke-gitea / make dev-gitea runs.
+cleanup() {
+  kill "$PID" 2>/dev/null || true
+  wait "$PID" 2>/dev/null || true
+}
+trap cleanup EXIT INT TERM
 
 up=""
 for _ in $(seq 1 120); do
@@ -61,8 +68,7 @@ if [[ -n "$up" ]]; then
   done
 fi
 
-kill "$PID" 2>/dev/null || true
-wait "$PID" 2>/dev/null || true
+# Backend teardown is handled by the EXIT trap registered above.
 
 pass=1
 printf '%s' "$RESULT" | grep -q "leidangr-portal" || pass=0

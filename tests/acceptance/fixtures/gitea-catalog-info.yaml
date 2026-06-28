@@ -14,9 +14,9 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: catalog-seed
-  description: Seed catalog repo for the Leiðangr Gitea source
+  name: gear-swap
+  description: MTL gear-swap — the first concrete Leiðangr slice (placeholder)
 spec:
-  type: website
+  type: service
   lifecycle: experimental
   owner: guests
