@@ -10298,7 +10298,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@swc/core@npm:^1.15.6":
+"@swc/core@npm:^1.15.43, @swc/core@npm:^1.15.6":
   version: 1.15.43
   resolution: "@swc/core@npm:1.15.43"
   dependencies:
@@ -27530,6 +27530,8 @@ __metadata:
     "@backstage/e2e-test-utils": "npm:^0.1.2"
     "@jest/environment-jsdom-abstract": "npm:~30.2.0"
     "@playwright/test": "npm:^1.32.3"
+    "@swc/core": "npm:^1.15.43"
+    "@swc/jest": "npm:^0.2.39"
     "@types/jest": "npm:^30.0.0"
     jest: "npm:~30.2.0"
     jsdom: "npm:^27.1.0"
