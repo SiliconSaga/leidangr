@@ -7,8 +7,10 @@
  */
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/scripts'],
+  roots: ['<rootDir>/scripts', '<rootDir>/tests'],
   testMatch: ['**/*.test.ts', '**/*.steps.ts'],
+  // The config:check acceptance scenario spawns the Backstage CLI, which is slow to boot.
+  testTimeout: 60000,
   transform: {
     '^.+\\.(t|j)s$': [
       '@swc/jest',
