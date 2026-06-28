@@ -22,12 +22,19 @@ export interface KeyValidation {
   missing: string[];
 }
 
-/** Confirm every required KV key is present; report which are missing. */
+/**
+ * Confirm every required KV key is present AND non-empty; report which are missing.
+ * A blank value (e.g. an empty `gitea_token`) is treated as missing so it fails here
+ * rather than later as a confusing auth/catalog error.
+ */
 export function validateKeys(
   data: Record<string, string>,
   required: string[],
 ): KeyValidation {
-  const missing = required.filter(k => !(k in data));
+  const missing = required.filter(k => {
+    const value = data[k];
+    return typeof value !== 'string' || value.trim() === '';
+  });
   return { ok: missing.length === 0, missing };
 }
 
@@ -37,15 +44,26 @@ export interface RenderResult {
 }
 
 /**
+ * POSIX single-quote a value so the rendered file is safe to `source`. The
+ * .env.local is sourced as shell by `make dev-gitea` / `scripts/smoke-gitea.sh`,
+ * so an unquoted value containing shell metacharacters or command substitution
+ * could execute. Embedded single quotes become `'\''`.
+ */
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
  * Render the .env.local body from an OpenBao KV payload, mapping kv keys to env
- * var names. Entries whose kv key is absent from the data are skipped.
- * presentKeys is for status reporting (never log values).
+ * var names. Values are shell-quoted (the file is sourced). Entries whose kv key
+ * is absent from the data are skipped. presentKeys is for status reporting only
+ * (never log values).
  */
 export function renderEnvLocal(
   data: Record<string, string>,
   mapping: Record<string, string>,
 ): RenderResult {
   const presentKeys = Object.keys(mapping).filter(k => k in data);
-  const content = presentKeys.map(k => `${mapping[k]}=${data[k]}\n`).join('');
+  const content = presentKeys.map(k => `${mapping[k]}=${shellQuote(data[k])}\n`).join('');
   return { content, presentKeys };
 }

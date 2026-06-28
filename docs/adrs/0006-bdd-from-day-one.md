@@ -20,6 +20,6 @@ Chosen: **BDD from day one** — the checkpoint `.feature` files are executable 
 
 ### Consequences
 
-- Good: `ws test leidangr` runs the whole envelope + acceptance suite fast and green; the acceptance specs document the checkpoints as runnable artifacts.
+- Good: `ws test leidangr` runs the non-`@live` envelope + acceptance suite fast and green; the acceptance specs document the checkpoints as runnable artifacts.
 - Good: honest separation of mocked vs. live — the `@live` scenarios are tag-excluded from the default run and exercised against the real cluster in the live checkpoint.
 - Follow-up: replacing the pragmatic catalog assertions with a real `startTestBackend` boot is queued as hardening.

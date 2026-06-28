@@ -26,7 +26,8 @@ dev:
 ## dev-gitea — start Backstage with the Gitea catalog source (after `make secrets`)
 dev-gitea:
 	node scripts/preflight-gitea.mjs
-	set -a; [ -f .env.local ] && . ./.env.local; set +a; ROOT="$$(cygpath -m "$$PWD" 2>/dev/null || pwd)"; corepack yarn start --config "$$ROOT/app-config.yaml" --config "$$ROOT/app-config.gitea.yaml"
+	test -f .env.local || { echo "dev-gitea: no .env.local — run 'make secrets' first." >&2; exit 1; }
+	set -a; . ./.env.local; set +a; ROOT="$$(cygpath -m "$$PWD" 2>/dev/null || pwd)"; corepack yarn start --config "$$ROOT/app-config.yaml" --config "$$ROOT/app-config.gitea.yaml"
 
 ## smoke-gitea — headless @live check: assert the Gitea entities ingest, then tear down
 smoke-gitea:

@@ -1,5 +1,8 @@
 import { loadFeature, defineFeature } from 'jest-cucumber';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { resolveTarget, validateKeys, renderEnvLocal } from '../../scripts/lib/dev-secrets';
 
 // The @live scenario is the real end-to-end proof (plan Task 8) — excluded here.
@@ -18,7 +21,7 @@ defineFeature(feature, test => {
       rendered = renderEnvLocal(data, { gitea_token: 'GITEA_TOKEN' });
     });
     then('the rendered file sets GITEA_TOKEN to the gitea_token value', () => {
-      expect(rendered.content).toBe('GITEA_TOKEN=super-secret\n');
+      expect(rendered.content).toBe("GITEA_TOKEN='super-secret'\n");
     });
     and('the summary reports gitea_token as present without printing its value', () => {
       expect(rendered.presentKeys).toEqual(['gitea_token']);
@@ -42,8 +45,19 @@ defineFeature(feature, test => {
       expect(result.missing).toContain('gitea_token');
     });
     and('no environment file is written', () => {
-      // run-dev-secrets.mjs exits non-zero before writing .env.local when validation fails.
-      expect(result.ok).toBe(false);
+      // Drive the actual writer (run-dev-secrets.mjs) with the missing-key payload in a
+      // throwaway cwd and confirm it exits non-zero WITHOUT creating .env.local.
+      const tmp = mkdtempSync(join(tmpdir(), 'leidangr-dev-secrets-'));
+      const mjs = resolve(__dirname, '../../scripts/lib/run-dev-secrets.mjs');
+      let failed = false;
+      try {
+        execFileSync('node', [mjs], { input: JSON.stringify({ data: { data } }), cwd: tmp, stdio: 'pipe' });
+      } catch {
+        failed = true;
+      }
+      expect(failed).toBe(true);
+      expect(existsSync(join(tmp, '.env.local'))).toBe(false);
+      rmSync(tmp, { recursive: true, force: true });
     });
   });
 
@@ -72,24 +86,25 @@ defineFeature(feature, test => {
     });
   });
 
-  // Pragmatic mock — the live ingest is the @live scenario. Here we assert the
-  // Gitea-sourced content has two entities and the app is wired to ingest from a
-  // Gitea catalog location.
-  test('The catalog ingests the Gitea-sourced entities', ({ given, and, when, then }) => {
+  // Catalog-SOURCE/config contract check, NOT real ingestion — the real token-backed
+  // Gitea ingestion is covered live by `make smoke-gitea` (a startTestBackend port is
+  // tracked as phase-3 hardening).
+  test('The Gitea catalog source is wired and the seed declares two entities', ({ given, when, then, and }) => {
     let fixture: string;
     let giteaConfig: string;
-    given('a Gitea catalog location holding two entities', () => {
+    given('the Gitea catalog overlay and the catalog-seed fixture', () => {
       fixture = readFileSync('tests/acceptance/fixtures/gitea-catalog-info.yaml', 'utf8');
       giteaConfig = readFileSync('app-config.gitea.yaml', 'utf8');
     });
-    and('a GITEA_TOKEN available in the environment', () => {});
-    when('the backend starts and processes the location', () => {});
-    then('both Gitea-sourced entities appear in the catalog', () => {
+    when('I inspect the source wiring', () => {});
+    then('the overlay defines a token-authenticated Gitea url location', () => {
+      expect(giteaConfig).toMatch(/gitea:/);
+      expect(giteaConfig).toMatch(/password:\s*\$\{GITEA_TOKEN\}/);
+      expect(giteaConfig).toMatch(/type:\s*url/);
+    });
+    and('the seed fixture declares two entities', () => {
       const entityCount = (fixture.match(/^apiVersion:/gm) || []).length;
       expect(entityCount).toBe(2);
-      // the app is configured to ingest from a Gitea url location
-      expect(giteaConfig).toMatch(/gitea:/);
-      expect(giteaConfig).toMatch(/type:\s*url/);
     });
   });
 });

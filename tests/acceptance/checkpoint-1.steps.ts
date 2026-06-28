@@ -67,22 +67,22 @@ defineFeature(feature, test => {
     });
   });
 
-  // Pragmatic catalog-source assertion: verify the stub catalog SOURCE declares the
-  // example component (the full startTestBackend boot is deferred; the live in-browser
-  // boot is verified manually via `make dev`).
-  test('The catalog serves the generated example entities in stub mode', ({ given, and, when, then }) => {
+  // Catalog-SOURCE contract check (NOT a serving check): the configured stub catalog
+  // source declares the example component. Real serving/ingestion is covered live by
+  // `make smoke-gitea`; a full startTestBackend boot is tracked as phase-3 hardening.
+  test('The stub catalog source declares the example component', ({ given, and, when, then }) => {
     stubBackground({ given, and });
 
     let entitiesYaml: string;
-    given('the backend is started in stub mode with guest auth', () => {});
-    when('I query the catalog for all entities', () => {
+    given('the stub-mode example catalog source', () => {});
+    when('I read its configured entities', () => {
       entitiesYaml = readFileSync('examples/entities.yaml', 'utf8');
     });
     then('the generated example component is present', () => {
       expect(entitiesYaml).toMatch(/kind:\s*Component/);
       expect(entitiesYaml).toMatch(/name:\s*example-website/);
     });
-    and('the request is authorized as the guest identity', () => {
+    and('it is declared owned by the guest identity', () => {
       expect(entitiesYaml).toMatch(/owner:\s*guests/);
     });
   });

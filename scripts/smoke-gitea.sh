@@ -46,10 +46,20 @@ for _ in $(seq 1 120); do
   if ! kill -0 "$PID" 2>/dev/null; then break; fi
   sleep 1
 done
-[[ -n "$up" ]] && sleep 18   # let the catalog process the location
-
-RESULT="$(curl -fsS -H "Authorization: Bearer ${TOKEN}" \
-  "http://localhost:7007/api/catalog/entities?filter=kind=component" 2>/dev/null || echo '[]')"
+# Backend readiness != catalog-ingestion readiness. Poll the catalog until both
+# entities appear or the timeout expires, rather than sleeping once and querying once.
+RESULT='[]'
+if [[ -n "$up" ]]; then
+  for _ in $(seq 1 120); do
+    RESULT="$(curl -fsS -H "Authorization: Bearer ${TOKEN}" \
+      "http://localhost:7007/api/catalog/entities?filter=kind=component" 2>/dev/null || echo '[]')"
+    if printf '%s' "$RESULT" | grep -q "leidangr-portal" \
+      && printf '%s' "$RESULT" | grep -q "gear-swap"; then
+      break
+    fi
+    sleep 1
+  done
+fi
 
 kill "$PID" 2>/dev/null || true
 wait "$PID" 2>/dev/null || true

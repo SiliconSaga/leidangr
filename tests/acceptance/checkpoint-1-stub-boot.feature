@@ -18,8 +18,8 @@ Feature: Checkpoint 1 - Backstage boots in stub mode with zero secrets
     Then it reports the status of Node, Corepack, and the required dev ports
     And it never prints any secret values
 
-  Scenario: The catalog serves the generated example entities in stub mode
-    Given the backend is started in stub mode with guest auth
-    When I query the catalog for all entities
+  Scenario: The stub catalog source declares the example component
+    Given the stub-mode example catalog source
+    When I read its configured entities
     Then the generated example component is present
-    And the request is authorized as the guest identity
+    And it is declared owned by the guest identity

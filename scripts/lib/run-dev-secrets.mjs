@@ -1,7 +1,7 @@
 // Renderer for `scripts/dev-secrets`: reads `bao kv get -format=json` output from
 // stdin, validates the required keys, and renders the gitignored .env.local using
 // the tested logic in dev-secrets.ts. Prints key presence only — never values.
-import { writeFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, chmodSync } from 'node:fs';
 import { validateKeys, renderEnvLocal } from './dev-secrets.ts';
 
 // Gitea's Backstage integration authenticates with username + password (the
@@ -30,5 +30,8 @@ if (!ok) {
 }
 
 const { content, presentKeys } = renderEnvLocal(data, MAPPING);
-writeFileSync('.env.local', content);
+// 0600: the file holds secrets; do not rely on the caller's umask, and normalize
+// the mode after overwriting an existing file.
+writeFileSync('.env.local', content, { mode: 0o600 });
+chmodSync('.env.local', 0o600);
 console.log(`dev-secrets: wrote .env.local (${presentKeys.join(', ')} present)`);
