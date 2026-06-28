@@ -9,6 +9,11 @@ unseal, a browser OIDC login), so it lives as a runbook rather than automation.
 - `kubectl` pointed at the cluster running OpenBao + Keycloak + Gitea (homelab: `rancher-desktop`/`loki`).
 - The `bao` CLI installed and on PATH (`make doctor` shows `bao` as `warn` until it is).
 - OpenBao **unsealed**. Homelab OpenBao comes back **sealed** after any restart — unseal with 2 of 3 Shamir shares from the `openbao-init` Secret. See the canonical runbook: `components/nidavellir/docs/secrets-management.md` ("pod restarted and shows 0/1"). `kubectl get pods -n openbao` should show `openbao-0` as `1/1` once unsealed.
+- **`gitea.localhost` resolvable by Node.** The Backstage backend fetches Gitea by hostname, and Node — unlike curl/git — does not special-case `*.localhost` (RFC 6761), so without a hosts entry the catalog silently comes up **empty** (`fetch failed` / `ENOTFOUND` in the backend log). Add it once per machine:
+  - Windows (elevated PowerShell): `Add-Content -Path "$env:windir\System32\drivers\etc\hosts" -Value "127.0.0.1 gitea.localhost"`
+  - Linux/macOS (`/etc/hosts`): `127.0.0.1 gitea.localhost`
+
+  `make dev-gitea` and `make smoke-gitea` run `scripts/preflight-gitea.mjs` first, which fails fast with this fix if the host doesn't resolve — so a fresh machine surfaces the requirement instead of forgetting it.
 
 ## 1. OpenBao OIDC auth backed by Keycloak (one-time)
 
@@ -62,13 +67,12 @@ bao kv put secret/leidangr/dev \
 ## 4. Run the loop
 
 ```bash
-make secrets      # resolves OpenBao (port-forward or BAO_ADDR), browser OIDC login, renders .env.local
-make dev-gitea    # starts Backstage with the Gitea overlay
+make secrets       # resolves OpenBao (port-forward or BAO_ADDR), browser OIDC login, renders .env.local
+make smoke-gitea   # headless: assert both catalog-seed entities ingest, then tear down (PASS/FAIL)
+make dev-gitea     # interactive: open http://localhost:3000 to see them
 ```
 
-Open `http://localhost:3000` and confirm the catalog shows the entities from the
-Gitea `catalog-seed` repo. That is the `@live` scenario in
-`tests/acceptance/checkpoint-2-openbao-gitea.feature` passing for real.
+`make smoke-gitea` is the automated `@live` check — it boots only the backend, asserts `leidangr-portal` + `gear-swap` are in the catalog via the catalog API, logs to `.dev/backend.log`, and shuts down. `make dev-gitea` is the interactive view: open `http://localhost:3000` and confirm the catalog shows the entities from the Gitea `catalog-seed` repo. Both correspond to the `@live` scenario in `tests/acceptance/checkpoint-2-openbao-gitea.feature` passing for real.
 
 ## Notes
 

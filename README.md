@@ -16,7 +16,7 @@ The Backstage control-plane for the Leiðangr community-coordination stack. This
 
 - **Node** Active LTS — 22 or 24 (see `.nvmrc`). Corepack ships with Node, so you do **not** need a global Yarn install; the `make` targets run Yarn through Corepack.
 - **GNU Make** (the command entry points).
-- *(Gitea mode only)* `kubectl` with access to the cluster running OpenBao/Keycloak/Gitea, and the **`bao`** CLI — see [`docs/development/openbao-setup.md`](docs/development/openbao-setup.md).
+- *(Gitea mode only)* `kubectl` with access to the cluster running OpenBao/Keycloak/Gitea, and the **`bao`** CLI. The backend (Node) also needs **`gitea.localhost` to resolve** — unlike curl/git, Node does not special-case `*.localhost`, so add `127.0.0.1 gitea.localhost` to your hosts file. `make dev-gitea`/`make smoke-gitea` preflight-check this and print the exact fix if it's missing. See [`docs/development/openbao-setup.md`](docs/development/openbao-setup.md).
 - *(Optional)* Docker, only if you want the prod-like Postgres instead of the default in-memory SQLite.
 
 Run `make doctor` to check your toolchain.
@@ -52,6 +52,7 @@ Secrets are **never** committed and **never** hand-edited into config. `make sec
 | `make deps` | Install dependencies |
 | `make dev` | Start Backstage in stub mode |
 | `make dev-gitea` | Start with the Gitea catalog overlay (after `make secrets`) |
+| `make smoke-gitea` | Headless `@live` check: assert the Gitea entities ingest, then tear down |
 | `make secrets` | Render `.env.local` from OpenBao (browser OIDC) |
 | `make test` | Envelope tooling + BDD acceptance tests |
 | `make test-app` | The generated app/backend unit tests |

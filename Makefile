@@ -3,10 +3,13 @@
 # without a global install (Node ships Corepack; the pinned Yarn is in
 # package.json `packageManager`).
 
+# Recipes use bash so dotenv sourcing (dev-gitea) is portable across platforms.
+SHELL := bash
+
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-gitea test test-app lint config-check secrets ci
+.PHONY: doctor deps dev dev-gitea smoke-gitea test test-app lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -22,7 +25,13 @@ dev:
 
 ## dev-gitea — start Backstage with the Gitea catalog source (after `make secrets`)
 dev-gitea:
-	corepack yarn start --config app-config.yaml --config app-config.gitea.yaml
+	node scripts/preflight-gitea.mjs
+	set -a; [ -f .env.local ] && . ./.env.local; set +a; ROOT="$$(cygpath -m "$$PWD" 2>/dev/null || pwd)"; corepack yarn start --config "$$ROOT/app-config.yaml" --config "$$ROOT/app-config.gitea.yaml"
+
+## smoke-gitea — headless @live check: assert the Gitea entities ingest, then tear down
+smoke-gitea:
+	node scripts/preflight-gitea.mjs
+	bash scripts/smoke-gitea.sh
 
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:
