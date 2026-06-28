@@ -32,9 +32,9 @@ test-app:
 lint:
 	corepack yarn backstage-cli repo lint
 
-## config-check — validate the layered app-config
+## config-check — validate the app-config (the base is the zero-secret dev/stub config)
 config-check:
-	corepack yarn backstage-cli config:check --config app-config.yaml --config app-config.development.yaml
+	corepack yarn backstage-cli config:check --config app-config.yaml
 
 ## secrets — render .env.local from OpenBao (browser OIDC login)
 secrets:
