@@ -107,8 +107,9 @@ defineFeature(feature, test => {
       expect(entityCount).toBe(2);
       // Pin the names too: scripts/smoke-gitea.sh hard-codes these, so a fixture
       // rename must break here on the fast path, not later in the @live smoke.
-      expect(fixture).toMatch(/name:\s*leidangr-portal/);
-      expect(fixture).toMatch(/name:\s*gear-swap/);
+      // Anchor the whole line so a suffixed rename (leidangr-portal-v2) still fails.
+      expect(fixture).toMatch(/^\s*name:\s*leidangr-portal\s*$/m);
+      expect(fixture).toMatch(/^\s*name:\s*gear-swap\s*$/m);
     });
   });
 });
