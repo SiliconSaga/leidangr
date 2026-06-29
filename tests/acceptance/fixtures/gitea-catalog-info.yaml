@@ -1,0 +1,22 @@
+---
+# Fixture representing the catalog-info.yaml served by the Gitea catalog-seed repo.
+# Used by the (mocked) checkpoint-2 catalog scenario; the live ingest is the @live test.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: leidangr-portal
+  description: The Leiðangr Backstage control-plane (catalog-seed fixture)
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: gear-swap
+  description: MTL gear-swap — the first concrete Leiðangr slice (placeholder)
+spec:
+  type: service
+  lifecycle: experimental
+  owner: guests

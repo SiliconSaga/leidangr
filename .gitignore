@@ -29,6 +29,9 @@ node_modules/
 .env.local
 .env*.local
 
+# Local headless smoke / dev scratch (backend log, generated smoke config)
+.dev/
+
 # Build output
 dist
 dist-types

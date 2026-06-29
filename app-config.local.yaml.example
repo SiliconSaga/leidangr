@@ -1,0 +1,14 @@
+# app-config.local.yaml.example
+#
+# Copy to app-config.local.yaml (gitignored) for your PERSONAL, NON-SECRET local
+# overrides. Backstage loads app-config.local.yaml automatically after app-config.yaml.
+#
+# Do NOT put secrets here. Secrets are rendered into .env.local by `make secrets`
+# (from OpenBao) and consumed via ${ENV_VAR} references in app-config.yaml.
+#
+# Example overrides:
+#
+# app:
+#   title: Leiðangr (local)
+# organization:
+#   name: SiliconSaga
