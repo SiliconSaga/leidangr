@@ -105,6 +105,10 @@ defineFeature(feature, test => {
     and('the seed fixture declares two entities', () => {
       const entityCount = (fixture.match(/^apiVersion:/gm) || []).length;
       expect(entityCount).toBe(2);
+      // Pin the names too: scripts/smoke-gitea.sh hard-codes these, so a fixture
+      // rename must break here on the fast path, not later in the @live smoke.
+      expect(fixture).toMatch(/name:\s*leidangr-portal/);
+      expect(fixture).toMatch(/name:\s*gear-swap/);
     });
   });
 });

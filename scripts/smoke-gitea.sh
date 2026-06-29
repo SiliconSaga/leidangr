@@ -7,7 +7,7 @@
 #
 # Prereqs: `.env.local` (run `make secrets`) and a resolvable gitea.localhost
 # (the Makefile runs preflight-gitea.mjs first).
-set -uo pipefail
+set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ ! -f .env.local ]]; then
@@ -53,20 +53,26 @@ for _ in $(seq 1 120); do
   if ! kill -0 "$PID" 2>/dev/null; then break; fi
   sleep 1
 done
+# Fail fast with diagnostics if the backend never came up, instead of falling
+# through to a vague "entities missing" with only a narrow grep of the log.
+if [[ -z "$up" ]]; then
+  echo "smoke-gitea FAIL: backend never logged 'Listening on'. Recent log:" >&2
+  tail -n 30 "$LOG" >&2 || true
+  exit 1
+fi
+
 # Backend readiness != catalog-ingestion readiness. Poll the catalog until both
 # entities appear or the timeout expires, rather than sleeping once and querying once.
 RESULT='[]'
-if [[ -n "$up" ]]; then
-  for _ in $(seq 1 120); do
-    RESULT="$(curl -fsS -H "Authorization: Bearer ${TOKEN}" \
-      "http://localhost:7007/api/catalog/entities?filter=kind=component" 2>/dev/null || echo '[]')"
-    if printf '%s' "$RESULT" | grep -q "leidangr-portal" \
-      && printf '%s' "$RESULT" | grep -q "gear-swap"; then
-      break
-    fi
-    sleep 1
-  done
-fi
+for _ in $(seq 1 120); do
+  RESULT="$(curl -fsS -H "Authorization: Bearer ${TOKEN}" \
+    "http://localhost:7007/api/catalog/entities?filter=kind=component" 2>/dev/null || echo '[]')"
+  if printf '%s' "$RESULT" | grep -q "leidangr-portal" \
+    && printf '%s' "$RESULT" | grep -q "gear-swap"; then
+    break
+  fi
+  sleep 1
+done
 
 # Backend teardown is handled by the EXIT trap registered above.
 
