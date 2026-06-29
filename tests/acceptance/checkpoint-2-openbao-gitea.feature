@@ -27,7 +27,7 @@ Feature: Checkpoint 2 - secrets flow from OpenBao and entities load from Gitea
     When dev-secrets resolves the OpenBao target
     Then it selects the port-forward target
 
-  Scenario: The Gitea catalog source is wired and the seed declares two entities
+  Scenario: Contract check: the Gitea catalog overlay is wired and the seed declares two entities
     Given the Gitea catalog overlay and the catalog-seed fixture
     When I inspect the source wiring
     Then the overlay defines a token-authenticated Gitea url location

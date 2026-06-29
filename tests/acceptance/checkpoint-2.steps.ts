@@ -33,7 +33,9 @@ defineFeature(feature, test => {
     let data: Record<string, string>;
     let result: ReturnType<typeof validateKeys>;
     given('an OpenBao KV response missing the "gitea_token" key', () => {
-      data = {};
+      // Has the user but not the token, so the runner fails specifically on the
+      // missing gitea_token rather than on any early/empty-payload error.
+      data = { gitea_user: 'alice' };
     });
     when('dev-secrets validates the required keys', () => {
       result = validateKeys(data, ['gitea_token']);
@@ -49,13 +51,14 @@ defineFeature(feature, test => {
       // throwaway cwd and confirm it exits non-zero WITHOUT creating .env.local.
       const tmp = mkdtempSync(join(tmpdir(), 'leidangr-dev-secrets-'));
       const mjs = resolve(__dirname, '../../scripts/lib/run-dev-secrets.mjs');
-      let failed = false;
+      let stderr = '';
       try {
         execFileSync(process.execPath, [mjs], { input: JSON.stringify({ data: { data } }), cwd: tmp, stdio: 'pipe' });
-      } catch {
-        failed = true;
+      } catch (error) {
+        stderr = String((error as { stderr?: Buffer }).stderr ?? '');
       }
-      expect(failed).toBe(true);
+      // Prove it failed on THIS path (missing gitea_token), not any early error.
+      expect(stderr).toContain('missing required key(s): gitea_token');
       expect(existsSync(join(tmp, '.env.local'))).toBe(false);
       rmSync(tmp, { recursive: true, force: true });
     });
@@ -89,7 +92,7 @@ defineFeature(feature, test => {
   // Catalog-SOURCE/config contract check, NOT real ingestion — the real token-backed
   // Gitea ingestion is covered live by `make smoke-gitea` (a startTestBackend port is
   // tracked as phase-3 hardening).
-  test('The Gitea catalog source is wired and the seed declares two entities', ({ given, when, then, and }) => {
+  test('Contract check: the Gitea catalog overlay is wired and the seed declares two entities', ({ given, when, then, and }) => {
     let fixture: string;
     let giteaConfig: string;
     given('the Gitea catalog overlay and the catalog-seed fixture', () => {
@@ -99,6 +102,7 @@ defineFeature(feature, test => {
     when('I inspect the source wiring', () => {});
     then('the overlay defines a token-authenticated Gitea url location', () => {
       expect(giteaConfig).toMatch(/gitea:/);
+      expect(giteaConfig).toMatch(/username:\s*\$\{GITEA_USER\}/);
       expect(giteaConfig).toMatch(/password:\s*\$\{GITEA_TOKEN\}/);
       expect(giteaConfig).toMatch(/type:\s*url/);
     });
