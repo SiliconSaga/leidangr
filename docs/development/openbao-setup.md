@@ -27,7 +27,14 @@ unseal, a browser OIDC login), so it lives as a runbook rather than automation.
 
 ## 2. Create the Keycloak client + a realm user (siliconsaga realm, one-time)
 
-The flow needs a confidential client and at least one realm **user** to authenticate as. Keycloak admin creds live in the operator's `keycloak-initial-admin` Secret; drive `kcadm.sh` inside the keycloak pod. (On Git Bash, prefix exec calls with `MSYS_NO_PATHCONV=1` so the in-pod `/opt/...` path isn't mangled.)
+The flow needs a confidential client and a realm **user** to authenticate as. **Both are provisioned declaratively by the `siliconsaga` realm import** (nidavellir `keycloak/realm-import.yaml`), which reads the client secret + dev-user password from OpenBao `secret/leidangr/oidc` and delivers them to Keycloak via ESO. So on a fresh cluster you only **seed that KV path** (this same value is what the OpenBao auth config in step 3 consumes):
+
+```bash
+export BAO_TOKEN=$(kubectl -n openbao get secret openbao-init -o jsonpath='{.data.root_token}' | base64 -d)
+bao kv put secret/leidangr/oidc client-secret="$(openssl rand -hex 24)" dev-user-password='<pick-one>'
+```
+
+The `kcadm.sh` block below is the **manual equivalent** — only needed to create an ad-hoc client outside the realm import. Keycloak admin creds live in the operator's `keycloak-initial-admin` Secret; drive `kcadm.sh` inside the keycloak pod. (On Git Bash, prefix exec calls with `MSYS_NO_PATHCONV=1` so the in-pod `/opt/...` path isn't mangled.)
 
 ```bash
 KC_USER=$(kubectl -n keycloak get secret keycloak-initial-admin -o jsonpath='{.data.username}' | base64 -d)
@@ -50,11 +57,19 @@ kc create users -r siliconsaga -s username=<you> -s enabled=true -s emailVerifie
 kc set-password -r siliconsaga --username <you> --new-password '<pick-one>'
 ```
 
-> The client and user above are created **imperatively**. The `siliconsaga` realm is otherwise declaratively imported, so fold both into the realm import (realm repo) for reproducibility — tracked as a follow-up.
+> The realm import (nidavellir `keycloak/realm-import.yaml`) is the declarative source for the client + dev user, with secrets delivered by ESO from `secret/leidangr/oidc`. Reach for the `kcadm` block only for an ad-hoc client outside that import.
 
 ## 3. Configure the OpenBao OIDC auth method (as admin, one-time)
 
-`dev-secrets` calls `bao login -method=oidc` with **no role**, so `default_role` in the config is what selects the role — it is load-bearing.
+Apply the OpenBao end with the committed idempotent script — it reads the client secret from `secret/leidangr/oidc` (the same value the realm import uses), so the secret is never copy-pasted:
+
+```bash
+export BAO_ADDR=http://127.0.0.1:8200
+export BAO_TOKEN=$(kubectl -n openbao get secret openbao-init -o jsonpath='{.data.root_token}' | base64 -d)
+bash scripts/configure-openbao-oidc.sh
+```
+
+`dev-secrets` calls `bao login -method=oidc` with **no role**, so `default_role` in the config is what selects the role — it is load-bearing. The script is equivalent to these manual commands:
 
 ```bash
 export BAO_TOKEN=$(kubectl -n openbao get secret openbao-init -o jsonpath='{.data.root_token}' | base64 -d)
@@ -70,7 +85,7 @@ EOF
 bao write auth/oidc/config \
   oidc_discovery_url="http://keycloak.localhost/realms/siliconsaga" \
   oidc_client_id="openbao-cli" \
-  oidc_client_secret="<secret-from-step-2>" \
+  oidc_client_secret="$(bao kv get -field=client-secret secret/leidangr/oidc)" \
   default_role="leidangr-dev"
 
 bao write auth/oidc/role/leidangr-dev \
