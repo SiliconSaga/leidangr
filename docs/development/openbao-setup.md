@@ -4,6 +4,8 @@ This is the one-time setup behind `make secrets` → `make dev-gitea`: the real
 OpenBao → Gitea catalog loop. Everything here is human-gated (cluster access, an
 unseal, a browser OIDC login), so it lives as a runbook rather than automation.
 
+> **Shell note:** the `kubectl … | base64 -d` snippets use GNU `base64` (Linux / Git Bash / macOS ≥ 13, which aliases `-d`). On older macOS `base64`, decode with `-D`.
+
 ## Prerequisites
 
 - `kubectl` pointed at the cluster running OpenBao + Keycloak + Gitea (homelab: `rancher-desktop`/`loki`).
@@ -15,7 +17,7 @@ unseal, a browser OIDC login), so it lives as a runbook rather than automation.
 
   `make dev-gitea` and `make smoke-gitea` run `scripts/preflight-gitea.mjs` first, which fails fast with this fix if the host doesn't resolve — so a fresh machine surfaces the requirement instead of forgetting it.
 
-## 1. Prerequisites — reach OpenBao, unseal, resolve keycloak.localhost in-cluster
+## 1. Reach + unseal OpenBao, resolve keycloak.localhost in-cluster
 
 - **kubectl** pointed at homelab (`rancher-desktop`). Port-forward OpenBao and set the address:
   ```bash
