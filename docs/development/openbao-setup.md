@@ -4,6 +4,8 @@ This is the one-time setup behind `make secrets` → `make dev-gitea`: the real
 OpenBao → Gitea catalog loop. Everything here is human-gated (cluster access, an
 unseal, a browser OIDC login), so it lives as a runbook rather than automation.
 
+> **Shell note:** the `kubectl … | base64 -d` snippets use GNU `base64` (Linux / Git Bash / macOS ≥ 13, which aliases `-d`). On older macOS `base64`, decode with `-D`.
+
 ## Prerequisites
 
 - `kubectl` pointed at the cluster running OpenBao + Keycloak + Gitea (homelab: `rancher-desktop`/`loki`).
@@ -15,38 +17,90 @@ unseal, a browser OIDC login), so it lives as a runbook rather than automation.
 
   `make dev-gitea` and `make smoke-gitea` run `scripts/preflight-gitea.mjs` first, which fails fast with this fix if the host doesn't resolve — so a fresh machine surfaces the requirement instead of forgetting it.
 
-## 1. OpenBao OIDC auth backed by Keycloak (one-time)
+## 1. Reach + unseal OpenBao, resolve keycloak.localhost in-cluster
 
-`dev-secrets` uses `bao login -method=oidc`, which opens a browser to Keycloak. Enable and configure the OIDC auth method against the `siliconsaga` Keycloak realm. Exact client id/secret and discovery URL must be confirmed against that realm:
+- **kubectl** pointed at homelab (`rancher-desktop`). Port-forward OpenBao and set the address:
+  ```bash
+  kubectl -n openbao port-forward svc/openbao 8200:8200 &
+  export BAO_ADDR=http://127.0.0.1:8200
+  ```
+- **OpenBao unsealed.** It comes back **sealed after every restart/reboot** (`openbao-0` shows `0/1`). Unseal with 2 of the 3 Shamir shares from the `openbao-init` Secret — canonical runbook: `components/nidavellir/docs/secrets-management.md` → "The pod restarted and shows 0/1 — unseal it".
+- **In-cluster `keycloak.localhost` resolution (homelab).** OpenBao runs the OIDC authorization-code → token exchange **server-side from its pod**, and must reach Keycloak at the *same* `http://keycloak.localhost` issuer the browser uses (Keycloak is in dynamic-hostname mode; OpenBao validates `iss` strictly). A homelab CoreDNS rewrite makes that name resolvable from pods — see `components/nordri/docs/keycloak-localhost-coredns.md`. **Without it the browser login succeeds but the token exchange fails** with a DNS error.
+
+## 2. Create the Keycloak client + a realm user (siliconsaga realm, one-time)
+
+The flow needs a confidential client and a realm **user** to authenticate as. **Both are provisioned declaratively by the `siliconsaga` realm import** (nidavellir `keycloak/realm-import.yaml`), which reads the client secret + dev-user password from OpenBao `secret/leidangr/oidc` and delivers them to Keycloak via ESO. So on a fresh cluster you only **seed that KV path** (this same value is what the OpenBao auth config in step 3 consumes):
 
 ```bash
+export BAO_TOKEN=$(kubectl -n openbao get secret openbao-init -o jsonpath='{.data.root_token}' | base64 -d)
+bao kv put secret/leidangr/oidc client-secret="$(openssl rand -hex 24)" dev-user-password='<pick-one>'
+```
+
+The `kcadm.sh` block below is the **manual equivalent** — only needed to create an ad-hoc client outside the realm import. Keycloak admin creds live in the operator's `keycloak-initial-admin` Secret; drive `kcadm.sh` inside the keycloak pod. (On Git Bash, prefix exec calls with `MSYS_NO_PATHCONV=1` so the in-pod `/opt/...` path isn't mangled.)
+
+```bash
+KC_USER=$(kubectl -n keycloak get secret keycloak-initial-admin -o jsonpath='{.data.username}' | base64 -d)
+KC_PW=$(kubectl -n keycloak get secret keycloak-initial-admin -o jsonpath='{.data.password}' | base64 -d)
+kc() { kubectl -n keycloak exec keycloak-0 -- /opt/keycloak/bin/kcadm.sh "$@"; }
+kc config credentials --server http://localhost:8080 --realm master --user "$KC_USER" --password "$KC_PW"
+
+# Confidential client `openbao-cli` — Standard flow; redirect to the bao CLI callback (:8250)
+kc create clients -r siliconsaga \
+  -s clientId=openbao-cli -s enabled=true -s protocol=openid-connect \
+  -s publicClient=false -s standardFlowEnabled=true \
+  -s 'redirectUris=["http://localhost:8250/oidc/callback","http://127.0.0.1:8250/oidc/callback"]'
+
+# Read the generated client secret (feeds step 3)
+CID=$(kc get clients -r siliconsaga -q clientId=openbao-cli | jq -r '.[0].id')
+kc get clients/$CID/client-secret -r siliconsaga | jq -r '.value'
+
+# A dev user to log in as. Role-only gating ⇒ any authenticated realm user gets the read policy.
+kc create users -r siliconsaga -s username=<you> -s enabled=true -s emailVerified=true
+kc set-password -r siliconsaga --username <you> --new-password '<pick-one>'
+```
+
+> The realm import (nidavellir `keycloak/realm-import.yaml`) is the declarative source for the client + dev user, with secrets delivered by ESO from `secret/leidangr/oidc`. Reach for the `kcadm` block only for an ad-hoc client outside that import.
+
+## 3. Configure the OpenBao OIDC auth method (as admin, one-time)
+
+Apply the OpenBao end with the committed idempotent script — it reads the client secret from `secret/leidangr/oidc` (the same value the realm import uses), so the secret is never copy-pasted:
+
+```bash
+export BAO_ADDR=http://127.0.0.1:8200
+export BAO_TOKEN=$(kubectl -n openbao get secret openbao-init -o jsonpath='{.data.root_token}' | base64 -d)
+bash scripts/configure-openbao-oidc.sh
+```
+
+`dev-secrets` calls `bao login -method=oidc` with **no role**, so `default_role` in the config is what selects the role — it is load-bearing. The script is equivalent to these manual commands:
+
+```bash
+export BAO_TOKEN=$(kubectl -n openbao get secret openbao-init -o jsonpath='{.data.root_token}' | base64 -d)
+
 bao auth enable oidc   # if not already enabled
 
+# Read-only on the dev-scope KV path (KV v2 ⇒ both data/ and metadata/ paths)
+bao policy write leidangr-dev-read - <<'EOF'
+path "secret/data/leidangr/dev"     { capabilities = ["read"] }
+path "secret/metadata/leidangr/dev" { capabilities = ["read"] }
+EOF
+
 bao write auth/oidc/config \
-  oidc_discovery_url="https://<keycloak-host>/realms/siliconsaga" \
-  oidc_client_id="<backstage-or-cli-client-id>" \
-  oidc_client_secret="<client-secret>" \
+  oidc_discovery_url="http://keycloak.localhost/realms/siliconsaga" \
+  oidc_client_id="openbao-cli" \
+  oidc_client_secret="$(bao kv get -field=client-secret secret/leidangr/oidc)" \
   default_role="leidangr-dev"
 
 bao write auth/oidc/role/leidangr-dev \
   user_claim="sub" \
-  allowed_redirect_uris="http://localhost:8250/oidc/callback" \
-  policies="leidangr-dev" \
-  oidc_scopes="openid,profile,email"
-```
-
-Grant the `leidangr-dev` policy read on the dev-scope KV path only:
-
-```bash
-bao policy write leidangr-dev - <<'EOF'
-path "secret/data/leidangr/dev" { capabilities = ["read"] }
-path "secret/metadata/leidangr/dev" { capabilities = ["read"] }
-EOF
+  allowed_redirect_uris="http://localhost:8250/oidc/callback,http://127.0.0.1:8250/oidc/callback" \
+  policies="leidangr-dev-read" \
+  oidc_scopes="openid,profile,email" \
+  token_ttl="1h"
 ```
 
 (KV v2 reads use the `secret/data/...` API path even though the CLI addresses `secret/leidangr/dev`.)
 
-## 2. Seed the Gitea catalog-seed repo (one-time)
+## 4. Seed the Gitea catalog-seed repo (one-time)
 
 Create a small repo on the in-cluster Gitea that the catalog ingests:
 
@@ -54,7 +108,7 @@ Create a small repo on the in-cluster Gitea that the catalog ingests:
 - Add a `catalog-info.yaml` at the repo root declaring a couple of entities — `tests/acceptance/fixtures/gitea-catalog-info.yaml` is a ready template.
 - Create a Gitea access token with read scope for that repo, and note the owning username.
 
-## 3. Seed the OpenBao KV (one-time)
+## 5. Seed the OpenBao KV (one-time)
 
 ```bash
 bao kv put secret/leidangr/dev \
@@ -64,7 +118,7 @@ bao kv put secret/leidangr/dev \
 
 `dev-secrets` requires both keys (Gitea auth is username + access-token-as-password).
 
-## 4. Run the loop
+## 6. Run the loop
 
 ```bash
 make secrets       # resolves OpenBao (port-forward or BAO_ADDR), browser OIDC login, renders .env.local
