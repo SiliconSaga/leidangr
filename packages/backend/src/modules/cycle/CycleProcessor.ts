@@ -26,6 +26,16 @@ type CycleSpec = {
   timeframe?: { start?: unknown; end?: unknown };
 };
 
+/** True if `ref` parses as a valid entity reference (with the given default kind). */
+function isParseableRef(ref: string, defaultKind: string): boolean {
+  try {
+    parseEntityRef(ref, { defaultKind, defaultNamespace: 'default' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export class CycleProcessor implements CatalogProcessor {
   getProcessorName(): string {
     return 'CycleProcessor';
@@ -41,11 +51,43 @@ export class CycleProcessor implements CatalogProcessor {
     if (typeof spec.type !== 'string' || spec.type.trim() === '') {
       errors.push('spec.type is required');
     }
+
+    // spec.of — required, and must be a parseable entity ref (default kind Group).
     if (typeof spec.of !== 'string' || spec.of.trim() === '') {
       errors.push('spec.of is required');
+    } else if (!isParseableRef(spec.of, 'Group')) {
+      errors.push(`spec.of is not a valid entity ref: "${spec.of}"`);
     }
+
+    // spec.owner — optional, but if present must be a parseable entity ref.
+    if (spec.owner !== undefined) {
+      if (typeof spec.owner !== 'string' || spec.owner.trim() === '') {
+        errors.push('spec.owner, if set, must be a non-empty entity ref');
+      } else if (!isParseableRef(spec.owner, 'Group')) {
+        errors.push(`spec.owner is not a valid entity ref: "${spec.owner}"`);
+      }
+    }
+
+    // spec.happensAt — optional array of parseable entity refs (default kind Resource).
+    if (spec.happensAt !== undefined) {
+      if (!Array.isArray(spec.happensAt)) {
+        errors.push('spec.happensAt, if set, must be an array of entity refs');
+      } else {
+        spec.happensAt.forEach((t, i) => {
+          if (typeof t !== 'string' || t.trim() === '' || !isParseableRef(t, 'Resource')) {
+            errors.push(`spec.happensAt[${i}] is not a valid entity ref: "${String(t)}"`);
+          }
+        });
+      }
+    }
+
+    // spec.timeframe — required, with non-empty start/end strings.
     const tf = spec.timeframe;
-    if (!tf || typeof tf.start !== 'string' || typeof tf.end !== 'string') {
+    if (
+      !tf ||
+      typeof tf.start !== 'string' || tf.start.trim() === '' ||
+      typeof tf.end !== 'string' || tf.end.trim() === ''
+    ) {
       errors.push('spec.timeframe.start and spec.timeframe.end are required');
     }
 

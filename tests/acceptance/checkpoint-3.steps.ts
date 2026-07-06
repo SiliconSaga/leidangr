@@ -1,25 +1,43 @@
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 import { loadFeature, defineFeature } from 'jest-cucumber';
 
 const feature = loadFeature(
   'tests/acceptance/checkpoint-3-community-domain.feature',
 );
 
+// Escape a captured value before using it inside a RegExp.
+const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Split a multi-document YAML string into its individual documents so a check
+// can be scoped to the one entity it means (rather than matching name/type
+// independently anywhere in the file).
+const yamlDocs = (yaml: string) => yaml.split(/^---\s*$/m);
+
+const findDoc = (yaml: string, kind: string, name: string) =>
+  yamlDocs(yaml).find(
+    d =>
+      new RegExp(`kind:\\s*${esc(kind)}\\b`).test(d) &&
+      new RegExp(`name:\\s*${esc(name)}\\b`).test(d),
+  );
+
 defineFeature(feature, test => {
   let seed = '';
   let appConfig = '';
+  let cycleDoc: string | undefined;
 
   test('the seed declares the MTL org Group tree', ({ given, then, and }) => {
     given('the MTL seed file', () => {
       seed = readFileSync('examples/mtl.yaml', 'utf-8');
     });
     then(/^it declares a Group "(.*)" of type "(.*)"$/, (name, type) => {
-      expect(seed).toMatch(new RegExp(`kind:\\s*Group[\\s\\S]*?name:\\s*${name}\\b`));
-      expect(seed).toMatch(new RegExp(`type:\\s*${type}\\b`));
+      const doc = findDoc(seed, 'Group', name);
+      expect(doc).toBeDefined();
+      expect(doc!).toMatch(new RegExp(`type:\\s*${esc(type)}\\b`));
     });
     and(/^it declares a Group "(.*)" of type "(.*)"$/, (name, type) => {
-      expect(seed).toMatch(new RegExp(`name:\\s*${name}\\b`));
-      expect(seed).toMatch(new RegExp(`type:\\s*${type}\\b`));
+      const doc = findDoc(seed, 'Group', name);
+      expect(doc).toBeDefined();
+      expect(doc!).toMatch(new RegExp(`type:\\s*${esc(type)}\\b`));
     });
   });
 
@@ -28,15 +46,17 @@ defineFeature(feature, test => {
       seed = readFileSync('examples/mtl.yaml', 'utf-8');
     });
     then(/^it declares a Cycle "(.*)" of type "(.*)"$/, (name, type) => {
-      expect(seed).toMatch(/kind:\s*Cycle/);
-      expect(seed).toMatch(new RegExp(`name:\\s*${name}\\b`));
-      expect(seed).toMatch(new RegExp(`type:\\s*${type}\\b`));
+      cycleDoc = findDoc(seed, 'Cycle', name);
+      expect(cycleDoc).toBeDefined();
+      expect(cycleDoc!).toMatch(new RegExp(`type:\\s*${esc(type)}\\b`));
     });
     and(/^that Cycle is "of" group "(.*)"$/, group => {
-      expect(seed).toMatch(new RegExp(`of:\\s*group:default/${group}\\b`));
+      expect(cycleDoc!).toMatch(new RegExp(`of:\\s*group:default/${esc(group)}\\b`));
     });
     and(/^that Cycle "happensAt" resource "(.*)"$/, res => {
-      expect(seed).toMatch(new RegExp(`happensAt:\\s*\\[resource:default/${res}\\]`));
+      expect(cycleDoc!).toMatch(
+        new RegExp(`happensAt:\\s*\\[resource:default/${esc(res)}\\]`),
+      );
     });
   });
 
@@ -45,8 +65,13 @@ defineFeature(feature, test => {
       appConfig = readFileSync('app-config.yaml', 'utf-8');
     });
     then(/^the "(.*)" location allows the "(.*)" kind$/, (loc, kind) => {
-      expect(appConfig).toMatch(new RegExp(`${loc.replace('.', '\\.')}`));
-      expect(appConfig).toMatch(new RegExp(`allow:\\s*\\[[^\\]]*\\b${kind}\\b`));
+      // Scope the allow-list to the same location stanza that targets `loc`,
+      // so the kind can't be satisfied by a different location's rules.
+      expect(appConfig).toMatch(
+        new RegExp(
+          `target:\\s*\\S*${esc(loc)}[\\s\\S]{0,200}?allow:\\s*\\[[^\\]]*\\b${esc(kind)}\\b`,
+        ),
+      );
     });
   });
 });

@@ -45,6 +45,20 @@ describe('CycleProcessor.validateEntityKind', () => {
       /spec\.timeframe/,
     );
   });
+
+  it('rejects a Cycle with a malformed spec.of ref', async () => {
+    await expect(
+      p.validateEntityKind(cycle({ ...validSpec, of: 'group:default/' })),
+    ).rejects.toThrow(/spec\.of is not a valid entity ref/);
+  });
+
+  it('rejects a Cycle with an empty timeframe.start', async () => {
+    await expect(
+      p.validateEntityKind(
+        cycle({ ...validSpec, timeframe: { start: '', end: '2026-06-15' } }),
+      ),
+    ).rejects.toThrow(/spec\.timeframe/);
+  });
 });
 
 describe('CycleProcessor.postProcessEntity', () => {
