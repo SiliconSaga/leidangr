@@ -1,8 +1,19 @@
-import { Entity } from '@backstage/catalog-model';
+import {
+  Entity,
+  getCompoundEntityRef,
+  parseEntityRef,
+  RELATION_OWNED_BY,
+  RELATION_OWNER_OF,
+  RELATION_PART_OF,
+  RELATION_HAS_PART,
+  RELATION_DEPENDS_ON,
+  RELATION_DEPENDENCY_OF,
+} from '@backstage/catalog-model';
 import {
   CatalogProcessor,
   CatalogProcessorEmit,
   LocationSpec,
+  processingResult,
 } from '@backstage/plugin-catalog-node';
 
 export const CYCLE_KIND = 'Cycle';
@@ -49,9 +60,44 @@ export class CycleProcessor implements CatalogProcessor {
   async postProcessEntity(
     entity: Entity,
     _location: LocationSpec,
-    _emit: CatalogProcessorEmit,
+    emit: CatalogProcessorEmit,
   ): Promise<Entity> {
-    // Relation emission added in Task 2.
+    if (entity.kind !== CYCLE_KIND) {
+      return entity;
+    }
+    const self = getCompoundEntityRef(entity);
+    const spec = (entity.spec ?? {}) as CycleSpec;
+
+    // of → partOf / hasPart (default parent kind: Group)
+    const ofRef = parseEntityRef(spec.of as string, {
+      defaultKind: 'Group',
+      defaultNamespace: 'default',
+    });
+    emit(processingResult.relation({ source: self, type: RELATION_PART_OF, target: ofRef }));
+    emit(processingResult.relation({ source: ofRef, type: RELATION_HAS_PART, target: self }));
+
+    // owner → ownedBy / ownerOf
+    if (typeof spec.owner === 'string' && spec.owner.trim() !== '') {
+      const ownerRef = parseEntityRef(spec.owner, {
+        defaultKind: 'Group',
+        defaultNamespace: 'default',
+      });
+      emit(processingResult.relation({ source: self, type: RELATION_OWNED_BY, target: ownerRef }));
+      emit(processingResult.relation({ source: ownerRef, type: RELATION_OWNER_OF, target: self }));
+    }
+
+    // happensAt → dependsOn / dependencyOf (default target kind: Resource)
+    const happensAt = Array.isArray(spec.happensAt) ? spec.happensAt : [];
+    for (const t of happensAt) {
+      if (typeof t !== 'string') continue;
+      const resRef = parseEntityRef(t, {
+        defaultKind: 'Resource',
+        defaultNamespace: 'default',
+      });
+      emit(processingResult.relation({ source: self, type: RELATION_DEPENDS_ON, target: resRef }));
+      emit(processingResult.relation({ source: resRef, type: RELATION_DEPENDENCY_OF, target: self }));
+    }
+
     return entity;
   }
 }
