@@ -54,8 +54,10 @@ defineFeature(feature, test => {
       expect(cycleDoc!).toMatch(new RegExp(`of:\\s*group:default/${esc(group)}\\b`));
     });
     and(/^that Cycle "happensAt" resource "(.*)"$/, res => {
+      // Match the resource within the happensAt array, tolerating extra
+      // entries / reflowed formatting rather than only a single inline item.
       expect(cycleDoc!).toMatch(
-        new RegExp(`happensAt:\\s*\\[resource:default/${esc(res)}\\]`),
+        new RegExp(`happensAt:\\s*\\[[^\\]]*\\bresource:default/${esc(res)}\\b[^\\]]*\\]`),
       );
     });
   });
