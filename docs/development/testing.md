@@ -17,7 +17,11 @@ Backstage's own runner (`backstage-cli repo test`, exposed as `make test-app`) o
 
 ## 2. App / backend (`make test-app`)
 
-The tests generated with the Backstage app (e.g. `packages/app/src/App.test.tsx`), run by `backstage-cli repo test`.
+The tests generated with the Backstage app (e.g. `packages/app/src/App.test.tsx`) plus in-repo backend module units — including the custom `Cycle` kind's processor (`packages/backend/src/modules/cycle/CycleProcessor.test.ts`) — run by `backstage-cli repo test`.
+
+## The `ci` gate (`make ci`)
+
+`make ci` runs the full gate: `config-check`, `lint`, `test` (envelope BDD), and `test-app` (app/backend + the `CycleProcessor` units).
 
 ## `@live` scenarios
 

@@ -1,0 +1,100 @@
+---
+# People-org — typed Group tree (organization → sport → division → team)
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: mtl
+  description: Mountaintop League
+spec:
+  type: organization
+  children: [mtl-soccer, mtl-basketball, mtl-hockey]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: mtl-soccer }
+spec: { type: sport, parent: mtl, children: [soccer-u8] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: soccer-u8 }
+spec: { type: division, parent: mtl-soccer, children: [soccer-u8-red] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: soccer-u8-red }
+spec: { type: team, parent: soccer-u8, children: [] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: mtl-basketball
+  description: Small sport — teams hang directly, no division level
+spec: { type: sport, parent: mtl, children: [bball-varsity] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: bball-varsity }
+spec: { type: team, parent: mtl-basketball, children: [] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: mtl-hockey }
+spec: { type: sport, parent: mtl, children: [] }
+---
+# Asset graph — Domain / System / Resource / Component
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata: { name: mtl }
+spec: { owner: group:default/mtl }
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata: { name: mtl-house, description: The league house (facility) }
+spec: { owner: group:default/mtl, domain: mtl }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: main-room
+  annotations:
+    siliconsaga.org/reservable: 'true'
+spec: { type: bookable-space, owner: group:default/mtl, system: mtl-house }
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata: { name: mtl-fields, description: Playing fields (facility) }
+spec: { owner: group:default/mtl-soccer, domain: mtl }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: field-1
+  annotations:
+    siliconsaga.org/reservable: 'true'
+spec: { type: bookable-space, owner: group:default/mtl-soccer, system: mtl-fields }
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata: { name: mtl-registration, description: Registration app (real software) }
+spec: { owner: group:default/mtl, domain: mtl }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata: { name: reg-web }
+spec: { type: website, lifecycle: production, owner: group:default/mtl, system: mtl-registration }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata: { name: reg-api }
+spec: { type: service, lifecycle: production, owner: group:default/mtl, system: mtl-registration }
+---
+# The one Cycle — a soccer season
+apiVersion: siliconsaga.org/v1alpha1
+kind: Cycle
+metadata: { name: soccer-2026-spring, description: 'MTL Soccer, Spring 2026 season' }
+spec:
+  type: season
+  timeframe: { start: '2026-03-01', end: '2026-06-15' }
+  of: group:default/mtl-soccer
+  owner: group:default/mtl-soccer
+  happensAt: [resource:default/field-1]

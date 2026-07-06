@@ -54,5 +54,5 @@ config-check:
 secrets:
 	bash scripts/dev-secrets
 
-## ci — the gate: config-check, lint, envelope tests
-ci: config-check lint test
+## ci — the gate: config-check, lint, envelope tests, app/backend unit tests
+ci: config-check lint test test-app

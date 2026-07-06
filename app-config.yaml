@@ -121,6 +121,12 @@ catalog:
       rules:
         - allow: [User, Group]
 
+    # MTL community-domain seed (Phase 3): Group tree, facilities, real software, one Cycle
+    - type: file
+      target: ../../examples/mtl.yaml
+      rules:
+        - allow: [Group, Domain, System, Resource, Component, Cycle]
+
     ## Uncomment these lines to add more example data
     # - type: url
     #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml
