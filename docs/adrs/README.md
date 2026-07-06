@@ -17,3 +17,4 @@ annotation. Until then they live here as plain Markdown.
 | [0004](0004-gitea-catalog-source.md) | Gitea as the catalog source (overlay; GitHub deferred) |
 | [0005](0005-guest-auth-first.md) | Guest auth first; Keycloak sign-in deferred |
 | [0006](0006-bdd-from-day-one.md) | BDD from day one over TDD'd tooling |
+| [0007](0007-cycle-custom-kind.md) | Cycle: a custom catalog kind for bounded groupings |
