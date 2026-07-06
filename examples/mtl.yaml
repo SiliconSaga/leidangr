@@ -91,7 +91,7 @@ spec: { type: service, lifecycle: production, owner: group:default/mtl, system: 
 # The one Cycle — a soccer season
 apiVersion: siliconsaga.org/v1alpha1
 kind: Cycle
-metadata: { name: soccer-2026-spring, description: MTL Soccer, Spring 2026 season }
+metadata: { name: soccer-2026-spring, description: 'MTL Soccer, Spring 2026 season' }
 spec:
   type: season
   timeframe: { start: '2026-03-01', end: '2026-06-15' }
