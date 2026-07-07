@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-gitea smoke-gitea test test-app lint config-check secrets ci
+.PHONY: doctor deps dev dev-gitea smoke-gitea smoke-catalog test test-app lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -33,6 +33,11 @@ dev-gitea:
 smoke-gitea:
 	node scripts/preflight-gitea.mjs
 	bash scripts/smoke-gitea.sh
+
+## smoke-catalog — headless real-ingestion check for the custom Cycle/Saga kinds
+## (stub mode — no cluster, no secrets; safe anywhere incl. CI)
+smoke-catalog:
+	bash scripts/smoke-catalog.sh
 
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:

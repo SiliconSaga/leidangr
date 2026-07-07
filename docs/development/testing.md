@@ -17,17 +17,21 @@ Backstage's own runner (`backstage-cli repo test`, exposed as `make test-app`) o
 
 ## 2. App / backend (`make test-app`)
 
-The tests generated with the Backstage app (e.g. `packages/app/src/App.test.tsx`) plus in-repo backend module units — including the custom `Cycle` kind's processor (`packages/backend/src/modules/cycle/CycleProcessor.test.ts`) — run by `backstage-cli repo test`.
+The tests generated with the Backstage app (e.g. `packages/app/src/App.test.tsx`) plus in-repo backend module units — including the custom `Cycle`/`Saga` kind processors (`packages/backend/src/modules/{cycle,saga}/*Processor.test.ts`) — run by `backstage-cli repo test`.
 
 ## The `ci` gate (`make ci`)
 
-`make ci` runs the full gate: `config-check`, `lint`, `test` (envelope BDD), and `test-app` (app/backend + the `CycleProcessor` units).
+`make ci` runs the full gate: `config-check`, `lint`, `test` (envelope BDD), and `test-app` (app/backend + the `Cycle`/`Saga` processor units).
+
+## Real catalog-ingestion smoke (`make smoke-catalog`)
+
+`make smoke-catalog` is the committed, end-to-end proof for the custom kinds: it boots the backend headlessly in **stub mode** (no cluster, no secrets), waits for the MTL seed to process, and asserts via the catalog API that the `Cycle` and `Saga` entities ingested **with their emitted relations** (partOf/ownedBy/dependsOn). It tears the backend down on exit and is safe to run anywhere, including CI. This is the real-ingestion counterpart to the source-assertion BDD scenarios below — the stub-mode cousin of the `@live` `make smoke-gitea`.
 
 ## `@live` scenarios
 
 Some acceptance scenarios are tagged `@live` (e.g. the real OpenBao → Gitea ingest). They need a live cluster + an unsealed OpenBao and are **excluded from the default run** (the steps file loads features with `tagFilter: 'not @live'`). Run them by hand against a real environment per [`openbao-setup.md`](openbao-setup.md).
 
-Where a full backend boot would be heavy, a few catalog scenarios assert against the configured source/fixture instead (a pragmatic stand-in); the `@live` variant is the real proof. Replacing those with a real `startTestBackend` boot is queued as hardening.
+The BDD catalog scenarios assert against the seed source (a pragmatic stand-in). The real end-to-end ingestion proof is `make smoke-catalog` (above), which boots the backend and checks the catalog API.
 
 ## Adding a test
 
