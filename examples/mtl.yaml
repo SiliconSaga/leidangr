@@ -98,3 +98,22 @@ spec:
   of: group:default/mtl-soccer
   owner: group:default/mtl-soccer
   happensAt: [resource:default/field-1]
+---
+# A narrated After-Action-Report (Saga) about the season — authored, Git-backed.
+# The narrative body lives beside the entity (siliconsaga.org/saga-doc); Backstage
+# only indexes it. `touches` links the entities the Saga narrates.
+apiVersion: siliconsaga.org/v1alpha1
+kind: Saga
+metadata:
+  name: saga-soccer-2026-spring
+  description: 'The Saga of MTL Soccer, Spring 2026'
+  annotations:
+    siliconsaga.org/saga-doc: ./sagas/soccer-2026-spring.md
+spec:
+  skald: user:default/guest
+  timeframe: { start: '2026-03-01', end: '2026-06-15' }
+  touches:
+    - cycle:default/soccer-2026-spring
+    - group:default/mtl-soccer
+    - resource:default/field-1
+  owner: group:default/mtl-soccer
