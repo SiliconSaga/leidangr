@@ -125,7 +125,7 @@ catalog:
     - type: file
       target: ../../examples/mtl.yaml
       rules:
-        - allow: [Group, Domain, System, Resource, Component, Cycle]
+        - allow: [Group, Domain, System, Resource, Component, Cycle, Saga]
 
     ## Uncomment these lines to add more example data
     # - type: url

@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-gitea smoke-gitea test test-app lint config-check secrets ci
+.PHONY: doctor deps dev dev-gitea smoke-gitea smoke-catalog test test-app tsc lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -34,13 +34,23 @@ smoke-gitea:
 	node scripts/preflight-gitea.mjs
 	bash scripts/smoke-gitea.sh
 
+## smoke-catalog — headless real-ingestion check for the custom Cycle/Saga kinds
+## (stub mode — no cluster, no secrets; safe anywhere incl. CI)
+smoke-catalog:
+	bash scripts/smoke-catalog.sh
+
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:
 	corepack yarn jest --config jest.envelope.config.cjs
 
 ## test-app — the generated app/backend unit tests (backstage-cli)
+## CI=true forces a single run — without it backstage-cli watches in a TTY and never exits.
 test-app:
-	corepack yarn backstage-cli repo test
+	CI=true corepack yarn backstage-cli repo test
+
+## tsc — typecheck the whole repo (catches wiring/import errors the linter misses)
+tsc:
+	corepack yarn tsc
 
 ## lint — repo lint across all workspaces
 lint:
@@ -54,5 +64,5 @@ config-check:
 secrets:
 	bash scripts/dev-secrets
 
-## ci — the gate: config-check, lint, envelope tests, app/backend unit tests
-ci: config-check lint test test-app
+## ci — the full local gate: config-check, lint, typecheck, envelope tests, app/backend unit tests
+ci: config-check lint tsc test test-app
