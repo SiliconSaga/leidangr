@@ -4,7 +4,7 @@ import {
   EntityRefLinks,
   useEntity,
 } from '@backstage/plugin-catalog-react';
-import { parseEntityRef } from '@backstage/catalog-model';
+import { CompoundEntityRef, parseEntityRef } from '@backstage/catalog-model';
 
 type CycleSpec = {
   type?: string;
@@ -12,6 +12,19 @@ type CycleSpec = {
   of?: string;
   owner?: string;
   happensAt?: string[];
+};
+
+// parseEntityRef throws on a malformed ref; never let a bad seed value break the
+// card render — fall back to the dash placeholder instead.
+const safeRef = (
+  ref: string,
+  defaultKind: string,
+): CompoundEntityRef | undefined => {
+  try {
+    return parseEntityRef(ref, { defaultKind, defaultNamespace: 'default' });
+  } catch {
+    return undefined;
+  }
 };
 
 /**
@@ -25,14 +38,17 @@ export const CycleOverviewCard = () => {
   const spec = (entity.spec ?? {}) as unknown as CycleSpec;
   const tf = spec.timeframe ?? {};
 
+  const ofRef = spec.of ? safeRef(spec.of, 'Group') : undefined;
+  const happensAtRefs = (Array.isArray(spec.happensAt) ? spec.happensAt : [])
+    .map(t => safeRef(t, 'Resource'))
+    .filter((r): r is CompoundEntityRef => r !== undefined);
+
   const metadata: Record<string, string | JSX.Element> = {
     Type: spec.type ?? '—',
     Timeframe: tf.start && tf.end ? `${tf.start} → ${tf.end}` : '—',
-    'Part of': spec.of
-      ? <EntityRefLink entityRef={parseEntityRef(spec.of, { defaultKind: 'Group' })} />
-      : '—',
-    'Happens at': Array.isArray(spec.happensAt) && spec.happensAt.length > 0
-      ? <EntityRefLinks entityRefs={spec.happensAt.map(t => parseEntityRef(t, { defaultKind: 'Resource' }))} />
+    'Part of': ofRef ? <EntityRefLink entityRef={ofRef} /> : '—',
+    'Happens at': happensAtRefs.length > 0
+      ? <EntityRefLinks entityRefs={happensAtRefs} />
       : '—',
   };
 

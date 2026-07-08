@@ -21,7 +21,7 @@ The tests generated with the Backstage app (e.g. `packages/app/src/App.test.tsx`
 
 ## The `ci` gate (`make ci`)
 
-`make ci` runs the full gate: `config-check`, `lint`, `test` (envelope BDD), and `test-app` (app/backend + the `Cycle`/`Saga` processor units).
+`make ci` runs the full gate: `config-check`, `lint`, `tsc` (typecheck), `test` (envelope BDD), and `test-app` (app/backend + the `Cycle`/`Saga` processor units).
 
 ## Real catalog-ingestion smoke (`make smoke-catalog`)
 

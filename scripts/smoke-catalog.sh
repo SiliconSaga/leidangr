@@ -8,8 +8,13 @@
 #
 # Run: `make smoke-catalog`. Unlike smoke-gitea (@live, needs OpenBao+Gitea), this
 # needs nothing external, so it is safe to run anywhere — including CI.
-set -uo pipefail
+set -euo pipefail
 cd "$(dirname "$0")/.." || exit 1
+
+# Fail fast if a prerequisite is missing rather than half-running.
+for _cmd in corepack curl jq; do
+  command -v "$_cmd" >/dev/null 2>&1 || { echo "smoke-catalog: missing prerequisite '$_cmd'" >&2; exit 1; }
+done
 
 mkdir -p .dev
 ROOT="$(cygpath -m "$PWD" 2>/dev/null || pwd)"
@@ -67,7 +72,7 @@ for _ in $(seq 1 120); do
 done
 
 # Field presence — a single-field substring is order-independent, so grep is fine.
-check() { if printf '%s' "$2" | grep -q "$3"; then echo "  PASS $1"; else echo "  FAIL $1"; return 1; fi; }
+check() { if printf '%s' "$2" | grep -qF "$3"; then echo "  PASS $1"; else echo "  FAIL $1"; return 1; fi; }
 # Relation presence — parsed structurally with jq so JSON key order can't cause a
 # false failure (grepping `"type":…,"targetRef":…` would be order-dependent).
 check_rel() {
