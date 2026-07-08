@@ -62,6 +62,12 @@ describe('SagaProcessor.validateEntityKind', () => {
       p.validateEntityKind(saga({ spec: validSpec, annotations: {} })),
     ).rejects.toThrow(/saga-doc/);
   });
+
+  it('rejects a Saga with a malformed skald ref', async () => {
+    await expect(
+      p.validateEntityKind(saga({ spec: { ...validSpec, skald: 'user:default/' } })),
+    ).rejects.toThrow(/spec\.skald is not a valid entity ref/);
+  });
 });
 
 describe('SagaProcessor.postProcessEntity', () => {

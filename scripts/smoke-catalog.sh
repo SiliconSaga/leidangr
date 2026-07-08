@@ -9,7 +9,7 @@
 # Run: `make smoke-catalog`. Unlike smoke-gitea (@live, needs OpenBao+Gitea), this
 # needs nothing external, so it is safe to run anywhere — including CI.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 
 mkdir -p .dev
 ROOT="$(cygpath -m "$PWD" 2>/dev/null || pwd)"
@@ -51,7 +51,7 @@ if [[ -z "$up" ]]; then
 fi
 
 hdr=(-H "Authorization: Bearer ${TOKEN}")
-byname() { curl -fsS "${hdr[@]}" "http://localhost:7007/api/catalog/entities/by-name/$1" 2>/dev/null || echo '{}'; }
+byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localhost:7007/api/catalog/entities/by-name/$1" 2>/dev/null || echo '{}'; }
 
 # Backend readiness != catalog-ingestion readiness. Poll until the custom entities
 # appear (or the timeout expires) rather than sleeping once and querying once.
@@ -68,24 +68,23 @@ done
 
 check() { if printf '%s' "$2" | grep -q "$3"; then echo "  PASS $1"; else echo "  FAIL $1"; return 1; fi; }
 
-pass=0
-{
-  echo "Checks:"
-  # Cycle: kind + built-in relations emitted by CycleProcessor.
-  check "Cycle ingested"                  "$CYCLE" '"kind":"Cycle"' &&
-  check "Cycle partOf mtl-soccer"         "$CYCLE" '"type":"partOf","targetRef":"group:default/mtl-soccer"' &&
-  check "Cycle ownedBy mtl-soccer"        "$CYCLE" '"type":"ownedBy","targetRef":"group:default/mtl-soccer"' &&
-  check "Cycle dependsOn field-1"         "$CYCLE" '"type":"dependsOn","targetRef":"resource:default/field-1"' &&
-  # Group tree ingested.
-  check "Group tree (mtl, organization)"  "$GROUP" '"type":"organization"' &&
-  # Saga: kind + built-in relations emitted by SagaProcessor.
-  check "Saga ingested"                   "$SAGA" '"kind":"Saga"' &&
-  check "Saga ownedBy skald (guest)"      "$SAGA" '"type":"ownedBy","targetRef":"user:default/guest"' &&
-  check "Saga ownedBy owner (mtl-soccer)" "$SAGA" '"type":"ownedBy","targetRef":"group:default/mtl-soccer"' &&
-  check "Saga dependsOn Cycle (touches)"  "$SAGA" '"type":"dependsOn","targetRef":"cycle:default/soccer-2026-spring"' &&
-  check "Saga doc annotation preserved"   "$SAGA" 'siliconsaga.org/saga-doc' &&
-  pass=1
-} || true
+# Run every check unconditionally (each prints its own PASS/FAIL) and track the
+# overall result — chaining with && would hide all checks after the first failure.
+pass=1
+echo "Checks:"
+# Cycle: kind + built-in relations emitted by CycleProcessor.
+check "Cycle ingested"                  "$CYCLE" '"kind":"Cycle"'                                                    || pass=0
+check "Cycle partOf mtl-soccer"         "$CYCLE" '"type":"partOf","targetRef":"group:default/mtl-soccer"'            || pass=0
+check "Cycle ownedBy mtl-soccer"        "$CYCLE" '"type":"ownedBy","targetRef":"group:default/mtl-soccer"'           || pass=0
+check "Cycle dependsOn field-1"         "$CYCLE" '"type":"dependsOn","targetRef":"resource:default/field-1"'         || pass=0
+# Group tree ingested.
+check "Group tree (mtl, organization)"  "$GROUP" '"type":"organization"'                                             || pass=0
+# Saga: kind + built-in relations emitted by SagaProcessor.
+check "Saga ingested"                   "$SAGA" '"kind":"Saga"'                                                       || pass=0
+check "Saga ownedBy skald (guest)"      "$SAGA" '"type":"ownedBy","targetRef":"user:default/guest"'                  || pass=0
+check "Saga ownedBy owner (mtl-soccer)" "$SAGA" '"type":"ownedBy","targetRef":"group:default/mtl-soccer"'            || pass=0
+check "Saga dependsOn Cycle (touches)"  "$SAGA" '"type":"dependsOn","targetRef":"cycle:default/soccer-2026-spring"'  || pass=0
+check "Saga doc annotation preserved"   "$SAGA" 'siliconsaga.org/saga-doc'                                            || pass=0
 
 # Surface any catalog processing errors for the seed.
 echo "--- catalog errors mentioning mtl/cycle/saga (if any) ---"
