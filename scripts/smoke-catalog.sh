@@ -66,25 +66,33 @@ for _ in $(seq 1 120); do
   sleep 1
 done
 
+# Field presence — a single-field substring is order-independent, so grep is fine.
 check() { if printf '%s' "$2" | grep -q "$3"; then echo "  PASS $1"; else echo "  FAIL $1"; return 1; fi; }
+# Relation presence — parsed structurally with jq so JSON key order can't cause a
+# false failure (grepping `"type":…,"targetRef":…` would be order-dependent).
+check_rel() {
+  if printf '%s' "$2" | jq -e --arg t "$3" --arg r "$4" \
+       '(.relations // []) | any(.type == $t and .targetRef == $r)' >/dev/null 2>&1; then
+    echo "  PASS $1"; else echo "  FAIL $1"; return 1; fi
+}
 
 # Run every check unconditionally (each prints its own PASS/FAIL) and track the
 # overall result — chaining with && would hide all checks after the first failure.
 pass=1
 echo "Checks:"
 # Cycle: kind + built-in relations emitted by CycleProcessor.
-check "Cycle ingested"                  "$CYCLE" '"kind":"Cycle"'                                                    || pass=0
-check "Cycle partOf mtl-soccer"         "$CYCLE" '"type":"partOf","targetRef":"group:default/mtl-soccer"'            || pass=0
-check "Cycle ownedBy mtl-soccer"        "$CYCLE" '"type":"ownedBy","targetRef":"group:default/mtl-soccer"'           || pass=0
-check "Cycle dependsOn field-1"         "$CYCLE" '"type":"dependsOn","targetRef":"resource:default/field-1"'         || pass=0
+check     "Cycle ingested"                  "$CYCLE" '"kind":"Cycle"'                            || pass=0
+check_rel "Cycle partOf mtl-soccer"         "$CYCLE" partOf    group:default/mtl-soccer          || pass=0
+check_rel "Cycle ownedBy mtl-soccer"        "$CYCLE" ownedBy   group:default/mtl-soccer          || pass=0
+check_rel "Cycle dependsOn field-1"         "$CYCLE" dependsOn resource:default/field-1          || pass=0
 # Group tree ingested.
-check "Group tree (mtl, organization)"  "$GROUP" '"type":"organization"'                                             || pass=0
+check     "Group tree (mtl, organization)"  "$GROUP" '"type":"organization"'                     || pass=0
 # Saga: kind + built-in relations emitted by SagaProcessor.
-check "Saga ingested"                   "$SAGA" '"kind":"Saga"'                                                       || pass=0
-check "Saga ownedBy skald (guest)"      "$SAGA" '"type":"ownedBy","targetRef":"user:default/guest"'                  || pass=0
-check "Saga ownedBy owner (mtl-soccer)" "$SAGA" '"type":"ownedBy","targetRef":"group:default/mtl-soccer"'            || pass=0
-check "Saga dependsOn Cycle (touches)"  "$SAGA" '"type":"dependsOn","targetRef":"cycle:default/soccer-2026-spring"'  || pass=0
-check "Saga doc annotation preserved"   "$SAGA" 'siliconsaga.org/saga-doc'                                            || pass=0
+check     "Saga ingested"                   "$SAGA"  '"kind":"Saga"'                              || pass=0
+check_rel "Saga ownedBy skald (guest)"      "$SAGA"  ownedBy   user:default/guest                || pass=0
+check_rel "Saga ownedBy owner (mtl-soccer)" "$SAGA"  ownedBy   group:default/mtl-soccer          || pass=0
+check_rel "Saga dependsOn Cycle (touches)"  "$SAGA"  dependsOn cycle:default/soccer-2026-spring  || pass=0
+check     "Saga doc annotation preserved"   "$SAGA"  'siliconsaga.org/saga-doc'                  || pass=0
 
 # Surface any catalog processing errors for the seed.
 echo "--- catalog errors mentioning mtl/cycle/saga (if any) ---"
