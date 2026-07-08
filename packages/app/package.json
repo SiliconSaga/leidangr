@@ -14,6 +14,7 @@
     "lint": "backstage-cli package lint"
   },
   "dependencies": {
+    "@backstage/catalog-model": "^1.9.0",
     "@backstage/cli": "^0.36.3",
     "@backstage/core-components": "^0.18.11",
     "@backstage/core-plugin-api": "^1.12.7",
@@ -27,6 +28,7 @@
     "@backstage/plugin-catalog": "^2.0.6",
     "@backstage/plugin-catalog-graph": "^0.6.5",
     "@backstage/plugin-catalog-import": "^0.13.14",
+    "@backstage/plugin-catalog-react": "^3.1.0",
     "@backstage/plugin-kubernetes": "^0.12.20",
     "@backstage/plugin-notifications": "^0.5.18",
     "@backstage/plugin-org": "^0.7.5",
