@@ -14,9 +14,10 @@ a crafted link must not be able to turn a copied command into an injection. -->
 2. Issue the replacement and store it — via stdin, so the new secret never lands in shell history or the process list:
 
    ```bash
-   read -rs NEW_CREDENTIAL
+   IFS= read -r -s NEW_CREDENTIAL
    [ -n "$NEW_CREDENTIAL" ] || { echo "empty input — aborting, nothing stored"; unset NEW_CREDENTIAL; exit 1; }
-   printf %s "$NEW_CREDENTIAL" | bao kv put secret/{{secret_path}} value=-
+   printf %s "$NEW_CREDENTIAL" | bao kv put secret/{{secret_path}} value=- \
+     || { echo "store FAILED — stop here: the old credential is revoked and no replacement is stored"; unset NEW_CREDENTIAL; exit 1; }
    unset NEW_CREDENTIAL
    ```
 
