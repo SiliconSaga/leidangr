@@ -1,15 +1,15 @@
-# Leiðangr — Guilds, Skills, and Standards: the Practice Layer (Design)
+# Leiðangr — the Guildhall: Guilds, Skills, and Standards (Design)
 
 **Date:** 2026-07-10
 **Status:** Draft
-**Scope:** Terminology and conceptual model for the "practice layer" — how skills (Skill-Exchange-style), crafts, guilds/practices, maturity standards (Soundcheck-style), and procedure guides relate to each other and to the shipped `Cycle`/`Saga` kinds. Layered deliverable: an abstract model first (portable beyond Leiðangr), then its concrete Backstage mapping. Vocabulary lands now; mechanics are Phase 6 (scorecards, skill profiles) and Phase 4 (muster calls) work.
-**Related:** `2026-07-06-leidangr-phase3-community-domain-design.md` (two-family model, typed Group tree), ADR 0007 (`Cycle`), ADR 0008 (`Saga`), the umbrella design (`realms/.../2026-06-09-leidangr-design.md` §6 Phase 6), and the Backstage DevEx reference doc (§ Scorecards and Poor Man's Soundcheck).
+**Scope:** Terminology and conceptual model for the **Guildhall** — the system relating skills (Skill-Exchange-style), crafts, guilds/practices, maturity standards (Soundcheck-style), and procedure guides to each other and to the shipped `Cycle`/`Saga` kinds. Layered deliverable: an abstract model first (portable beyond Leiðangr), then its concrete Backstage mapping. Vocabulary lands now; mechanics are Phase 6 (scorecards, skill profiles) and Phase 4 (muster calls) work.
+**Related:** `2026-07-06-leidangr-phase3-community-domain-design.md` (two-family model, typed Group tree), ADR 0007 (`Cycle`), ADR 0008 (`Saga`), the umbrella design (`realms/realm-siliconsaga/docs/plans/2026-06-09-leidangr-design.md` in the yggdrasil workspace — not in this repo; §6 Phase 6), and the Backstage DevEx reference doc (§ Scorecards and Poor Man's Soundcheck).
 
 ---
 
 ## 1. What This Is
 
-Two premium Spotify Backstage plugins inspired this layer: **Skill Exchange** (skills attach to user profiles; opportunities are posted and browsed) and **Soundcheck** (entities are measured against tiered check-based standards). Spotify ships them as unconnected products. This design's claim is that they are two pieces of one thing — the **practice** — completed by a third piece Spotify never shipped: written procedure. A practice is not a single entity but a small constellation of nouns (§3). A prior-art data point: an internal grouped-checks system at Cervator's day job independently grew a "Grid" concept (themed collections of check-blocks — security, scalability, maintainability) that converges on Soundcheck's "Track"; and a team there independently subdivided into discipline areas mislabeled "teams" — groping toward the same missing noun. The missing noun is the **aspect** (§3), and this doc names the whole family around it.
+This system is the **Guildhall** — the hall where the guild rosters, the craft rolls, the standards, and the guides all hang together. ("Practice layer" was the working name; it read as a verb — *practicing* — one ambiguity too many for a terminology design. *Gildaskáli*, the historic guild-hall, is its norse kenning skin.) Two premium Spotify Backstage plugins inspired it: **Skill Exchange** (skills attach to user profiles; opportunities are posted and browsed) and **Soundcheck** (entities are measured against tiered check-based standards). Spotify ships them as unconnected products. This design's claim is that they are two pieces of one thing — the **practice** — completed by a third piece Spotify never shipped: written procedure. A practice is not a single entity but a small constellation of nouns (§3). A prior-art data point: an internal grouped-checks system at Cervator's day job independently grew a "Grid" concept (themed collections of check-blocks — security, scalability, maintainability) that converges on Soundcheck's "Track"; and a team there independently subdivided into discipline areas mislabeled "teams" — groping toward the same missing noun. The missing noun is the **aspect** (§3), and this doc names the whole family around it.
 
 ## 2. Research Grounding (exact upstream vocabulary)
 
@@ -91,6 +91,7 @@ Technical identifiers commit to **one canonical vocabulary** (below). The UI nev
 
 | Canonical (technical) | Norse display | Plain display | Notes |
 |---|---|---|---|
+| `guildhall` | Gildaskáli | Practices / Practice Hub | The system's own name — the whole assembly of the rows below. |
 | `skill` | Skill | Skill | Already Old Norse. |
 | `craft` | Craft | Craft / Role | *Iðn* available as a norse-lexicon skin. |
 | `gildi` | Gildi | Guild | The one deliberate ON anchor at the technical layer (mirrors `spec.skald`). |
@@ -115,7 +116,7 @@ Follows the established discipline: no kind introduced merely to filter; nothing
 | Craft | **Vocabulary-first**: a named bundle (skill refs + vísir refs) in the same YAML family. Promotable to something heavier only if matching mechanics demand it — the cheapest commitment while the structure is still finding its shape. |
 | Aspect | **Vocabulary-first**, same YAML family: id, description, standard refs, optional steward-gildi ref. No new kind — an aspect an entity carries is an enrollment annotation on that entity. An aspect's assets (standard YAML, paved-road templates, remediation vísar) live together in a **practice home repo** stewarded by its gildi (§3.4). |
 | Standard + trials | **Git-backed YAML consumed by the scorecard plugin.** Evaluate `@backstage-community/plugin-tech-insights` first (facts/checks/fact-retrievers); fall back to a custom grouped-checks plugin if it constrains (per the DevEx reference doc). Each standard declares its **aspect**, plus an `ownerEntityRef` to the steward gildi Group when one exists; **each trial declares a remediation-vísir ref** so failing checks always link to the fix; applicability is two-layered per Soundcheck (static catalog filter + enrollment annotation) so broad trials never ambush entities. Results/history are plugin data — rebuildable, like the Saga discipline. |
-| Vísir (teaching) | **Git markdown in `/docs`, TechDocs-rendered**, referenced via `siliconsaga.org/visir` annotations from gildi Groups, craft/skill vocabulary entries, facilities, or Cycles — the same thin-index-over-Git pattern as `saga-doc`. |
+| Vísir (teaching) | **Git markdown in `/docs`, TechDocs-rendered**, referenced via `siliconsaga.org/visir` annotations from gildi Groups, craft/skill vocabulary entries, Components (including practice homes), facilities, or Cycles — the same thin-index-over-Git pattern as `saga-doc`. |
 | Vísir (operational) | **Parameterized templates in `/runbooks`** alongside `/docs` in the owning repo, rendered by a dedicated runbooks plugin (placeholders for environmental details filled via URL parameters — the pre-existing plugin concept). Component/aspect-scoped runbooks live with the component they serve. |
 | Muster calls | **Not catalog.** Calls are volatile marketplace data → the Phase 4 store (the issue-tracker-as-store contender fits: a call *is* an issue with labels). A call references a Cycle + a craft. Deferred with Phases 4/6. |
 | Certifications / badges | Plugin data surfaced on entity pages, bronze/silver/gold. Community-side certifications are **advisory, never gates** (umbrella design §8: trust over gamification). |

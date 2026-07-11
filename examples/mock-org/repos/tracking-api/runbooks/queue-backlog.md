@@ -8,7 +8,7 @@ incident where these commands lived in one engineer's head. -->
 
 1. Confirm it's consumption, not a poison message — check the consumer error rate:
 
-   ```
+   ```bash
    kubectl --context {{cluster}} -n {{namespace}} logs deploy/tracking-consumer --since=10m
    ```
 
@@ -16,7 +16,7 @@ incident where these commands lived in one engineer's head. -->
 
 2. Scale out the consumers:
 
-   ```
+   ```bash
    kubectl --context {{cluster}} -n {{namespace}} scale deploy/tracking-consumer --replicas=6
    ```
 

@@ -5,7 +5,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: ravenline
-  description: Ravenline — parcel-logistics SaaS (mock org, practice-layer demo)
+  description: Ravenline — parcel-logistics SaaS (mock org, Guildhall demo)
 spec:
   type: organization
   children: [rl-engineering, security-gildi, release-captains-gildi]
@@ -30,7 +30,7 @@ kind: Group
 metadata: { name: team-platform }
 spec: { type: team, parent: rl-engineering, children: [] }
 ---
-# Gildi — the fellowship form of the practice layer (design §3.2/§5): plain
+# Gildi — the Guildhall's fellowship concept (design §3.2/§5): plain
 # typed Groups, cross-cutting the team tree. What a gildi stewards is an
 # annotation, not a new relation type.
 apiVersion: backstage.io/v1alpha1
@@ -58,7 +58,7 @@ spec:
   children: []
 ---
 # People — membership carries both team and gildi affiliation via memberOf.
-# Skill profiles are NOT entity fields: see practice-layer/skills.yaml.
+# Skill profiles are NOT entity fields: see guildhall/skills.yaml.
 apiVersion: backstage.io/v1alpha1
 kind: User
 metadata: { name: astrid, description: 'Platform engineer, security-inclined' }

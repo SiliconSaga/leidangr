@@ -8,15 +8,17 @@ command below copy-pastes exactly right for the incident at hand. -->
 **When:** secret scanning flags a credential in `{{service}}`'s history, or one is reported leaked.
 
 1. Revoke the credential at its source immediately — before cleanup, before comms.
-2. Issue the replacement and store it:
+2. Issue the replacement and store it — via stdin, so the new secret never lands in shell history or the process list:
 
-   ```
-   bao kv put secret/{{secret_path}} value=<new-credential>
+   ```bash
+   read -rs NEW_CREDENTIAL
+   printf %s "$NEW_CREDENTIAL" | bao kv put secret/{{secret_path}} value=-
+   unset NEW_CREDENTIAL
    ```
 
 3. Restart the consuming workload so it picks up the new value:
 
-   ```
+   ```bash
    kubectl --context {{cluster}} -n {{namespace}} rollout restart deploy/{{service}}
    ```
 

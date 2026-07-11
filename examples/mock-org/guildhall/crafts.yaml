@@ -5,8 +5,8 @@ crafts:
   - id: release-captain
     description: Runs a release Cycle end to end — coordinates the cut, watches the rollout, calls the rollback.
     skills: [ci-pipelines, incident-command]
-    visar:
-      - ./repos/handbook/docs/release-captain-guide.md
+    visar: # paths relative to THIS file
+      - ../repos/handbook/docs/release-captain-guide.md
   - id: incident-commander
     description: Owns an active incident — coordinates responders, communicates status, runs the retro.
     skills: [incident-command, kubernetes]

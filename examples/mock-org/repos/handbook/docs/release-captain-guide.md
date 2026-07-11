@@ -1,6 +1,6 @@
 # Release captain's guide
 
-*Teaching vísir (craft-scoped): the guide handed to whoever answers the release-captain call. Referenced by `practice-layer/crafts.yaml`.*
+*Teaching vísir (craft-scoped): the guide handed to whoever answers the release-captain call. Referenced by `guildhall/crafts.yaml`.*
 
 You're captaining a release Cycle. The job is coordination, not heroics:
 

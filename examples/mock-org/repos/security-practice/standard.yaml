@@ -24,14 +24,14 @@ standard:
         - id: no-critical-vulns-30d
           rule: no critical finding older than 30 days
           factSource: ci-pipeline-results
-          remediation: ./docs/dependency-scanning.md
+          remediation: ./docs/dependency-scanning.md # the 30-day clock is documented there
         - id: security-contact-declared
           rule: the Component declares a security contact
           factSource: catalog-annotations
-          remediation: ./docs/dependency-scanning.md
+          remediation: ./docs/security-contact.md
     - name: gold
       trials:
         - id: threat-model-current
           rule: a threat model is on file and reviewed within the last year
           factSource: practice-home-repo
-          remediation: ./docs/dependency-scanning.md
+          remediation: ./docs/threat-modeling.md
