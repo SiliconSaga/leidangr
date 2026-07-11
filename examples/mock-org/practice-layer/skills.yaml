@@ -1,0 +1,23 @@
+# Skill vocabulary — Skill Exchange's exact shape (design §2/§5): admin-defined
+# list, categories from a small enum. NOT catalog entities; consumed by the
+# future skill-profile plugin.
+skills:
+  - { name: kubernetes, category: infrastructure }
+  - { name: ci-pipelines, category: infrastructure }
+  - { name: postgres, category: infrastructure }
+  - { name: typescript, category: languages }
+  - { name: threat-modeling, category: techniques }
+  - { name: incident-command, category: techniques }
+  - { name: technical-writing, category: techniques }
+
+# Mock profile selections — DEMO STAND-IN. In the real system these live in the
+# plugin's store and decorate User entities for search (design §5); they are
+# frozen here so demos and future plugin tests have fixtures. Two buckets per
+# Skill Exchange: canHelpWith ("I can help with") / learning ("I'm learning").
+profiles:
+  astrid: { canHelpWith: [kubernetes, threat-modeling, ci-pipelines], learning: [incident-command] }
+  bjorn: { canHelpWith: [ci-pipelines, incident-command], learning: [kubernetes] }
+  runa: { canHelpWith: [typescript, technical-writing], learning: [threat-modeling] }
+  leif: { canHelpWith: [typescript, postgres], learning: [threat-modeling] }
+  sigrid: { canHelpWith: [postgres], learning: [ci-pipelines] }
+  egil: { canHelpWith: [kubernetes, postgres], learning: [] }

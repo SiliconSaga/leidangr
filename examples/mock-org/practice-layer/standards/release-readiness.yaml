@@ -1,0 +1,23 @@
+# The release-readiness standard — measures CYCLES, not components: the
+# software twin of the community season-readiness checklist (design §3.4).
+# Git-backed YAML in the shape design §5 assigns; consumed by the future
+# scorecard plugin. Single tier: readiness is pass/fail, not a ladder.
+standard:
+  id: release-readiness
+  aspect: operational-readiness
+  filter: { kind: Cycle, spec.type: release }
+  tiers:
+    - name: ready
+      trials:
+        - id: release-captain-named
+          rule: the Cycle's craft call for release-captain is filled
+          factSource: muster-store # Phase 4 marketplace store
+          remediation: ./repos/handbook/docs/release-captain-guide.md
+        - id: rollback-runbook-linked
+          rule: every Component in the Cycle's system links an operational vísir
+          factSource: catalog-annotations
+          remediation: ./repos/tracking-api/runbooks/queue-backlog.md # exemplar
+        - id: previous-cycle-saga-exists
+          rule: the previous release Cycle has at least one Saga
+          factSource: catalog
+          remediation: ./repos/handbook/docs/release-captain-guide.md

@@ -60,14 +60,20 @@ byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localh
 
 # Backend readiness != catalog-ingestion readiness. Poll until the custom entities
 # appear (or the timeout expires) rather than sleeping once and querying once.
-CYCLE='{}'; SAGA='{}'; GROUP='{}'
+CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'; GILDI='{}'
 for _ in $(seq 1 120); do
   CYCLE="$(byname cycle/default/soccer-2026-spring)"
   SAGA="$(byname saga/default/saga-soccer-2026-spring)"
   GROUP="$(byname group/default/mtl)"
+  RLCYCLE="$(byname cycle/default/tracking-2026-2)"
+  RLSAGA="$(byname saga/default/saga-tracking-2026-2)"
+  GILDI="$(byname group/default/security-gildi)"
   if printf '%s' "$CYCLE" | grep -q 'soccer-2026-spring' \
      && printf '%s' "$SAGA" | grep -q 'saga-soccer-2026-spring' \
-     && printf '%s' "$GROUP" | grep -q '"name":"mtl"'; then break; fi
+     && printf '%s' "$GROUP" | grep -q '"name":"mtl"' \
+     && printf '%s' "$RLCYCLE" | grep -q 'tracking-2026-2' \
+     && printf '%s' "$RLSAGA" | grep -q 'saga-tracking-2026-2' \
+     && printf '%s' "$GILDI" | grep -q 'security-gildi'; then break; fi
   sleep 1
 done
 
@@ -98,6 +104,16 @@ check_rel "Saga ownedBy skald (guest)"      "$SAGA"  ownedBy   user:default/gues
 check_rel "Saga ownedBy owner (mtl-soccer)" "$SAGA"  ownedBy   group:default/mtl-soccer          || pass=0
 check_rel "Saga dependsOn Cycle (touches)"  "$SAGA"  dependsOn cycle:default/soccer-2026-spring  || pass=0
 check     "Saga doc annotation preserved"   "$SAGA"  'siliconsaga.org/saga-doc'                  || pass=0
+# Mock software org (Ravenline — practice-layer running example): the software
+# side of the two-family model plus a gildi-typed Group, ingesting with the
+# same machinery and zero new code.
+check     "Ravenline Cycle ingested (release)"       "$RLCYCLE" '"type":"release"'                          || pass=0
+check_rel "Ravenline Cycle partOf parcel-tracking"   "$RLCYCLE" partOf    system:default/parcel-tracking    || pass=0
+check_rel "Ravenline Cycle dependsOn prod-cluster"   "$RLCYCLE" dependsOn resource:default/prod-cluster     || pass=0
+check     "Gildi Group ingested (type gildi)"        "$GILDI"   '"type":"gildi"'                            || pass=0
+check     "Ravenline Saga ingested"                  "$RLSAGA"  '"kind":"Saga"'                             || pass=0
+check_rel "Ravenline Saga ownedBy skald (runa)"      "$RLSAGA"  ownedBy   user:default/runa                 || pass=0
+check_rel "Ravenline Saga dependsOn its Cycle"       "$RLSAGA"  dependsOn cycle:default/tracking-2026-2     || pass=0
 
 # Surface any catalog processing errors for the seed.
 echo "--- catalog errors mentioning mtl/cycle/saga (if any) ---"
@@ -106,7 +122,7 @@ echo "(end errors)"
 
 # Backend teardown is handled by the EXIT trap registered above.
 if [[ "$pass" == 1 ]]; then
-  echo "smoke-catalog PASS: Cycle + Saga + Group tree ingested at runtime with their relations"
+  echo "smoke-catalog PASS: MTL + Ravenline seeds ingested at runtime with their relations"
   exit 0
 fi
 echo "smoke-catalog FAIL: expected entities/relations missing. Recent log:" >&2

@@ -129,7 +129,7 @@ Follows the established discipline: no kind introduced merely to filter; nothing
 
 ## 7. Phasing & Next Steps
 
-1. **Now:** this doc fixes the vocabulary; fold the settled terms into the planned `docs/catalog-model.md` reference doc when it is written.
+1. **Now:** this doc fixes the vocabulary; fold the settled terms into the planned `docs/catalog-model.md` reference doc when it is written. A mock software org (**Ravenline**, `examples/mock-org/`) ships alongside as the running example: it ingests with zero new code — the "no new custom kinds" claim, demonstrated — and freezes the vocabulary/standard/vísir file shapes as fixtures for the future plugins.
 2. **Phase 4:** muster calls ride the marketplace-store decision (§5.1 of the umbrella design), referencing Cycles + crafts.
 3. **Phase 6:** skill profiles + vocabulary, the first gildi Groups and aspects, the first standard (season-readiness, measuring a Cycle), and the kennings map in app-config. Tech Insights evaluation happens here.
 4. **Runbooks plugin** (operational vísar: `/runbooks` convention + URL-parameter placeholders) is its own plugin effort — general-purpose Backstage value like `Cycle`, sequenced independently.

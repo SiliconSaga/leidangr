@@ -127,6 +127,23 @@ catalog:
       rules:
         - allow: [Group, Domain, System, Resource, Component, Cycle, Saga]
 
+    # Mock software org "Ravenline" — the practice-layer design's running example
+    # (org tree + gildi Groups, software graph, release/drive Cycles, one Saga).
+    # See examples/mock-org/README.md; the practice-layer/ vocabularies there are
+    # deliberately NOT ingested (future plugin input).
+    - type: file
+      target: ../../examples/mock-org/org.yaml
+      rules:
+        - allow: [User, Group]
+    - type: file
+      target: ../../examples/mock-org/software.yaml
+      rules:
+        - allow: [Domain, System, Resource, Component]
+    - type: file
+      target: ../../examples/mock-org/cycles.yaml
+      rules:
+        - allow: [Cycle, Saga]
+
     ## Uncomment these lines to add more example data
     # - type: url
     #   target: https://github.com/backstage/backstage/blob/master/packages/catalog-model/examples/all.yaml

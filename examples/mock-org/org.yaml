@@ -1,0 +1,90 @@
+---
+# Ravenline org tree — organization → department → team (typed Group tree,
+# same discipline as the MTL seed's organization → sport → division → team).
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: ravenline
+  description: Ravenline — parcel-logistics SaaS (mock org, practice-layer demo)
+spec:
+  type: organization
+  children: [rl-engineering, security-gildi, release-captains-gildi]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: rl-engineering }
+spec: { type: department, parent: ravenline, children: [team-tracking, team-shipping, team-platform] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: team-tracking }
+spec: { type: team, parent: rl-engineering, children: [] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: team-shipping }
+spec: { type: team, parent: rl-engineering, children: [] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: team-platform }
+spec: { type: team, parent: rl-engineering, children: [] }
+---
+# Gildi — the fellowship form of the practice layer (design §3.2/§5): plain
+# typed Groups, cross-cutting the team tree. What a gildi stewards is an
+# annotation, not a new relation type.
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: security-gildi
+  description: The Security guild — stewards the security aspect (aspect-aligned gildi)
+  annotations:
+    siliconsaga.org/stewards: 'aspect:security'
+spec:
+  type: gildi
+  parent: ravenline
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: release-captains-gildi
+  description: The Release Captains guild — stewards the release-captain craft (craft-aligned gildi)
+  annotations:
+    siliconsaga.org/stewards: 'craft:release-captain'
+spec:
+  type: gildi
+  parent: ravenline
+  children: []
+---
+# People — membership carries both team and gildi affiliation via memberOf.
+# Skill profiles are NOT entity fields: see practice-layer/skills.yaml.
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: { name: astrid, description: 'Platform engineer, security-inclined' }
+spec: { memberOf: [team-platform, security-gildi] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: { name: bjorn, description: 'Shipping engineer, runs releases' }
+spec: { memberOf: [team-shipping, release-captains-gildi] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: { name: runa, description: 'Tracking engineer, writes the sagas' }
+spec: { memberOf: [team-tracking, release-captains-gildi] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: { name: leif, description: 'Tracking engineer, learning threat modeling' }
+spec: { memberOf: [team-tracking, security-gildi] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: { name: sigrid, description: 'Shipping engineer' }
+spec: { memberOf: [team-shipping] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: { name: egil, description: 'Platform engineer' }
+spec: { memberOf: [team-platform] }

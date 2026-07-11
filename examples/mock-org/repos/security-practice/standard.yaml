@@ -1,0 +1,37 @@
+# The security standard — lives in the practice home repo beside the paved
+# road and the remediation vísar it references (design §3.4). Git-backed YAML
+# in the shape design §5 assigns; consumed by the future scorecard plugin.
+# Every trial declares its remediation vísir: a failing check is always one
+# click from the fix.
+standard:
+  id: security
+  aspect: security
+  owner: group:default/security-gildi
+  filter: { kind: Component, spec.type: service }
+  tiers:
+    - name: bronze
+      trials:
+        - id: dependency-scanning
+          rule: the default-branch pipeline runs the dependency-scan template
+          factSource: ci-pipeline-results
+          remediation: ./docs/dependency-scanning.md
+        - id: no-secrets-in-repo
+          rule: secret scanning reports zero findings
+          factSource: ci-pipeline-results
+          remediation: ./runbooks/rotate-leaked-credential.md
+    - name: silver
+      trials:
+        - id: no-critical-vulns-30d
+          rule: no critical finding older than 30 days
+          factSource: ci-pipeline-results
+          remediation: ./docs/dependency-scanning.md
+        - id: security-contact-declared
+          rule: the Component declares a security contact
+          factSource: catalog-annotations
+          remediation: ./docs/dependency-scanning.md
+    - name: gold
+      trials:
+        - id: threat-model-current
+          rule: a threat model is on file and reviewed within the last year
+          factSource: practice-home-repo
+          remediation: ./docs/dependency-scanning.md

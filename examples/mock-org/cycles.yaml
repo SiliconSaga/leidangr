@@ -1,0 +1,42 @@
+---
+# A software release as a Cycle (type: release) — the same primitive as an MTL
+# season, on the software side of the two-family model.
+apiVersion: siliconsaga.org/v1alpha1
+kind: Cycle
+metadata: { name: tracking-2026-2, description: 'Parcel Tracking release 2026.2' }
+spec:
+  type: release
+  timeframe: { start: '2026-04-01', end: '2026-06-30' }
+  of: system:default/parcel-tracking
+  owner: group:default/team-tracking
+  happensAt: [resource:default/prod-cluster]
+---
+# A drive Cycle — the Soundcheck-Campaign analog (design §2): the security
+# gildi's time-bound push to get every service's dependency scanning green.
+apiVersion: siliconsaga.org/v1alpha1
+kind: Cycle
+metadata:
+  name: dependency-scanning-drive
+  description: 'Drive: dependency scanning green on every service (paved-road adoption push)'
+spec:
+  type: drive
+  timeframe: { start: '2026-05-01', end: '2026-07-31' }
+  of: group:default/security-gildi
+  owner: group:default/security-gildi
+---
+# The release retrospective as a Saga — narrated by Runa, Git-backed body.
+apiVersion: siliconsaga.org/v1alpha1
+kind: Saga
+metadata:
+  name: saga-tracking-2026-2
+  description: 'The Saga of Parcel Tracking 2026.2'
+  annotations:
+    siliconsaga.org/saga-doc: ./sagas/tracking-2026-2.md
+spec:
+  skald: user:default/runa
+  timeframe: { start: '2026-04-01', end: '2026-06-30' }
+  touches:
+    - cycle:default/tracking-2026-2
+    - component:default/tracking-api
+    - group:default/release-captains-gildi
+  owner: group:default/team-tracking
