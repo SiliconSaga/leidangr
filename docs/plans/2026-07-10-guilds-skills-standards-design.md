@@ -19,12 +19,13 @@ tree), ADR 0007 (`Cycle`), ADR 0008 (`Saga`), the umbrella design
 Two premium Spotify Backstage plugins inspired this layer: **Skill Exchange** (skills attach to user
 profiles; opportunities are posted and browsed) and **Soundcheck** (entities are measured against
 tiered check-based standards). Spotify ships them as unconnected products. This design's claim is
-that they are two faces of one concept — the **practice** (here: the **Gildi**) — and that a third
-face, written procedure, completes it. A prior-art data point: an internal grouped-checks system at
-Cervator's day job independently grew a "Grid" concept (themed collections of check-blocks —
-security, scalability, maintainability) that converges on Soundcheck's "Track"; and a team there
-independently subdivided into discipline areas mislabeled "teams" — groping toward the same missing
-noun. The noun is the practice/guild, and this doc names the whole family.
+that they are two sides of one thing — the **practice** — and that a third side, written procedure,
+completes it. A practice is not a single entity but a small constellation of nouns (§3). A
+prior-art data point: an internal grouped-checks system at Cervator's day job independently grew a
+"Grid" concept (themed collections of check-blocks — security, scalability, maintainability) that
+converges on Soundcheck's "Track"; and a team there independently subdivided into discipline areas
+mislabeled "teams" — groping toward the same missing noun. The missing noun is the **aspect** (§3),
+and this doc names the whole family around it.
 
 ## 2. Research Grounding (exact upstream vocabulary)
 
@@ -47,62 +48,89 @@ already owns that primitive.
 
 ## 3. The Abstract Model (layer 1 — portable)
 
-### 3.1 The three faces of a practice
+### 3.1 The anatomy of a practice
 
-A practice (Security, Safety, Fundraising, Logistics, Coaching…) is one concept with three faces:
+A practice (Security, Safety, Fundraising, Logistics, Coaching…) is not one entity — it is a small
+constellation:
 
-1. **People** — those who profess it: skills cluster under it, mentorship happens inside it. It is
-   a fellowship.
-2. **Process** — the procedures performed in its name, written down so a newcomer can perform them.
-3. **Measurement** — the standard it holds *other things* to: tiered checks, certifying at
-   bronze/silver/gold.
+1. **An Aspect** — the cross-cutting concern itself, the thing *applied to* other entities in the
+   AOP sense ("the Security aspect applies to component X, at silver"). The aspect holds the
+   practice's **standards**.
+2. **A Gildi** — the fellowship of practitioners who steward it.
+3. **Crafts and skills** — its enactment by people.
+4. **Vísar** — its written form.
 
-Skill Exchange ships face 1; Soundcheck ships face 3; runbooks/SOPs are face 2. Unifying them is
-the design's core move.
+Skill Exchange ships the people side; Soundcheck ships the measurement side; runbooks/SOPs are the
+written side. Unifying them is the design's core move — and the load-bearing split is:
+**crafts are what people do; aspects are what things must uphold.** Wiring the concession stand is
+a craft's work; the wiring passing inspection is an aspect's standard.
 
 ### 3.2 The concepts
 
 | Concept | Definition |
 |---|---|
-| **Skill** | An atomic capability a *person* carries, with a have/learning axis ("can help with" / "learning"). English *skill* is itself Old Norse (*skil*) — it needs no rename. |
-| **Craft** | A demand-side bundle of skills (+ its guides): Electrician, HVAC tech; Coach, Treasurer, Field Marshal. What a muster asks for — nobody posts "need carpentry 3, wiring 2"; they post "need an electrician." |
-| **Gildi** | The practice hub. Old Norse *gildi* means both **guild** (the fellowship of a craft) and **worth/value** — one word carrying the people face and the measurement face. |
-| **Standard** | The gildi's measurement face (the Grid/Track analog): tiered groups of trials applied to an enrolled entity, certifying at bronze/silver/gold. *Standard* means both the banner a muster rallies under and the norm you are held to — the double meaning is the point. |
+| **Skill** | An atomic capability a *person* carries, with a have/learning axis ("can help with" / "learning"). **Shared vocabulary owned by no one** — crafts and aspects reference skills; pointing is not owning. English *skill* is itself Old Norse (*skil*) — it needs no rename. |
+| **Craft** | A demand-side bundle of skills (+ its vísar) a person can act as: Electrician, HVAC tech; Coach, Treasurer, Field Marshal. What a muster asks for — nobody posts "need carpentry 3, wiring 2"; they post "need an electrician." |
+| **Gildi** | The fellowship — **purely people**. A gildi gathers around a craft (the Electricians' gildi — the historic form) or around an aspect (the Safety gildi). Membership, mentorship (fóstr), and stewardship live here, and nothing else does. Old Norse *gildi* means both **guild** and **worth/value**. |
+| **Aspect** | The cross-cutting concern: Security, Safety, Scalability, season-readiness. Applied to entities in the AOP sense, and it **holds the standards** that measure them. May be stewarded by a gildi, or by nobody yet. (*Þáttr* — a strand of a rope, and a short tale woven into a saga compilation — is the available norse kenning skin.) |
+| **Standard** | An aspect's measurement instrument (the Grid/Track analog): tiered groups of trials applied to an enrolled entity, certifying at bronze/silver/gold. *Standard* means both the banner a muster rallies under and the norm you are held to — the double meaning is the point. |
 | **Trial** | The atomic measurement unit (Soundcheck's Check): evaluated against collected facts, yielding pass/fail/not-applicable. |
-| **Vísir** | The written procedure handed to a volunteer or operator — the cash-register-at-the-PTA-event sheet. Short for *Leiðarvísir* ("way-shower"), the modern Icelandic word for a guide/manual and the title of Abbot Nikulás's 12th-century pilgrim itinerary; it shares the *leið-* (way) root with *Leiðangr* itself. The enterprise kenning is "runbook." |
+| **Vísir** | The written procedure handed to a volunteer or operator — the cash-register-at-the-PTA-event sheet. Short for *Leiðarvísir* ("way-shower"), the modern Icelandic word for a guide/manual and the title of Abbot Nikulás's 12th-century pilgrim itinerary; it shares the *leið-* (way) root with *Leiðangr* itself. Comes in two grades (§3.5): **teaching** (static, docs-homed) and **operational** (parameterized, runbooks-homed). The enterprise kenning is "runbook." |
 | **Cycle**, **Saga** | Already shipped (ADRs 0007/0008). A Cycle *calls for* crafts; a Standard can measure a Cycle (season-readiness); a Saga narrates the outcome. |
 
 ### 3.3 The relations
 
 - A person **carries** skills (have/learning axis).
 - A craft **bundles** skills and **references** vísar (its procedures).
-- A gildi **curates** skills (a skill can serve several gildi), **stewards** vísar, and **holds**
-  one or more standards.
-- A standard **measures** entities — apps, teams, facilities, or Cycles — through its tiered trials.
+- A gildi **gathers** practitioners and **stewards** crafts and/or aspects (and their vísar).
+- An aspect **holds** standards; entities **enroll in** (carry) aspects.
+- A standard **measures** its enrolled entities — apps, teams, facilities, or Cycles — through its
+  tiered trials.
 - A cycle **issues calls** for crafts (the muster); people whose skills satisfy a craft answer.
 - A saga **narrates** what happened, and may cite certifications attained.
+- Skills are **referenced, never owned** — by crafts, aspects, and people's profiles alike.
 
-Crafts and gildi are different **axes**, not levels of one hierarchy: a craft draws skills from
-several gildi (HVAC = ductwork + electrical + safety), and a gildi curates skills used by many
-crafts. That is why both exist.
+Crafts and aspects are different **axes**, not levels of one hierarchy: a craft draws skills from
+anywhere (HVAC = ductwork + electrical + safety basics), and an aspect judges entities of any kind.
+The gildi is orthogonal to both — it is simply whichever fellowship formed around a craft or an
+aspect, which is exactly why it maps to a plain typed `Group` (§5).
 
 ### 3.4 Worked examples
 
 **DIY:** a person's profile lists skills (wiring, duct-shaping, carpentry). "Electrician" is a
-craft bundling wiring + code-knowledge + safety basics. The Safety gildi does not do the wiring —
-it holds the standard the finished work is measured against (the inspection: its trials, at
-bronze/silver/gold).
+craft bundling wiring + code-knowledge + safety basics. An Electricians' gildi — if the community
+has enough practitioners to form one — fosters apprentices and keeps the craft's vísar. The Safety
+**aspect** does not do the wiring — it holds the standard the finished work is measured against
+(the inspection: its trials, at bronze/silver/gold), stewarded by a Safety gildi if one exists.
 
 **Season:** the spring season `Cycle` spins up and issues calls for crafts — coach, treasurer,
 field marshal. The muster matches volunteers whose skills satisfy them; each volunteer gets the
-relevant vísir. The Logistics gildi's "season-readiness" standard measures the Cycle itself
+relevant vísir. The Logistics **aspect**'s "season-readiness" standard measures the Cycle itself
 (fields booked? treasurer named? first-aid kit stocked?). When the season ends, a skald may write
 the Saga.
 
-**Software:** identical bones — the Security gildi curates security skills, stewards the
-incident-response vísir, and holds the security standard that measures Components at
-bronze/silver/gold. This is the umbrella design's Phase 6 "season-readiness scorecards" and the
-day-job Grid, expressed once.
+**Software:** identical bones — the Security **aspect** holds the standard that measures
+Components at bronze/silver/gold; the Security gildi gathers the practitioners who steward it and
+its incident-response vísir. The day-job Grid is an aspect's standard, and the meeting's
+mislabeled "sub-teams" are gildi stewarding aspects. This is the umbrella design's Phase 6
+"season-readiness scorecards" and the day-job Grid, expressed once.
+
+### 3.5 Vísir grades: teaching vs. operational
+
+One artifact concept, two grades — the separation matters, but both attach with the same
+flexibility (the annotation's referrer defines the scope: a skill entry, a craft, an aspect, a
+Component, a facility, a Cycle):
+
+- **Teaching vísar** — static explanatory material ("intro to field-lining," the treasurer's
+  season guide). Homed in `/docs`, rendered by TechDocs.
+- **Operational vísar** — procedures executed under conditions, often environment-specific
+  ("scoreboard won't boot," the known-outage runbook). These are **templates, not static pages**:
+  they carry placeholders for environmental details filled at read time (e.g. via URL parameters).
+  Homed in `/runbooks` alongside `/docs` in the owning repo, rendered by a dedicated runbooks
+  plugin (a pre-existing plugin concept of Cervator's that slots in here directly).
+
+An open `type` vocabulary (guide / runbook / drill / …) discriminates further, in the house style
+of `Cycle.spec.type`, without minting new kinds of thing per scope.
 
 ## 4. The Kenning Layer (display terminology)
 
@@ -126,6 +154,7 @@ term to a display term (a *kenning* being the Old Norse device of calling a thin
 | `skill` | Skill | Skill | Already Old Norse. |
 | `craft` | Craft | Craft / Role | *Iðn* available as a norse-lexicon skin. |
 | `gildi` | Gildi | Guild | The one deliberate ON anchor at the technical layer (mirrors `spec.skald`). |
+| `aspect` | Aspect | Practice / Aspect | *Þáttr* (a strand; a tale within a saga) available as a norse skin. |
 | `standard` | Standard | Standard / Scorecard | *Merki* (banner/mark) available as a norse skin. |
 | `trial` | Trial | Check | *Raun* / *Þraut* available as norse skins. |
 | `visir` | Vísir | Guide / Runbook | Full *Leiðarvísir* in prose/docs where flavor has room. |
@@ -144,11 +173,13 @@ kinds** — `Cycle` and `Saga` remain the only two.
 
 | Concept | Realization |
 |---|---|
-| Gildi | **`Group` with `spec.type: gildi`** — joins the typed-Group tree (organization/sport/…/gildi). Membership (`memberOf`), ownership rollups, and the graph come free. Dovetails with the parked CODEOWNERS-virtual-team idea: a gildi is a virtual team that is *supposed* to exist. |
+| Gildi | **`Group` with `spec.type: gildi`** — joins the typed-Group tree (organization/sport/…/gildi). Membership (`memberOf`), ownership rollups, and the graph come free. What the gildi stewards (craft or aspect refs) is a `siliconsaga.org/*` annotation. Dovetails with the parked CODEOWNERS-virtual-team idea: a gildi is a virtual team that is *supposed* to exist. |
 | Skill | A **vocabulary, not entities** (Skill Exchange's exact shape): YAML-defined skill list; a profile decorator attaches selections to `User` entities so search indexes them. Matches the ResourceType-as-vocabulary precedent. |
 | Craft | **Vocabulary-first**: a named bundle (skill refs + vísir refs) in the same YAML family. Promotable to something heavier only if matching mechanics demand it — the cheapest commitment while the structure is still finding its shape. |
-| Standard + trials | **Git-backed YAML consumed by the scorecard plugin.** Evaluate `@backstage-community/plugin-tech-insights` first (facts/checks/fact-retrievers); fall back to a custom grouped-checks plugin if it constrains (per the DevEx reference doc). Each standard is `ownedBy` its gildi Group; applicability is two-layered per Soundcheck (static catalog filter + enrollment annotation) so broad trials never ambush entities. Results/history are plugin data — rebuildable, like the Saga discipline. |
-| Vísir | **Git markdown, TechDocs-rendered**, referenced via `siliconsaga.org/visir` annotations from gildi Groups, crafts, facilities, or Cycles — the same thin-index-over-Git pattern as `saga-doc`. |
+| Aspect | **Vocabulary-first**, same YAML family: id, description, standard refs, optional steward-gildi ref. No new kind — an aspect an entity carries is an enrollment annotation on that entity. |
+| Standard + trials | **Git-backed YAML consumed by the scorecard plugin.** Evaluate `@backstage-community/plugin-tech-insights` first (facts/checks/fact-retrievers); fall back to a custom grouped-checks plugin if it constrains (per the DevEx reference doc). Each standard declares its **aspect**, plus an `ownerEntityRef` to the steward gildi Group when one exists; applicability is two-layered per Soundcheck (static catalog filter + enrollment annotation) so broad trials never ambush entities. Results/history are plugin data — rebuildable, like the Saga discipline. |
+| Vísir (teaching) | **Git markdown in `/docs`, TechDocs-rendered**, referenced via `siliconsaga.org/visir` annotations from gildi Groups, craft/skill vocabulary entries, facilities, or Cycles — the same thin-index-over-Git pattern as `saga-doc`. |
+| Vísir (operational) | **Parameterized templates in `/runbooks`** alongside `/docs` in the owning repo, rendered by a dedicated runbooks plugin (placeholders for environmental details filled via URL parameters — the pre-existing plugin concept). Component/aspect-scoped runbooks live with the component they serve. |
 | Muster calls | **Not catalog.** Calls are volatile marketplace data → the Phase 4 store (the issue-tracker-as-store contender fits: a call *is* an issue with labels). A call references a Cycle + a craft. Deferred with Phases 4/6. |
 | Certifications / badges | Plugin data surfaced on entity pages, bronze/silver/gold. Community-side certifications are **advisory, never gates** (umbrella design §8: trust over gamification). |
 
@@ -169,18 +200,22 @@ kinds** — `Cycle` and `Saga` remain the only two.
    `docs/catalog-model.md` reference doc when it is written.
 2. **Phase 4:** muster calls ride the marketplace-store decision (§5.1 of the umbrella design),
    referencing Cycles + crafts.
-3. **Phase 6:** skill profiles + vocabulary, the first gildi Groups, the first standard
-   (season-readiness, measuring a Cycle), and the kennings map in app-config. Tech Insights
-   evaluation happens here.
-4. **ADR distillation** once mechanics ship (the gildi-as-typed-Group and kennings decisions are
-   ADR-shaped).
+3. **Phase 6:** skill profiles + vocabulary, the first gildi Groups and aspects, the first
+   standard (season-readiness, measuring a Cycle), and the kennings map in app-config. Tech
+   Insights evaluation happens here.
+4. **Runbooks plugin** (operational vísar: `/runbooks` convention + URL-parameter placeholders) is
+   its own plugin effort — general-purpose Backstage value like `Cycle`, sequenced independently.
+5. **ADR distillation** once mechanics ship (the gildi-as-typed-Group, aspect-holds-standards, and
+   kennings decisions are ADR-shaped).
 
 ## 8. Open Questions
 
 - **Ordered levels vs. unordered blocks** inside a standard: Soundcheck levels are strictly
   sequential; the day-job Blocks are thematic groupings. Decide when the scorecard plugin is built
   (Tech Insights' model may decide it for us).
-- **Where craft definitions live** long-term if matching gets real (vocabulary → entity promotion
-  path).
+- **Where craft and aspect definitions live** long-term if matching/enrollment gets real
+  (vocabulary → entity promotion path).
 - **Kennings scope**: exact config shape, and whether spec *field* names (not just kind/type
   display) participate in display mapping.
+- **Runbooks plugin shape**: parameter syntax, URL-parameter contract, and how `/runbooks`
+  coexists with TechDocs (separate renderer vs. TechDocs extension).
