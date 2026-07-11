@@ -85,7 +85,7 @@ Technical identifiers commit to **one canonical vocabulary** (below). The UI nev
 - Ships with two built-in lexicons: **norse** (Gildi, Vísir, Trial, Saga…) and **plain** (Guild, Guide/Runbook, Check, Report…), selected per instance in app-config.
 - A per-user lexicon preference is a **later enhancement** (Backstage user settings can hold it), not a launch requirement.
 - The parent-facing Ting surface pins the **plain** lexicon — satisfying the realm Tone Guide with zero special-casing.
-- A corporate instance can pin its own custom lexicon (Practice, Grid, Check) over the identical model — same bones, different skin.
+- A corporate instance can pin its own custom lexicon (Practice, Grid, Check) over the identical model — same bones, different skin. House terms slot in wherever the org already speaks them — e.g. "Center of Excellence" for gildi, if that term isn't already overloaded locally.
 
 ### Canonical vocabulary
 
@@ -143,4 +143,4 @@ Follows the established discipline: no kind introduced merely to filter; nothing
 - **Ordered levels vs. unordered blocks** inside a standard: Soundcheck levels are strictly sequential; the day-job Blocks are thematic groupings. Decide when the scorecard plugin is built (Tech Insights' model may decide it for us).
 - **Where craft and aspect definitions live** long-term if matching/enrollment gets real (vocabulary → entity promotion path).
 - **Kennings scope**: exact config shape, and whether spec *field* names (not just kind/type display) participate in display mapping.
-- **Runbooks plugin shape**: parameter syntax, URL-parameter contract, and how `/runbooks` coexists with TechDocs (separate renderer vs. TechDocs extension).
+- **Runbooks plugin shape**: parameter syntax, URL-parameter contract, and how `/runbooks` coexists with TechDocs (separate renderer vs. TechDocs extension). **Parameter safety is a hard requirement** (surfaced in CR #5 review): placeholder values arrive via URL, so the renderer must allowlist-validate and shell-escape them before interpolating into commands — a crafted link must never turn a copy-pasted command into an injection.

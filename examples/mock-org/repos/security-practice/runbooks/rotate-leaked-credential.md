@@ -3,7 +3,10 @@
 <!-- Operational vísir (design §3.5): a parameterized template, not a static
 page. Placeholders are filled at read time by the future runbooks plugin,
 e.g. ?service=carrier-gateway&secret_path=shipping/carrier-api-key — so every
-command below copy-pastes exactly right for the incident at hand. -->
+command below copy-pastes exactly right for the incident at hand.
+Plugin requirement (design §8): placeholder values come from URLs, so the
+renderer MUST allowlist-validate and shell-escape them before interpolation —
+a crafted link must not be able to turn a copied command into an injection. -->
 
 **When:** secret scanning flags a credential in `{{service}}`'s history, or one is reported leaked.
 
@@ -12,6 +15,7 @@ command below copy-pastes exactly right for the incident at hand. -->
 
    ```bash
    read -rs NEW_CREDENTIAL
+   [ -n "$NEW_CREDENTIAL" ] || { echo "empty input — aborting, nothing stored"; unset NEW_CREDENTIAL; exit 1; }
    printf %s "$NEW_CREDENTIAL" | bao kv put secret/{{secret_path}} value=-
    unset NEW_CREDENTIAL
    ```
