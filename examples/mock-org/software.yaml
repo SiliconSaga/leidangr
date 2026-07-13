@@ -1,0 +1,73 @@
+---
+# Ravenline software graph — built-in kinds only. Aspect enrollment and vísir
+# references ride annotations (design §5): inert today, consumed by the future
+# scorecard/runbooks plugins.
+apiVersion: backstage.io/v1alpha1
+kind: Domain
+metadata: { name: ravenline }
+spec: { owner: group:default/ravenline }
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata: { name: parcel-tracking, description: Parcel tracking product }
+spec: { owner: group:default/team-tracking, domain: ravenline }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tracking-api
+  description: 'Tracking event ingest + query API. Security standard: silver.'
+  annotations:
+    siliconsaga.org/aspects: 'security, operational-readiness'
+    siliconsaga.org/visir: './repos/tracking-api/runbooks/queue-backlog.md'
+spec: { type: service, lifecycle: production, owner: group:default/team-tracking, system: parcel-tracking }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata: { name: tracking-web, description: Customer-facing tracking page }
+spec: { type: website, lifecycle: production, owner: group:default/team-tracking, system: parcel-tracking }
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata: { name: shipping, description: Shipping orchestration product }
+spec: { owner: group:default/team-shipping, domain: ravenline }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: shipping-orchestrator
+  description: 'Books carriers, prints labels. Security standard: silver.'
+  annotations:
+    siliconsaga.org/aspects: 'security'
+spec: { type: service, lifecycle: production, owner: group:default/team-shipping, system: shipping }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: carrier-gateway
+  description: 'Adapters for carrier APIs. Security standard: bronze — dependency-scanning trial failing; remediation = adopt the paved-road pipeline template.'
+  annotations:
+    siliconsaga.org/aspects: 'security'
+spec: { type: service, lifecycle: production, owner: group:default/team-shipping, system: shipping }
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata: { name: rl-platform, description: Shared platform }
+spec: { owner: group:default/team-platform, domain: ravenline }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata: { name: prod-cluster, description: Production Kubernetes cluster }
+spec: { type: cluster, owner: group:default/team-platform, system: rl-platform }
+---
+# The practice home repo (design §3.4 paved-road loop), modeled as a Component
+# owned by the gildi: the standard, the paved road, and the remediation vísar
+# live together — see repos/security-practice/.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: security-practice-home
+  description: 'Security practice home: standard + pipeline templates + remediation vísar'
+  annotations:
+    siliconsaga.org/visir: './repos/security-practice/runbooks/rotate-leaked-credential.md'
+spec: { type: practice-home, lifecycle: production, owner: group:default/security-gildi, system: rl-platform }

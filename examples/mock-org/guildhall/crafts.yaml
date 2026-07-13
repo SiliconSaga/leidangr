@@ -1,0 +1,13 @@
+# Craft vocabulary — demand-side skill bundles (design §3.2): what a muster
+# calls for. Vocabulary-first; promotable to entities only if matching
+# mechanics demand it. NOT catalog entities.
+crafts:
+  - id: release-captain
+    description: Runs a release Cycle end to end — coordinates the cut, watches the rollout, calls the rollback.
+    skills: [ci-pipelines, incident-command]
+    visar: # paths relative to THIS file
+      - ../repos/handbook/docs/release-captain-guide.md
+  - id: incident-commander
+    description: Owns an active incident — coordinates responders, communicates status, runs the retro.
+    skills: [incident-command, kubernetes]
+    # No vísar yet — they are optional; the craft is still callable-for.

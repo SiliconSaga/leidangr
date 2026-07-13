@@ -19,3 +19,4 @@ annotation. Until then they live here as plain Markdown.
 | [0006](0006-bdd-from-day-one.md) | BDD from day one over TDD'd tooling |
 | [0007](0007-cycle-custom-kind.md) | Cycle: a custom catalog kind for bounded groupings |
 | [0008](0008-saga-git-backed-kind.md) | Saga: a Git-backed catalog kind for narrated effort records |
+| [0009](0009-guildhall-practice-model.md) | Guildhall: the practice model — aspects hold standards, guilds are people, no new kinds |

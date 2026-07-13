@@ -1,0 +1,11 @@
+# The paved road (design §3.4): a reusable CI pipeline template step any team
+# adopts with a one-line include. Adopting it is what flips the
+# dependency-scanning trial green — the requirement, the tooling, and the
+# measurement share one steward. (Mock stub — GitLab CI include shape.)
+dependency-scan:
+  stage: test
+  image: registry.ravenline.example/security/dep-scan:stable
+  script:
+    - dep-scan --fail-on critical --report-to "${SCAN_RESULTS_ENDPOINT}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
