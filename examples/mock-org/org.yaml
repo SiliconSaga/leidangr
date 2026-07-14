@@ -13,7 +13,7 @@ spec:
 apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata: { name: rl-engineering }
-spec: { type: department, parent: ravenline, children: [team-tracking, team-shipping, team-platform] }
+spec: { type: department, parent: ravenline, children: [team-tracking, team-shipping, team-platform, team-devex] }
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Group
@@ -30,6 +30,15 @@ kind: Group
 metadata: { name: team-platform }
 spec: { type: team, parent: rl-engineering, children: [] }
 ---
+# DevEx — the team that runs the portal itself. Owns guildhall-portal (see
+# software.yaml) and stewards the demo/onboarding vísir new users start from.
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: team-devex
+  description: 'Developer experience — maintains this Backstage instance and onboards its users'
+spec: { type: team, parent: rl-engineering, children: [] }
+---
 # Gildi — the Guildhall's fellowship concept (design §3.2/§5): plain
 # typed Groups, cross-cutting the team tree. What a gildi stewards is an
 # annotation, not a new relation type.
@@ -40,6 +49,11 @@ metadata:
   description: The Security guild — stewards the security aspect (aspect-aligned gildi)
   annotations:
     siliconsaga.org/stewards: 'aspect:security'
+  links: # the aspect→standard tie, one click from the guild's page
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-practice/standard.yaml
+      title: Security standard (trials in tiers)
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-practice/pipeline-templates/dependency-scan.yml
+      title: Paved road — dependency-scan pipeline template
 spec:
   type: gildi
   parent: ravenline
@@ -88,3 +102,8 @@ apiVersion: backstage.io/v1alpha1
 kind: User
 metadata: { name: egil, description: 'Platform engineer' }
 spec: { memberOf: [team-platform] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: { name: freya, description: 'DevEx engineer — runs the portal, gives the tours' }
+spec: { memberOf: [team-devex] }

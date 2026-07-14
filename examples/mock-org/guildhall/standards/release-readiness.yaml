@@ -17,7 +17,7 @@ standard:
         - id: rollback-runbook-linked
           rule: every Component in the Cycle's system links an operational vísir
           factSource: catalog-annotations
-          remediation: ../../repos/tracking-api/runbooks/queue-backlog.md # exemplar
+          remediation: ../../repos/tracking-api/docs/runbooks/queue-backlog.md # exemplar
         - id: previous-cycle-saga-exists
           rule: the previous release Cycle has at least one Saga
           factSource: catalog

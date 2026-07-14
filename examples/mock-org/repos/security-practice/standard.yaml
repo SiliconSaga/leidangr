@@ -18,7 +18,7 @@ standard:
         - id: no-secrets-in-repo
           rule: secret scanning reports zero findings
           factSource: ci-pipeline-results
-          remediation: ./runbooks/rotate-leaked-credential.md
+          remediation: ./docs/runbooks/rotate-leaked-credential.md
     - name: silver
       trials:
         - id: no-critical-vulns-30d
@@ -33,5 +33,5 @@ standard:
       trials:
         - id: threat-model-current
           rule: a threat model is on file and reviewed within the last year
-          factSource: practice-home-repo
+          factSource: practice-repo
           remediation: ./docs/threat-modeling.md

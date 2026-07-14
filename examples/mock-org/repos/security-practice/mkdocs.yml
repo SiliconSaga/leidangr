@@ -1,0 +1,12 @@
+site_name: Security Practice
+site_description: The Security practice's standard, paved road, and vísar — TechDocs-rendered.
+nav:
+  - Overview: index.md
+  - Remediation:
+      - Dependency scanning: dependency-scanning.md
+      - Security contact: security-contact.md
+      - Threat modeling: threat-modeling.md
+  - Runbooks:
+      - Rotate a leaked credential: runbooks/rotate-leaked-credential.md
+plugins:
+  - techdocs-core

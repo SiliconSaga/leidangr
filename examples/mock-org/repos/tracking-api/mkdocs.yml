@@ -1,0 +1,9 @@
+site_name: tracking-api
+site_description: Tracking event ingest + query API — docs and runbooks, TechDocs-rendered.
+nav:
+  - Overview: index.md
+  - On-call primer: oncall-primer.md
+  - Runbooks:
+      - Queue backlog: runbooks/queue-backlog.md
+plugins:
+  - techdocs-core
