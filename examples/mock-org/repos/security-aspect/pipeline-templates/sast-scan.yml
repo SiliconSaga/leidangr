@@ -1,0 +1,9 @@
+# Paved road for the static-analysis block: adopt with a one-line include;
+# satisfies the sast-scan-clean trial. (Mock stub — GitLab CI include shape.)
+sast-scan:
+  stage: test
+  image: registry.ravenline.example/security/sast:stable
+  script:
+    - sast-scan --fail-on critical --report-to "${SCAN_RESULTS_ENDPOINT}"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

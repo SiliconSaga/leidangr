@@ -1,9 +1,10 @@
 site_name: Security Practice
-site_description: The Security practice's standard, paved road, and vísar — TechDocs-rendered.
+site_description: The Security practice's aspect module — standard, paved road, grafts, and vísar, TechDocs-rendered.
 nav:
   - Overview: index.md
   - Remediation:
       - Dependency scanning: dependency-scanning.md
+      - Static analysis: static-analysis.md
       - Security contact: security-contact.md
       - Threat modeling: threat-modeling.md
   - Runbooks:

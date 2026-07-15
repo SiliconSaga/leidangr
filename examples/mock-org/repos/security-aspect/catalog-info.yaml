@@ -1,0 +1,25 @@
+# Per-repo catalog-info — the live-topology shape (design §5): in a real
+# deployment, provider discovery finds this file in the aspect repo; the demo
+# registers it directly. The Component is the PRACTICE's catalog face (the
+# living institution); this repo is its ASPECT (the module it applies).
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: security-practice
+  description: 'The Security practice: its aspect module — standard, paved road, grafts, and remediation vísar'
+  annotations:
+    siliconsaga.org/aspect: 'security'
+    siliconsaga.org/visir: './docs/runbooks/rotate-leaked-credential.md'
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/standard.yaml
+      title: Security standard — blocks of trials, tiered bronze/silver/gold
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/pipeline-templates/dependency-scan.yml
+      title: Paved road — dependency-scan pipeline template
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/pipeline-templates/sast-scan.yml
+      title: Paved road — sast-scan pipeline template
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/template.yaml
+      title: Graft (portal door) — Apply the Security aspect
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/SKILL.md
+      title: Graft (agent door) — SKILL.md
+spec: { type: practice, lifecycle: production, owner: group:default/security-gildi, system: rl-platform }

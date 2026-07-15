@@ -6,7 +6,7 @@ Add the paved-road template to your pipeline:
 
 ```yaml
 include:
-  - project: ravenline/security-practice
+  - project: ravenline/security-aspect
     file: pipeline-templates/dependency-scan.yml
 ```
 

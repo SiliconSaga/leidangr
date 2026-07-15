@@ -49,11 +49,11 @@ metadata:
   description: The Security guild — stewards the security aspect (aspect-aligned gildi)
   annotations:
     siliconsaga.org/stewards: 'aspect:security'
-  links: # the aspect→standard tie, one click from the guild's page
-    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-practice/standard.yaml
-      title: Security standard (trials in tiers)
-    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-practice/pipeline-templates/dependency-scan.yml
-      title: Paved road — dependency-scan pipeline template
+  links: # the practice→standard tie, one click from the guild's page
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/standard.yaml
+      title: Security standard (blocks of trials, tiered)
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/template.yaml
+      title: Graft — Apply the Security aspect
 spec:
   type: gildi
   parent: ravenline

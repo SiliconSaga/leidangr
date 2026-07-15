@@ -139,6 +139,20 @@ catalog:
       target: ../../examples/mock-org/software.yaml
       rules:
         - allow: [Domain, System, Resource, Component]
+    # Live-topology samples: per-repo catalog-info (discovered by a provider in
+    # a real deployment) + the security aspect's graft Template.
+    - type: file
+      target: ../../examples/mock-org/repos/tracking-api/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: ../../examples/mock-org/repos/security-aspect/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: file
+      target: ../../examples/mock-org/repos/security-aspect/template.yaml
+      rules:
+        - allow: [Template]
     - type: file
       target: ../../examples/mock-org/cycles.yaml
       rules:

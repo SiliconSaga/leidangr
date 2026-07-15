@@ -12,17 +12,8 @@ kind: System
 metadata: { name: parcel-tracking, description: Parcel tracking product }
 spec: { owner: group:default/team-tracking, domain: ravenline }
 ---
-apiVersion: backstage.io/v1alpha1
-kind: Component
-metadata:
-  name: tracking-api
-  description: 'Tracking event ingest + query API. Security standard: silver.'
-  annotations:
-    siliconsaga.org/aspects: 'security, operational-readiness'
-    siliconsaga.org/visir: './repos/tracking-api/docs/runbooks/queue-backlog.md'
-    backstage.io/techdocs-ref: dir:./repos/tracking-api
-spec: { type: service, lifecycle: production, owner: group:default/team-tracking, system: parcel-tracking }
----
+# tracking-api lives in its own repo's catalog-info.yaml (live topology —
+# see repos/tracking-api/catalog-info.yaml, registered in app-config).
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata: { name: tracking-web, description: Customer-facing tracking page }
@@ -51,6 +42,16 @@ metadata:
     siliconsaga.org/aspects: 'security'
 spec: { type: service, lifecycle: production, owner: group:default/team-shipping, system: shipping }
 ---
+# Pristine and unenrolled — the graft's demo target: apply the Security aspect
+# to it via the scaffolder Template (portal door) or SKILL.md (agent door) in
+# repos/security-aspect/.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: label-service
+  description: 'Prints shipping labels. Not yet enrolled in any aspect — graft me.'
+spec: { type: service, lifecycle: production, owner: group:default/team-shipping, system: shipping }
+---
 apiVersion: backstage.io/v1alpha1
 kind: System
 metadata: { name: rl-platform, description: Shared platform }
@@ -61,30 +62,10 @@ kind: Resource
 metadata: { name: prod-cluster, description: Production Kubernetes cluster }
 spec: { type: cluster, owner: group:default/team-platform, system: rl-platform }
 ---
-# The practice, as a catalog citizen (design §3.4 paved-road loop): a Component
-# of type `practice`, owned by the steward gildi. Its home repo holds the
-# standard, the paved road, and the remediation vísar together — and the links
-# below ARE the practice→standard→trials tie, one click from the entity page.
-apiVersion: backstage.io/v1alpha1
-kind: Component
-metadata:
-  name: security-practice
-  description: 'The Security practice: its standard, paved road, and remediation vísar'
-  annotations:
-    siliconsaga.org/aspect: 'security'
-    siliconsaga.org/visir: './repos/security-practice/docs/runbooks/rotate-leaked-credential.md'
-    backstage.io/techdocs-ref: dir:./repos/security-practice
-  links:
-    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-practice/standard.yaml
-      title: Security standard — trials in tiers (bronze/silver/gold)
-    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-practice/pipeline-templates/dependency-scan.yml
-      title: Paved road — dependency-scan pipeline template
-    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-practice/docs/dependency-scanning.md
-      title: Remediation — dependency scanning
-    - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-practice/docs/runbooks/rotate-leaked-credential.md
-      title: Runbook — rotate a leaked credential
-spec: { type: practice, lifecycle: production, owner: group:default/security-gildi, system: rl-platform }
----
+# NOTE: the security-practice Component lives in the aspect repo's
+# catalog-info.yaml (live topology — see repos/security-aspect/, registered in
+# app-config alongside the graft template.yaml).
+#
 # The portal itself, cataloged — the one NON-fiction entity in the Ravenline
 # seed: this is the Backstage instance you are browsing, owned by the DevEx
 # team, and its vísir is the demo/onboarding grand tour.

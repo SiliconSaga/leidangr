@@ -28,7 +28,8 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 - [ ] Catalog loads; the Kind dropdown includes **Cycle** and **Saga**
 - [ ] `ravenline` Group shows the org tree plus two `gildi`-typed Groups
 - [ ] `guildhall-portal` Component exists, owned by `team-devex`, linking to this vísir
-- [ ] `security-practice` Component (type `practice`) shows its links to the standard and paved road
+- [ ] `security-practice` Component (type `practice`) shows its links into the aspect repo
+- [ ] Create page lists **Apply the Security aspect** (the graft Template)
 - [ ] `tracking-2026-2` Cycle shows the curated overview card
 - [ ] `make smoke-catalog` passes (your offline proof, and the fallback if the UI misbehaves live)
 
@@ -41,14 +42,15 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 - *Catalog → Kind dropdown*: **Cycle** and **Saga** next to Component/Group. Talking point: two custom kinds total; the entire practice layer adds **zero** more — typed Groups, vocabularies, annotations, links.
 - *`ravenline` Group → relations graph*: the org tree plus two **guilds** (`spec.type: gildi`) cross-cutting it — one practice-aligned (Security), one role-aligned (Release Captains). A guild is deliberately just a typed Group: membership, rollups, and the graph come free.
 - *`team-devex` → `guildhall-portal`*: the portal you are standing in is itself cataloged, owned by the DevEx team, and its vísir is this document. Dogfood moment.
-- *`security-practice` Component (type `practice`)*: **where the practice lives.** Its links go straight to the standard (tiers of checks), the paved-road pipeline template, and the remediation docs — the practice → standard → checks tie, one click each.
+- *`security-practice` Component (type `practice`)*: the **practice** is the institution (the guild runs it); its **aspect** is the module — a repo holding the blocked standard, the paved road, the grafts, and the remediation docs. The entity links go straight into that repo, one click each.
+- *Create page → **Apply the Security aspect***: the **graft** — applying a practice is a self-service action, not a wiki page. Run it against `label-service` (the pristine, unenrolled component): the mock edition logs its weave plan — annotation, CI includes, stewardship stubs, PR. Then the CLI beat: the same repo ships `SKILL.md`, the identical graft for agents — *some users never leave their terminal, and neither do their agents.*
 - *`tracking-api` Component*: enrollment annotations (`siliconsaga.org/aspects`) — which practices apply to this service. Description carries the demo narrative: silver. If TechDocs generation is available, open its **Docs tab**: the on-call primer and the queue-backlog runbook render as a real doc site (runbooks nest under docs as an interim convention until the parameterized-runbooks plugin exists — say that out loud, it's a roadmap point).
 - *`tracking-2026-2` Cycle*: a release as a first-class bounded effort. Then *`dependency-scanning-drive`*: a time-bound push — Soundcheck sells this as "Campaigns"; here it's a Cycle of type drive.
 - *`saga-tracking-2026-2`*: the retrospective as a catalog citizen — authored by a person, linked to everything it touched, body in Git. Open `examples/mock-org/sagas/tracking-2026-2.md` and read two sentences aloud; the May 14th incident sets up the next stop.
 
 **3. Files tour (4 min).** In an editor, `examples/mock-org/`:
 
-- `repos/security-practice/`: `standard.yaml` (tiered checks, *each declaring its remediation doc*), `pipeline-templates/dependency-scan.yml` (the paved road: one include line), `docs/` + `runbooks/`.
+- `repos/security-aspect/` (the module): `standard.yaml` — checks grouped in **blocks** by tool/sub-concern, each block scoped by **facets** (a service that's also a queue consumer gets both natures — see tracking-api's facets override), tiers laddering across them; `pipeline-templates/` (the paved road); `template.yaml` + `SKILL.md` (the two graft doors); `docs/`.
 - The loop, told on `carrier-gateway` (bronze in the narrative): failing check → remediation doc → whose entire instruction is the one-line include → next pipeline run reports facts → check flips green. **When the requirement, the tooling, and the measurement share one owner, the cheapest way to comply is the paved road.** Land this sentence.
 - `repos/tracking-api/docs/runbooks/queue-backlog.md`: docs teach, **runbooks are followed under pressure** — parameterized placeholders (`{{cluster}}`) filled at read time so every command copy-pastes exactly right. Born from the incident the Saga describes.
 

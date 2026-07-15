@@ -1,0 +1,67 @@
+# The security standard — lives in the ASPECT REPO (the module) beside the
+# paved road, the grafts, and the remediation vísar it references (design
+# §3.4/§3.6). Git-backed YAML consumed by the future scorecard plugin.
+#
+# Two orthogonal axes (design §3.6):
+#   BLOCKS — tool/sub-concern groupings that own trials and carry facet
+#            applicability (which kinds of component each block applies to).
+#   TIERS  — the maturity ladder (bronze/silver/gold), referencing trial ids
+#            across blocks. A tier completes when all its APPLICABLE trials
+#            pass; non-applicable trials skip, they never block.
+# Every trial declares its remediation vísir: a failing check is always one
+# click from the fix.
+standard:
+  id: security
+  aspect: security
+  owner: group:default/security-gildi
+  filter: { kind: Component }
+  # Facets: spec.type suggests the default facet set; the
+  # siliconsaga.org/facets annotation overrides it (old monoliths are several
+  # things at once). Blocks match facets, never raw types.
+  facetDefaults:
+    service: [api]
+    website: [web-ui]
+  blocks:
+    - id: dependency-hygiene
+      appliesTo: [api, web-ui]
+      trials:
+        - id: dependency-scanning
+          rule: the default-branch pipeline runs the dependency-scan template
+          factSource: ci-pipeline-results
+          remediation: ./docs/dependency-scanning.md
+        - id: no-critical-vulns-30d
+          rule: no critical finding older than 30 days
+          factSource: ci-pipeline-results
+          remediation: ./docs/dependency-scanning.md # the 30-day clock is documented there
+    - id: secrets
+      appliesTo: ['*']
+      trials:
+        - id: no-secrets-in-repo
+          rule: secret scanning reports zero findings
+          factSource: ci-pipeline-results
+          remediation: ./docs/runbooks/rotate-leaked-credential.md
+    - id: static-analysis
+      appliesTo: [api, web-ui]
+      trials:
+        - id: sast-scan-clean
+          rule: static analysis runs on the default branch with no high findings
+          factSource: ci-pipeline-results
+          remediation: ./docs/static-analysis.md
+    - id: stewardship
+      appliesTo: ['*']
+      trials:
+        - id: security-contact-declared
+          rule: the Component declares a security contact
+          factSource: catalog-annotations
+          remediation: ./docs/security-contact.md
+        - id: threat-model-current
+          rule: a threat model is on file and reviewed within the last year
+          factSource: aspect-repo
+          remediation: ./docs/threat-modeling.md
+  tiers: # the maturity ladder — orthogonal to blocks, references trial ids
+    - name: bronze
+      trials: [dependency-scanning, no-secrets-in-repo]
+    - name: silver
+      trials: [no-critical-vulns-30d, sast-scan-clean, security-contact-declared]
+    - name: gold
+      trials: [threat-model-current]

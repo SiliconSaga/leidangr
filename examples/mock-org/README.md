@@ -8,7 +8,8 @@ Ravenline is a fictional small parcel-logistics SaaS (~20 people) used as the ru
 - **Two gildi** (`org.yaml`), one of each form from the design:
   - `security-gildi` — **aspect-aligned** (stewards the `security` aspect). Members: Astrid, Leif.
   - `release-captains-gildi` — **craft-aligned** (stewards the `release-captain` craft). Members: Bjorn, Runa.
-- **Software graph** (`software.yaml`): systems `parcel-tracking` and `shipping`, components `tracking-api`, `tracking-web`, `shipping-orchestrator`, `carrier-gateway`, the `prod-cluster` Resource, and `security-practice` — the practice as a catalog citizen (`spec.type: practice`), owned by the security gildi, whose entity **links** point straight at its standard, paved road, and remediation docs.
+- **Software graph** (`software.yaml` + per-repo catalog-info): systems `parcel-tracking` and `shipping`, components `tracking-web`, `shipping-orchestrator`, `carrier-gateway`, `label-service` (pristine and unenrolled — **the graft's demo target**), and the `prod-cluster` Resource. Two components live where real ones would: `tracking-api` and `security-practice` are declared in **their own repos' `catalog-info.yaml`** (`repos/tracking-api/`, `repos/security-aspect/`) — the live topology, registered directly here in place of provider discovery.
+- **The practice and its aspect**: `security-practice` (`spec.type: practice`) is the *institution's* catalog face; `repos/security-aspect/` is its **aspect — the module**: the blocked standard, the paved road, the remediation vísar, and **two grafts** — `template.yaml` (scaffolder door, visible on the Create page) and `SKILL.md` (agent door). Entity links tie it all together one click from the catalog.
 - **The portal itself** (`software.yaml`): `guildhall-portal`, owned by `team-devex` — the one **non-fiction** entity in the seed: it is this very Backstage instance, and its vísir is the demo/onboarding grand tour (`docs/demo-visir.md`, at the repo root — start there).
 - **Cycles + Saga** (`cycles.yaml`): a `release` Cycle (`tracking-2026-2`), a `drive` Cycle (`dependency-scanning-drive` — the Soundcheck-Campaign analog), and a Saga narrated by Runa about the release (`sagas/tracking-2026-2.md`).
 
@@ -24,8 +25,8 @@ The `guildhall/` and `repos/` trees are **plain YAML/markdown, deliberately not 
 - `guildhall/crafts.yaml` — `release-captain` (skills + a teaching vísir) and `incident-commander` (skills only — vísar are optional).
 - `guildhall/aspects.yaml` — `security` (steward gildi + home repo + standard) and `operational-readiness` (**no steward** — an aspect can exist before a gildi forms around it).
 - `guildhall/standards/release-readiness.yaml` — a standard that measures **Cycles**, the software twin of the community "season-readiness" checklist.
-- `repos/security-practice/` — the **practice home repo**: the security standard (tiered trials, each with its own remediation ref), the paved road (`pipeline-templates/dependency-scan.yml`), teaching vísar (`docs/`), and a parameterized operational vísir (`docs/runbooks/`).
-- `repos/tracking-api/` — a product repo with a static on-call primer and a parameterized queue-backlog runbook.
+- `repos/security-aspect/` — the **aspect repo (the module)**: the security standard (**blocks** of trials by tool/sub-concern with **facet** applicability, tiers laddering across them), the paved road (`pipeline-templates/`), the two grafts (`template.yaml`, `SKILL.md`), teaching vísar (`docs/`), and a parameterized operational vísir (`docs/runbooks/`). Its `catalog-info.yaml` declares the practice Component.
+- `repos/tracking-api/` — a product repo as a real one would look: own `catalog-info.yaml` (enrollment + a `facets` override — it's a service *and* a queue consumer, the monolith case), mkdocs, a static on-call primer, a parameterized queue-backlog runbook.
 
 **TechDocs, fully local:** both repos carry `mkdocs.yml` and their Components carry `backstage.io/techdocs-ref: dir:…` — TechDocs renders them with **no Git provider involved** (dir refs resolve relative to this file-based seed). Generation needs either Docker running (the scaffold default) or `techdocs.generator.runIn: local` + `pip install mkdocs-techdocs-core`. *Interim convention:* operational vísar sit at `docs/runbooks/` so TechDocs renders them today; the design's top-level `/runbooks` home returns when the dedicated runbooks plugin (URL-parameterized rendering) exists.
 
@@ -37,6 +38,6 @@ The `guildhall/` and `repos/` trees are **plain YAML/markdown, deliberately not 
 | Software graph, enrollment + vísir annotations (inert but present) | Standards evaluation / scorecards (Tech Insights or custom) |
 | `Cycle` (release + drive) and `Saga` with relations | Runbooks plugin (parameterized vísar) |
 
-Until the scorecard engine exists, the **practice → standard → trials tie is navigational**: the `security-practice` Component's and `security-gildi` Group's entity links jump straight to the standard, the paved-road template, and the remediation docs. The scorecard plugin later turns that chain into live data on entity pages.
+Until the scorecard engine exists, the **practice → aspect → standard → trials tie is navigational**: the `security-practice` Component's and `security-gildi` Group's entity links jump straight into the aspect repo — standard, paved road, grafts, remediation docs. The scorecard plugin later turns that chain into live data on entity pages. The graft Template renders on the **Create page** today (it logs its weave plan rather than opening a real PR — designed-not-executed, like the ratings).
 
 `make smoke-catalog` asserts the mock org ingests at runtime alongside the MTL seed (gildi Group typed, release Cycle with its relations, the Saga touching it).
