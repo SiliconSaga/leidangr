@@ -6,7 +6,8 @@ Add the paved-road template to your pipeline:
 
 ```yaml
 include:
-  - project: ravenline/security-practice
+  - project: ravenline/security-aspect
+    ref: v2.0.0 # pin the module edition — aspects version (ADR 0010); never ride HEAD
     file: pipeline-templates/dependency-scan.yml
 ```
 

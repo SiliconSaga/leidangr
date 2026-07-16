@@ -1,0 +1,17 @@
+# Per-repo catalog-info — the live-topology shape (design §5): each product
+# repo declares its own Component; provider discovery finds it. The demo
+# registers this file directly. Copy this repo as the starting shape for a
+# real component: catalog-info + mkdocs + docs/ + docs/runbooks/.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: tracking-api
+  description: 'Tracking event ingest + query API. Security standard: silver (demo narrative).'
+  annotations:
+    siliconsaga.org/aspects: 'security, operational-readiness'
+    # Facets: type service would default to [api]; this component is also a
+    # queue consumer, so it widens its facet set (design §3.6 — the monolith fix).
+    siliconsaga.org/facets: 'api, batch'
+    siliconsaga.org/visir: './docs/runbooks/queue-backlog.md'
+    backstage.io/techdocs-ref: dir:.
+spec: { type: service, lifecycle: production, owner: group:default/team-tracking, system: parcel-tracking }

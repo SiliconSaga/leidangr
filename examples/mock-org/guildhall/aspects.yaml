@@ -1,16 +1,18 @@
-# Aspect vocabulary — the cross-cutting concerns (design §3.2): each holds
-# standards applied to enrolled entities. Vocabulary-first; NOT catalog
-# entities. Enrollment is the siliconsaga.org/aspects annotation on the
-# enrolled entity (see ../software.yaml). Paths are relative to THIS file.
+# Aspect REGISTRY — maps aspect ids to their modules (design §3.2 as amended:
+# an aspect is a versioned module — a repo of technical resources; the practice
+# is the living institution around it). NOT catalog entities. Enrollment is the
+# siliconsaga.org/aspects annotation on the enrolled entity (see
+# ../software.yaml). Paths are relative to THIS file; version pins land here
+# when module versioning gets real.
 aspects:
   - id: security
-    description: Services uphold the security bar; the gildi ships the paved road that clears it.
+    description: Services uphold the security bar; the practice ships the paved road that clears it.
     steward: group:default/security-gildi
-    home: ../repos/security-practice
+    module: ../repos/security-aspect
     standards:
-      - ../repos/security-practice/standard.yaml
+      - ../repos/security-aspect/standard.yaml
   - id: operational-readiness
     description: Releases and services are ready to run — the software twin of season-readiness.
-    steward: null # an aspect can exist before a gildi forms around it (design §3.2)
+    steward: null # an aspect can exist before a gildi forms around its practice (design §3.2)
     standards:
       - ./standards/release-readiness.yaml
