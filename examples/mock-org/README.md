@@ -17,13 +17,13 @@ Ravenline is a fictional small parcel-logistics SaaS (~20 people) used as the ru
 
 `tracking-api` is enrolled in both aspects (`siliconsaga.org/aspects` annotation) and sits at **silver** on the security standard. `carrier-gateway` is enrolled in security only and is stuck at **bronze** with the `dependency-scanning` trial failing — its remediation doc says, in full: *add the one-line include of the paved-road pipeline template.* That is the paved-road loop from design §3.4, frozen as demo data. Meanwhile the `dependency-scanning-drive` Cycle is the security gildi's time-bound push to get every service's scanning green, and the release Saga cites how the release went.
 
-## Guildhall files (not catalog entities — future plugin input)
+## Guildhall files (mostly not catalog entities — future plugin input)
 
-The `guildhall/` and `repos/` trees are **plain YAML/markdown, deliberately not ingested**. They document the exact shapes design §5 assigns to vocabularies and Git-backed standards, so future plugins have fixtures waiting (paths inside them are file-relative):
+The `guildhall/` tree and most of `repos/` are **plain YAML/markdown, deliberately not ingested** — fixtures documenting the exact shapes design §5 assigns to vocabularies and Git-backed standards. Three per-repo files ARE intentionally ingested (registered in `app-config.yaml`, standing in for provider discovery): `repos/tracking-api/catalog-info.yaml`, `repos/security-aspect/catalog-info.yaml`, and `repos/security-aspect/template.yaml` (the graft — vanilla `Template` kind). Paths inside the fixtures are file-relative:
 
 - `guildhall/skills.yaml` — the skill vocabulary + mock profile selections (in the real system, profiles live in the plugin store and decorate `User` entities).
 - `guildhall/crafts.yaml` — `release-captain` (skills + a teaching vísir) and `incident-commander` (skills only — vísar are optional).
-- `guildhall/aspects.yaml` — `security` (steward gildi + home repo + standard) and `operational-readiness` (**no steward** — an aspect can exist before a gildi forms around it).
+- `guildhall/aspects.yaml` — the **registry** (aspect id → `module`): `security` (steward gildi + module + standard) and `operational-readiness` (**no steward** — an aspect can exist before a gildi forms around its practice).
 - `guildhall/standards/release-readiness.yaml` — a standard that measures **Cycles**, the software twin of the community "season-readiness" checklist.
 - `repos/security-aspect/` — the **aspect repo (the module)**: the security standard (**blocks** of trials by tool/sub-concern with **facet** applicability, tiers laddering across them), the paved road (`pipeline-templates/`), the two grafts (`template.yaml`, `SKILL.md`), teaching vísar (`docs/`), and a parameterized operational vísir (`docs/runbooks/`). Its `catalog-info.yaml` declares the practice Component.
 - `repos/tracking-api/` — a product repo as a real one would look: own `catalog-info.yaml` (enrollment + a `facets` override — it's a service *and* a queue consumer, the monolith case), mkdocs, a static on-call primer, a parameterized queue-backlog runbook.

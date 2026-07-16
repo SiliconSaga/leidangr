@@ -127,7 +127,7 @@ check     "Gildi Group ingested (type gildi)"        "$GILDI"   '"type":"gildi"'
 check     "Portal ingested (type portal)"            "$PORTAL"  '"type":"portal"'                           || pass=0
 check_rel "Portal ownedBy team-devex"                "$PORTAL"  ownedBy   group:default/team-devex          || pass=0
 # Live-topology per-repo catalog-info + the aspect's graft (vanilla Template kind).
-check     "tracking-api from per-repo catalog-info"  "$TRACKAPI" 'siliconsaga.org/facets'                   || pass=0
+check     "tracking-api facets override (api, batch)" "$TRACKAPI" '"siliconsaga.org/facets":"api, batch"'   || pass=0
 check     "Practice Component (type practice)"       "$PRACTICE" '"type":"practice"'                        || pass=0
 check     "Graft Template ingested (type aspect)"    "$GRAFT"    '"type":"aspect"'                          || pass=0
 check_rel "Graft ownedBy security-gildi"             "$GRAFT"    ownedBy   group:default/security-gildi     || pass=0

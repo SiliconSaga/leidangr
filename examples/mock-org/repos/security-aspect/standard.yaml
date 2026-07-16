@@ -55,7 +55,7 @@ standard:
           factSource: catalog-annotations
           remediation: ./docs/security-contact.md
         - id: threat-model-current
-          rule: a threat model is on file and reviewed within the last year
+          rule: threat-models/<component>.md exists with last_reviewed front matter (YYYY-MM-DD) within 365 days
           factSource: aspect-repo
           remediation: ./docs/threat-modeling.md
   tiers: # the maturity ladder — orthogonal to blocks, references trial ids
