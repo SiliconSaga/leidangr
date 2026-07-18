@@ -30,7 +30,7 @@ kind: Group
 metadata: { name: team-platform }
 spec: { type: team, parent: rl-engineering, children: [] }
 ---
-# DevEx — the team that runs the portal itself. Owns guildhall-portal (see
+# DevEx — the team that runs the instance itself. Owns guild-hall (see
 # software.yaml) and stewards the demo/onboarding vísir new users start from.
 apiVersion: backstage.io/v1alpha1
 kind: Group
