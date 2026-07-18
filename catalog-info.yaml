@@ -1,13 +1,22 @@
+# The Guild Hall hub — the one NON-fiction entity in the Ravenline seed.
+# Lives at the repo root so backstage.io/techdocs-ref: dir:. resolves to the
+# root mkdocs.yml (TechDocs dir: refs cannot traverse up from their catalog
+# entity file, hence the split from examples/mock-org/software.yaml).
+# spec.type:hub anticipates the hub-page design: singleton overview pages
+# for installed plugin feature groups, of which the Guild Hall is one.
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: leidangr
-  description: An example of a Backstage application.
-  # Example for optional annotations
-  # annotations:
-  #   github.com/project-slug: backstage/backstage
-  #   backstage.io/techdocs-ref: dir:.
+  name: guild-hall
+  description: 'The Guild Hall — practice layer hub for this Backstage instance'
+  annotations:
+    siliconsaga.org/visir: 'docs/demo-visir.md'
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/docs/plans/2026-07-10-guilds-skills-standards-design.md
+      title: Guildhall design doc
 spec:
-  type: website
-  owner: john@example.com
-  lifecycle: experimental
+  type: hub
+  lifecycle: production
+  owner: group:default/team-devex
+  system: rl-platform
