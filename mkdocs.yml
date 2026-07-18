@@ -1,0 +1,28 @@
+site_name: Leiðangr — Guildhall Portal
+site_description: Guildhall demo portal — grand tour, ADRs, and design docs.
+docs_dir: docs
+nav:
+  - Home: index.md
+  - Grand tour: demo-visir.md
+  - Model overview: guildhall-model.md
+  - ADRs:
+      - Overview: adrs/README.md
+      - 0001 — Modern Backstage + Corepack: adrs/0001-modern-backstage-and-corepack.md
+      - 0002 — Zero-secret stub mode: adrs/0002-zero-secret-stub-mode-default.md
+      - 0003 — OpenBao OIDC secrets: adrs/0003-provider-agnostic-secrets-openbao-oidc.md
+      - 0004 — Gitea catalog source: adrs/0004-gitea-catalog-source.md
+      - 0005 — Guest auth first: adrs/0005-guest-auth-first.md
+      - 0006 — BDD from day one: adrs/0006-bdd-from-day-one.md
+      - 0007 — Cycle custom kind: adrs/0007-cycle-custom-kind.md
+      - 0008 — Saga git-backed kind: adrs/0008-saga-git-backed-kind.md
+      - 0009 — Guildhall practice model: adrs/0009-guildhall-practice-model.md
+      - 0010 — Aspect module, grafts, blocks: adrs/0010-aspect-module-grafts-blocks.md
+plugins:
+  - techdocs-core
+  - mermaid2
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_div_format ''
