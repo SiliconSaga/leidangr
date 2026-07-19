@@ -1,6 +1,6 @@
 # Vísir: the Guildhall Grand Tour
 
-*A teaching vísir owned by the DevEx team (`group:default/team-devex` in the Ravenline seed): the guided tour for demos and for introducing new users to this Backstage instance. In the catalog, the `guildhall-portal` Component links here — the tour is discoverable from inside the thing it tours.*
+*A teaching vísir owned by the DevEx team (`group:default/team-devex` in the Ravenline seed): the guided tour for demos and for introducing new users to this Backstage instance. In the catalog, the `guild-hall` Component (type `hub`) links here — the tour is discoverable from inside the thing it tours.*
 
 Say the corporate words out loud ("Practice", "Guild", "Check") and let the screen show the canonical names (aspect, gildi, trial) — narrating that gap *is* the kenning-layer pitch.
 
@@ -27,7 +27,7 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 
 - [ ] Catalog loads; the Kind dropdown includes **Cycle** and **Saga**
 - [ ] `ravenline` Group shows the org tree plus two `gildi`-typed Groups
-- [ ] `guildhall-portal` Component exists, owned by `team-devex`, linking to this vísir
+- [ ] `guild-hall` Component (type `hub`) exists, owned by `team-devex`, linking to this vísir
 - [ ] `security-practice` Component (type `practice`) shows its links into the aspect repo
 - [ ] Create page lists **Apply the Security aspect** (the graft Template)
 - [ ] `tracking-2026-2` Cycle shows the curated overview card
@@ -41,7 +41,7 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 
 - *Catalog → Kind dropdown*: **Cycle** and **Saga** next to Component/Group. Talking point: two custom kinds total; the entire practice layer adds **zero** more — typed Groups, vocabularies, annotations, links.
 - *`ravenline` Group → relations graph*: the org tree plus two **guilds** (`spec.type: gildi`) cross-cutting it — one practice-aligned (Security), one role-aligned (Release Captains). A guild is deliberately just a typed Group: membership, rollups, and the graph come free.
-- *`team-devex` → `guildhall-portal`*: the portal you are standing in is itself cataloged, owned by the DevEx team, and its vísir is this document. Dogfood moment.
+- *`team-devex` → `guild-hall`*: the instance you are standing in is itself cataloged (type `hub` — anticipating hub pages: singleton overviews per plugin feature group), owned by the DevEx team, and its vísir is this document. Dogfood moment.
 - *`security-practice` Component (type `practice`)*: the **practice** is the institution (the guild runs it); its **aspect** is the module — a repo holding the blocked standard, the paved road, the grafts, and the remediation docs. The entity links go straight into that repo, one click each.
 - *Create page → **Apply the Security aspect***: the **graft** — applying a practice is a self-service action, not a wiki page. Run it against `label-service` (the pristine, unenrolled component): the mock edition logs its weave plan — annotation, CI includes, stewardship stubs, PR. Then the CLI beat: the same repo ships `SKILL.md`, the identical graft for agents — *some users never leave their terminal, and neither do their agents.*
 - *`tracking-api` Component*: enrollment annotations (`siliconsaga.org/aspects`) — which practices apply to this service. Description carries the demo narrative: silver. If TechDocs generation is available, open its **Docs tab**: the on-call primer and the queue-backlog runbook render as a real doc site (runbooks nest under docs as an interim convention until the parameterized-runbooks plugin exists — say that out loud, it's a roadmap point).
