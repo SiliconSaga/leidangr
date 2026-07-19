@@ -1,6 +1,6 @@
 # Guildhall model — entity relationships
 
-How the five Guildhall concepts map onto Backstage entity kinds and relate to each other.
+How the five Guildhall layers map onto Backstage entity kinds and relate to each other.
 
 ## Concept map
 

@@ -60,7 +60,7 @@ byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localh
 
 # Backend readiness != catalog-ingestion readiness. Poll until the custom entities
 # appear (or the timeout expires) rather than sleeping once and querying once.
-# The wall-clock deadline bounds the worst case: six lookups per iteration could
+# The wall-clock deadline bounds the worst case: ten lookups per iteration could
 # each burn their 5s curl timeout when the catalog is wedged, so iteration count
 # alone is not a real bound.
 CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'; GILDI='{}'; HUB='{}'; TRACKAPI='{}'; PRACTICE='{}'; GRAFT='{}'

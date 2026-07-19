@@ -1,5 +1,5 @@
-site_name: Leiðangr — Guildhall Portal
-site_description: Guildhall demo portal — grand tour, ADRs, and design docs.
+site_name: Leiðangr — Guild Hall
+site_description: Guild Hall hub docs — grand tour, ADRs, and design docs.
 docs_dir: docs
 nav:
   - Home: index.md
@@ -17,12 +17,10 @@ nav:
       - 0008 — Saga git-backed kind: adrs/0008-saga-git-backed-kind.md
       - 0009 — Guildhall practice model: adrs/0009-guildhall-practice-model.md
       - 0010 — Aspect module, grafts, blocks: adrs/0010-aspect-module-grafts-blocks.md
+# Mermaid fences render as plain code blocks for now: the mermaid2 plugin's div
+# output can't render inside TechDocs' shadow DOM anyway, and it is absent from
+# the default TechDocs Docker generator image (breaking `runIn: docker` builds).
+# The planned TechDocs Addons mermaid addon renders client-side from these
+# fences without any mkdocs-side plugin.
 plugins:
   - techdocs-core
-  - mermaid2
-markdown_extensions:
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_div_format ''

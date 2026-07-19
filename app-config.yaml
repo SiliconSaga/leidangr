@@ -127,7 +127,7 @@ catalog:
       rules:
         - allow: [Group, Domain, System, Resource, Component, Cycle, Saga]
 
-    # guildhall-portal: lives at the repo root so techdocs-ref: dir:. resolves
+    # guild-hall: lives at the repo root so techdocs-ref: dir:. resolves
     # to the root mkdocs.yml without traversing up past the entity file.
     - type: file
       target: ../../catalog-info.yaml

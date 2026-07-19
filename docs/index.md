@@ -1,3 +1,3 @@
-# Leiðangr — Guildhall Portal
+# Leiðangr — Guild Hall
 
-The Guildhall demo portal. Start with the [Grand tour](demo-visir.md) or the [Model overview](guildhall-model.md).
+The Guild Hall hub's docs. Start with the [Grand tour](demo-visir.md) or the [Model overview](guildhall-model.md).
