@@ -60,10 +60,14 @@ byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localh
 
 # Backend readiness != catalog-ingestion readiness. Poll until the custom entities
 # appear (or the timeout expires) rather than sleeping once and querying once.
-# The wall-clock deadline bounds the worst case: thirteen lookups per iteration
-# could each burn their 5s curl timeout when the catalog is wedged, so iteration
-# count alone is not a real bound.
-CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'; GILDI='{}'; HUB='{}'; TRACKAPI='{}'; PRACTICE='{}'; GRAFT='{}'; FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'
+# The wall-clock deadline keeps the worst case near the budget: thirteen lookups
+# per iteration could each burn their 5s curl timeout when the catalog is wedged,
+# so iteration count alone is not a real bound. The deadline is checked once per
+# iteration, so a fully wedged run can overshoot it by up to one iteration
+# (~65s) — acceptable slack for a smoke.
+CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'
+GILDI='{}'; HUB='{}'; TRACKAPI='{}'; PRACTICE='{}'; GRAFT='{}'
+FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'
 deadline=$((SECONDS + 300))
 for _ in $(seq 1 120); do
   if (( SECONDS >= deadline )); then break; fi

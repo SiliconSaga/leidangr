@@ -32,7 +32,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: shipping-orchestrator
-  description: 'Books carriers, prints labels. Security standard: silver — grafted May 2026, silver on the next pipeline run.'
+  description: 'Books carriers, prints labels. Security standard: silver — grafted May 2026, reached silver on the next pipeline run.'
   annotations:
     siliconsaga.org/aspects: 'security'
     siliconsaga.org/aspect-versions: 'security@1.4'

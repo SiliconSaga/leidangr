@@ -1,6 +1,6 @@
 # The Saga of the Dependency Scanning Drive
 
-*Skald: Astrid · May 2026 – (mid-run report, written mid-July)*
+*Skald: Astrid · May–July 2026 · mid-run report, written mid-July*
 
 The guild shipped module 1.4 in April: a refreshed dependency-scan pipeline template and the 30-day clock on critical findings. The drive opened May 1 with one goal — every enrolled service green on the `dependency-scanning` trial before August — and one rule: nobody gets a ticket telling them to "improve security"; they get a one-line include and a doc that fits on a screen.
 
