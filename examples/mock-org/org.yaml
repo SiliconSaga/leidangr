@@ -8,12 +8,28 @@ metadata:
   description: Ravenline — parcel-logistics SaaS (mock org, Guildhall demo)
 spec:
   type: organization
-  children: [rl-engineering, security-gildi, release-captains-gildi]
+  children: [rl-engineering, foxholm, security-gildi, release-captains-gildi]
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata: { name: rl-engineering }
 spec: { type: department, parent: ravenline, children: [team-tracking, team-shipping, team-platform, team-devex] }
+---
+# Foxholm — second department (returns & recycling logistics), acquired 2026.
+# Exists to make practice REUSE concrete: same security standard, same gildi
+# stewardship, shared remediation docs, one Group tree (= shared rollups later).
+# The acquisition also explains its maturity gap in the drive narrative.
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: foxholm
+  description: 'Foxholm — returns & recycling logistics, acquired 2026, onboarding to Ravenline practices'
+spec: { type: department, parent: ravenline, children: [team-returns] }
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata: { name: team-returns }
+spec: { type: team, parent: foxholm, children: [] }
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Group
@@ -105,5 +121,11 @@ spec: { memberOf: [team-platform] }
 ---
 apiVersion: backstage.io/v1alpha1
 kind: User
-metadata: { name: freya, description: 'DevEx engineer — runs the portal, gives the tours' }
+metadata: { name: freya, description: 'DevEx engineer — runs the instance, gives the tours' }
 spec: { memberOf: [team-devex] }
+---
+# Cross-department gildi membership — the guild spans org boundaries.
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata: { name: dagny, description: 'Foxholm returns engineer, joined the security guild during onboarding' }
+spec: { memberOf: [team-returns, security-gildi] }

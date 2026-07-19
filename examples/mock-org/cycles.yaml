@@ -17,11 +17,31 @@ apiVersion: siliconsaga.org/v1alpha1
 kind: Cycle
 metadata:
   name: dependency-scanning-drive
-  description: 'Drive: dependency scanning green on every service (paved-road adoption push)'
+  description: 'Drive: dependency scanning green on every service, Ravenline and Foxholm both (paved-road adoption push, module 1.4)'
 spec:
   type: drive
   timeframe: { start: '2026-05-01', end: '2026-07-31' }
   of: group:default/security-gildi
+  owner: group:default/security-gildi
+---
+# The drive's own mid-run report — a Saga narrated by the drive's runner while
+# the Cycle is still open. Gives the adoption story a narrator in-catalog.
+apiVersion: siliconsaga.org/v1alpha1
+kind: Saga
+metadata:
+  name: saga-dependency-scanning-drive
+  description: 'The Saga of the Dependency Scanning Drive (mid-run report)'
+  annotations:
+    siliconsaga.org/saga-doc: ./sagas/dependency-scanning-drive.md
+spec:
+  skald: user:default/astrid
+  timeframe: { start: '2026-05-01', end: '2026-07-31' }
+  touches:
+    - cycle:default/dependency-scanning-drive
+    - component:default/shipping-orchestrator
+    - component:default/carrier-gateway
+    - component:default/intake-scanner
+    - group:default/security-gildi
   owner: group:default/security-gildi
 ---
 # The release retrospective as a Saga — narrated by Runa, Git-backed body.

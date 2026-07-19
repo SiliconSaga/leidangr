@@ -9,6 +9,9 @@ metadata:
   description: 'Tracking event ingest + query API. Security standard: silver (demo narrative).'
   annotations:
     siliconsaga.org/aspects: 'security, operational-readiness'
+    # Adopted module version per aspect (unversioned enrollments predate the
+    # convention). Inert until the scorecard engine consumes it.
+    siliconsaga.org/aspect-versions: 'security@1.4'
     # Facets: type service would default to [api]; this component is also a
     # queue consumer, so it widens its facet set (design §3.6 — the monolith fix).
     siliconsaga.org/facets: 'api, batch'

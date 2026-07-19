@@ -1,6 +1,6 @@
 ---
 name: apply-security-aspect
-description: Agent-side graft for the Security aspect — enroll a target component, adopt the paved road, scaffold stewardship stubs, and pre-flight the trials before opening the CR. The portal-side door is this repo's template.yaml; both read the same module.
+description: Agent-side graft for the Security aspect — enroll a target component, adopt the paved road, scaffold stewardship stubs, and pre-flight the trials before opening the CR. The Create-page door is this repo's template.yaml; both read the same module.
 ---
 
 # Apply the Security aspect (agent graft)
