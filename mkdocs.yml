@@ -16,7 +16,7 @@ nav:
       - 0007 — Cycle custom kind: adrs/0007-cycle-custom-kind.md
       - 0008 — Saga git-backed kind: adrs/0008-saga-git-backed-kind.md
       - 0009 — Guildhall practice model: adrs/0009-guildhall-practice-model.md
-      - 0010 — Aspect module, grafts, blocks: adrs/0010-aspect-module-grafts-blocks.md
+      - 0010 — Aspect module, adoption, blocks: adrs/0010-aspect-module-adoption-blocks.md
 # Mermaid fences render as plain code blocks for now: the mermaid2 plugin's div
 # output can't render inside TechDocs' shadow DOM anyway, and it is absent from
 # the default TechDocs Docker generator image (breaking `runIn: docker` builds).

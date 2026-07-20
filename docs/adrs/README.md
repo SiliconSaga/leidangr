@@ -20,4 +20,4 @@ annotation. Until then they live here as plain Markdown.
 | [0007](0007-cycle-custom-kind.md) | Cycle: a custom catalog kind for bounded groupings |
 | [0008](0008-saga-git-backed-kind.md) | Saga: a Git-backed catalog kind for narrated effort records |
 | [0009](0009-guildhall-practice-model.md) | Guildhall: the practice model — aspects hold standards, guilds are people, no new kinds |
-| [0010](0010-aspect-module-grafts-blocks.md) | Aspect is a module, practices are institutions; grafts have two doors; standards block by facet |
+| [0010](0010-aspect-module-adoption-blocks.md) | Aspect is a module, practices are institutions; adoption has two doors; standards block by facet |

@@ -6,7 +6,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: security-practice
-  description: 'The Security practice: its aspect module — standard, paved road, grafts, and remediation vísar'
+  description: 'The Security practice: its aspect module — standard, paved road, adoption templates, and remediation vísar'
   annotations:
     siliconsaga.org/aspect: 'security'
     siliconsaga.org/visir: './docs/runbooks/rotate-leaked-credential.md'
@@ -19,7 +19,7 @@ metadata:
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/pipeline-templates/sast-scan.yml
       title: Paved road — sast-scan pipeline template
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/template.yaml
-      title: Graft (Create-page door) — Apply the Security aspect
+      title: Adoption (Create-page door) — Apply the Security aspect
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/SKILL.md
-      title: Graft (agent door) — SKILL.md
+      title: Adoption (agent door) — SKILL.md
 spec: { type: practice, lifecycle: production, owner: group:default/security-gildi, system: rl-platform }

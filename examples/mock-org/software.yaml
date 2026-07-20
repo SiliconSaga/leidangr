@@ -24,19 +24,19 @@ kind: System
 metadata: { name: shipping, description: Shipping orchestration product }
 spec: { owner: group:default/team-shipping, domain: ravenline }
 ---
-# The already-grafted story component: enrollment is a RECORD of application.
-# aspect-versions pins the adopted module version; graft-record keeps the PR
+# The already-adopted story component: enrollment is a RECORD of application.
+# aspect-versions pins the adopted module version; adoption-record keeps the PR
 # that applied it (.example host — demo fiction). Both annotations are inert
 # today; their shape is tentative until the scorecard engine consumes them.
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: shipping-orchestrator
-  description: 'Books carriers, prints labels. Security standard: silver — grafted May 2026, reached silver on the next pipeline run.'
+  description: 'Books carriers, prints labels. Security standard: silver — adopted May 2026, reached silver on the next pipeline run.'
   annotations:
     siliconsaga.org/aspects: 'security'
     siliconsaga.org/aspect-versions: 'security@1.4'
-    siliconsaga.org/graft-record: 'security: https://git.ravenline.example/shipping/shipping-orchestrator/pull/412'
+    siliconsaga.org/adoption-record: 'security: https://git.ravenline.example/shipping/shipping-orchestrator/pull/412'
 spec: { type: service, lifecycle: production, owner: group:default/team-shipping, system: shipping }
 ---
 apiVersion: backstage.io/v1alpha1
@@ -49,14 +49,14 @@ metadata:
     siliconsaga.org/aspect-versions: 'security@1.2'
 spec: { type: service, lifecycle: production, owner: group:default/team-shipping, system: shipping }
 ---
-# Pristine and unenrolled — the graft's demo target: apply the Security aspect
+# Pristine and unenrolled — the adoption demo target: apply the Security aspect
 # to it via the scaffolder Template (Create-page door) or SKILL.md (agent door)
 # in repos/security-aspect/.
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: label-service
-  description: 'Prints shipping labels. Not yet enrolled in any aspect — graft me.'
+  description: 'Prints shipping labels. Not yet enrolled in any aspect — adopt me.'
 spec: { type: service, lifecycle: production, owner: group:default/team-shipping, system: shipping }
 ---
 # Foxholm's software — the practice-reuse beat: the SAME security standard,
@@ -66,17 +66,17 @@ kind: System
 metadata: { name: returns-logistics, description: 'Foxholm returns & recycling flows' }
 spec: { owner: group:default/team-returns, domain: ravenline }
 ---
-# Reuse success: grafted during acquisition onboarding via the same Create-page
+# Reuse success: adopted during acquisition onboarding via the same Create-page
 # door — same-day enrollment, silver two pipeline runs later.
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: refund-service
-  description: 'Handles refund workflows. Security standard: silver — grafted June 2026 during Foxholm onboarding.'
+  description: 'Handles refund workflows. Security standard: silver — adopted June 2026 during Foxholm onboarding.'
   annotations:
     siliconsaga.org/aspects: 'security'
     siliconsaga.org/aspect-versions: 'security@1.4'
-    siliconsaga.org/graft-record: 'security: https://git.foxholm.example/returns/refund-service/pull/57'
+    siliconsaga.org/adoption-record: 'security: https://git.foxholm.example/returns/refund-service/pull/57'
 spec: { type: service, lifecycle: production, owner: group:default/team-returns, system: returns-logistics }
 ---
 # The drive's remaining Foxholm laggard: legacy build image from before the
@@ -103,7 +103,7 @@ spec: { type: cluster, owner: group:default/team-platform, system: rl-platform }
 ---
 # NOTE: the security-practice Component lives in the aspect repo's
 # catalog-info.yaml (live topology — see repos/security-aspect/, registered in
-# app-config alongside the graft template.yaml).
+# app-config alongside the adoption template.yaml).
 #
 # guild-hall (type:hub) lives in the repo root catalog-info.yaml (registered
 # separately in app-config) so its backstage.io/techdocs-ref: dir:. resolves

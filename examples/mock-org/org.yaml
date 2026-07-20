@@ -69,7 +69,7 @@ metadata:
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/standard.yaml
       title: Security standard (blocks of trials, tiered)
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/template.yaml
-      title: Graft — Apply the Security aspect
+      title: Adoption — Apply the Security aspect
 spec:
   type: gildi
   parent: ravenline
