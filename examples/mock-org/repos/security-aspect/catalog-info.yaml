@@ -19,7 +19,7 @@ metadata:
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/pipeline-templates/sast-scan.yml
       title: Paved road — sast-scan pipeline template
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/template.yaml
-      title: Graft (portal door) — Apply the Security aspect
+      title: Graft (Create-page door) — Apply the Security aspect
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/SKILL.md
       title: Graft (agent door) — SKILL.md
 spec: { type: practice, lifecycle: production, owner: group:default/security-gildi, system: rl-platform }

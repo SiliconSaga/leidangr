@@ -60,10 +60,14 @@ byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localh
 
 # Backend readiness != catalog-ingestion readiness. Poll until the custom entities
 # appear (or the timeout expires) rather than sleeping once and querying once.
-# The wall-clock deadline bounds the worst case: ten lookups per iteration could
-# each burn their 5s curl timeout when the catalog is wedged, so iteration count
-# alone is not a real bound.
-CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'; GILDI='{}'; HUB='{}'; TRACKAPI='{}'; PRACTICE='{}'; GRAFT='{}'
+# The wall-clock deadline keeps the worst case near the budget: thirteen lookups
+# per iteration could each burn their 5s curl timeout when the catalog is wedged,
+# so iteration count alone is not a real bound. The deadline is checked once per
+# iteration, so a fully wedged run can overshoot it by up to one iteration
+# (~65s) — acceptable slack for a smoke.
+CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'
+GILDI='{}'; HUB='{}'; TRACKAPI='{}'; PRACTICE='{}'; GRAFT='{}'
+FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'
 deadline=$((SECONDS + 300))
 for _ in $(seq 1 120); do
   if (( SECONDS >= deadline )); then break; fi
@@ -77,6 +81,9 @@ for _ in $(seq 1 120); do
   TRACKAPI="$(byname component/default/tracking-api)"
   PRACTICE="$(byname component/default/security-practice)"
   GRAFT="$(byname template/default/apply-security-aspect)"
+  FOXDEPT="$(byname group/default/foxholm)"
+  FOXSCAN="$(byname component/default/intake-scanner)"
+  DRVSAGA="$(byname saga/default/saga-dependency-scanning-drive)"
   if printf '%s' "$CYCLE" | grep -q 'soccer-2026-spring' \
      && printf '%s' "$SAGA" | grep -q 'saga-soccer-2026-spring' \
      && printf '%s' "$GROUP" | grep -q '"name":"mtl"' \
@@ -86,7 +93,10 @@ for _ in $(seq 1 120); do
      && printf '%s' "$HUB" | grep -q 'guild-hall' \
      && printf '%s' "$TRACKAPI" | grep -q 'tracking-api' \
      && printf '%s' "$PRACTICE" | grep -q 'security-practice' \
-     && printf '%s' "$GRAFT" | grep -q 'apply-security-aspect'; then break; fi
+     && printf '%s' "$GRAFT" | grep -q 'apply-security-aspect' \
+     && printf '%s' "$FOXDEPT" | grep -q '"name":"foxholm"' \
+     && printf '%s' "$FOXSCAN" | grep -q 'intake-scanner' \
+     && printf '%s' "$DRVSAGA" | grep -q 'saga-dependency-scanning-drive'; then break; fi
   sleep 1
 done
 
@@ -134,6 +144,15 @@ check_rel "Graft ownedBy security-gildi"             "$GRAFT"    ownedBy   group
 check     "Ravenline Saga ingested"                  "$RLSAGA"  '"kind":"Saga"'                             || pass=0
 check_rel "Ravenline Saga ownedBy skald (runa)"      "$RLSAGA"  ownedBy   user:default/runa                 || pass=0
 check_rel "Ravenline Saga dependsOn its Cycle"       "$RLSAGA"  dependsOn cycle:default/tracking-2026-2     || pass=0
+# Round-1 narrative additions: the Foxholm department (practice reuse across an
+# org boundary), the versioned-enrollment annotation, and the drive's mid-run
+# Saga with its relations.
+check     "Foxholm department ingested"              "$FOXDEPT" '"type":"department"'                       || pass=0
+check     "Foxholm enrollment versioned (1.3)"       "$FOXSCAN" '"siliconsaga.org/aspect-versions":"security@1.3"' || pass=0
+check_rel "Foxholm component ownedBy team-returns"   "$FOXSCAN" ownedBy   group:default/team-returns        || pass=0
+check     "Drive Saga ingested"                      "$DRVSAGA" '"kind":"Saga"'                             || pass=0
+check_rel "Drive Saga ownedBy skald (astrid)"        "$DRVSAGA" ownedBy   user:default/astrid               || pass=0
+check_rel "Drive Saga dependsOn the drive Cycle"     "$DRVSAGA" dependsOn cycle:default/dependency-scanning-drive || pass=0
 
 # Surface any catalog processing errors for the seeds (MTL + Ravenline).
 echo "--- catalog errors mentioning the seeds (if any) ---"

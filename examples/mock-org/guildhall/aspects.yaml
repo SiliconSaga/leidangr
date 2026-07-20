@@ -9,6 +9,12 @@ aspects:
     description: Services uphold the security bar; the practice ships the paved road that clears it.
     steward: group:default/security-gildi
     module: ../repos/security-aspect
+    # Current module release. 1.2 = pre-paved-road era (hand-rolled pipeline
+    # config); 1.4 (2026-04) refreshed the dependency-scan template and added
+    # the 30-day critical-vulns clock. Enrolled components record what they
+    # adopted via the siliconsaga.org/aspect-versions annotation — the gap
+    # between this number and theirs is what an adoption drive closes.
+    version: '1.4'
     standards:
       - ../repos/security-aspect/standard.yaml
   - id: operational-readiness

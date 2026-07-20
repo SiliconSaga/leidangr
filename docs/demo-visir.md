@@ -26,11 +26,12 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 **Verify checklist** (run the day before a demo, not the morning of):
 
 - [ ] Catalog loads; the Kind dropdown includes **Cycle** and **Saga**
-- [ ] `ravenline` Group shows the org tree plus two `gildi`-typed Groups
+- [ ] `ravenline` Group shows the org tree (two departments — `rl-engineering`, `foxholm`) plus two `gildi`-typed Groups
 - [ ] `guild-hall` Component (type `hub`) exists, owned by `team-devex`, linking to this vísir
 - [ ] `security-practice` Component (type `practice`) shows its links into the aspect repo
 - [ ] Create page lists **Apply the Security aspect** (the graft Template)
 - [ ] `tracking-2026-2` Cycle shows the curated overview card
+- [ ] `saga-dependency-scanning-drive` Saga exists (Astrid's mid-run drive report)
 - [ ] `make smoke-catalog` passes (your offline proof, and the fallback if the UI misbehaves live)
 
 ## The tour (~15 min as a demo; self-paced for new users)
@@ -40,12 +41,13 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 **2. Catalog tour (6 min).**
 
 - *Catalog → Kind dropdown*: **Cycle** and **Saga** next to Component/Group. Talking point: two custom kinds total; the entire practice layer adds **zero** more — typed Groups, vocabularies, annotations, links.
-- *`ravenline` Group → relations graph*: the org tree plus two **guilds** (`spec.type: gildi`) cross-cutting it — one practice-aligned (Security), one role-aligned (Release Captains). A guild is deliberately just a typed Group: membership, rollups, and the graph come free.
+- *`ravenline` Group → relations graph*: the org tree — two departments, engineering and the acquired **Foxholm** returns line — plus two **guilds** (`spec.type: gildi`) cross-cutting it — one practice-aligned (Security), one role-aligned (Release Captains). A guild is deliberately just a typed Group: membership, rollups, and the graph come free. Point out Dagny: a Foxholm engineer in the security guild — the guild spans departments, and that's the whole point.
 - *`team-devex` → `guild-hall`*: the instance you are standing in is itself cataloged (type `hub` — anticipating hub pages: singleton overviews per plugin feature group), owned by the DevEx team, and its vísir is this document. Dogfood moment.
 - *`security-practice` Component (type `practice`)*: the **practice** is the institution (the guild runs it); its **aspect** is the module — a repo holding the blocked standard, the paved road, the grafts, and the remediation docs. The entity links go straight into that repo, one click each.
 - *Create page → **Apply the Security aspect***: the **graft** — applying a practice is a self-service action, not a wiki page. Run it against `label-service` (the pristine, unenrolled component): the mock edition logs its weave plan — annotation, CI includes, stewardship stubs, PR. Then the CLI beat: the same repo ships `SKILL.md`, the identical graft for agents — *some users never leave their terminal, and neither do their agents.*
 - *`tracking-api` Component*: enrollment annotations (`siliconsaga.org/aspects`) — which practices apply to this service. Description carries the demo narrative: silver. If TechDocs generation is available, open its **Docs tab**: the on-call primer and the queue-backlog runbook render as a real doc site (runbooks nest under docs as an interim convention until the parameterized-runbooks plugin exists — say that out loud, it's a roadmap point).
-- *`tracking-2026-2` Cycle*: a release as a first-class bounded effort. Then *`dependency-scanning-drive`*: a time-bound push — Soundcheck sells this as "Campaigns"; here it's a Cycle of type drive.
+- *`tracking-2026-2` Cycle*: a release as a first-class bounded effort. Then *`dependency-scanning-drive`*: a time-bound push — Soundcheck sells this as "Campaigns"; here it's a Cycle of type drive. **The story beat**: the guild shipped module 1.4; each enrolled component's `aspect-versions` annotation records what it actually adopted; the gap is what the drive closes. Walk it: `shipping-orchestrator` (grafted May — its `graft-record` annotation keeps the PR, the "this happened" evidence), `refund-service` (Foxholm, grafted during onboarding — same standard, same guild, second department), `intake-scanner` and `carrier-gateway` (the two remaining laggards, each bronze for a stated reason).
+- *`saga-dependency-scanning-drive`*: **a Saga can narrate a Cycle still in flight** — Astrid's mid-run report tallies the drive (three of five green, twelve days left). Read the shipping-orchestrator paragraph aloud: graft from the Create page, one-line PR, green on the next run — the paved-road pitch as a past event, not a promise.
 - *`saga-tracking-2026-2`*: the retrospective as a catalog citizen — authored by a person, linked to everything it touched, body in Git. Open `examples/mock-org/sagas/tracking-2026-2.md` and read two sentences aloud; the May 14th incident sets up the next stop.
 
 **3. Files tour (4 min).** In an editor, `examples/mock-org/`:

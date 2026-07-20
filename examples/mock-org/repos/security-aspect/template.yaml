@@ -1,4 +1,4 @@
-# The scaffolder graft — the portal-user front door for applying this aspect
+# The scaffolder graft — the Create-page front door for applying this aspect
 # (design §3.7). A typed Backstage Template: running it IS the weaving. This
 # mock edition logs its weave plan via debug:log instead of opening a real PR,
 # consistent with the seed's designed-not-executed honesty; a live edition
