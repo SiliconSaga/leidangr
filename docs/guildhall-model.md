@@ -14,7 +14,7 @@ graph TD
 
     subgraph "Concern layer"
         PRACTICE["Practice (the living institution; Component spec.type:practice)"]
-        ASPECT["Aspect module (the versioned repo — standard + paved road + grafts)"]
+        ASPECT["Aspect module (the versioned repo — standard + paved road + adoption templates)"]
     end
 
     subgraph "Measurement layer"
@@ -58,12 +58,12 @@ graph TD
 - An **aspect** is supply-side: what a component takes on when it enrolls.
 - A **standard** is the bar: a set of checks, organized by tool (blocks) and maturity (tiers).
 
-## Graft — two doors, one module
+## Adoption — two doors, one module
 
 ```mermaid
 flowchart LR
     PORTAL["Portal user (Create page)"] -->|"clicks"| TEMPLATE["Template spec.type:aspect (template.yaml)"]
-    AGENT["Agent / CLI user (terminal)"] -->|"reads"| SKILL_MD["SKILL.md (agent graft)"]
+    AGENT["Agent / CLI user (terminal)"] -->|"reads"| SKILL_MD["SKILL.md (agent door)"]
     TEMPLATE -->|"same steps"| MODULE["Aspect module repo (standard + paved road + remediation docs)"]
     SKILL_MD -->|"same steps"| MODULE
     MODULE -->|"enrolls"| COMPONENT2["Target Component (annotation added, CI includes adopted, stubs scaffolded)"]

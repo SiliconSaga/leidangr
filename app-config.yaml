@@ -147,7 +147,7 @@ catalog:
       rules:
         - allow: [Domain, System, Resource, Component]
     # Live-topology samples: per-repo catalog-info (discovered by a provider in
-    # a real deployment) + the security aspect's graft Template.
+    # a real deployment) + the security aspect's adoption template.
     - type: file
       target: ../../examples/mock-org/repos/tracking-api/catalog-info.yaml
       rules:

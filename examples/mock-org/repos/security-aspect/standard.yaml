@@ -1,5 +1,5 @@
 # The security standard — lives in the ASPECT REPO (the module) beside the
-# paved road, the grafts, and the remediation vísar it references (design
+# paved road, the adoption templates, and the remediation vísar it references (design
 # §3.4/§3.6). Git-backed YAML consumed by the future scorecard plugin.
 #
 # Two orthogonal axes (design §3.6):

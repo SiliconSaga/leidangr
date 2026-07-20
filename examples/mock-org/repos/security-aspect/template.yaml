@@ -1,4 +1,4 @@
-# The scaffolder graft — the Create-page front door for applying this aspect
+# The scaffolder adoption template — the Create-page front door for applying this aspect
 # (design §3.7). A typed Backstage Template: running it IS the weaving. This
 # mock edition logs its weave plan via debug:log instead of opening a real PR,
 # consistent with the seed's designed-not-executed honesty; a live edition
@@ -13,7 +13,7 @@ metadata:
     siliconsaga.org/aspect: 'security'
   links:
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/standard.yaml
-      title: The standard this graft works toward
+      title: The standard this adoption works toward
 spec:
   owner: group:default/security-gildi
   type: aspect
@@ -35,7 +35,7 @@ spec:
       action: debug:log
       input:
         message: |
-          Would graft the Security aspect onto ${{ parameters.component }}:
+          Would apply the Security aspect to ${{ parameters.component }}:
             1. add siliconsaga.org/aspects: security to its catalog-info.yaml
             2. add siliconsaga.org/facets: ${{ parameters.facets }} (if overriding type defaults)
             3. add the paved-road includes (dependency-scan.yml, sast-scan.yml) to its CI

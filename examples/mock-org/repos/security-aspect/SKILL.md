@@ -1,11 +1,11 @@
 ---
 name: apply-security-aspect
-description: Agent-side graft for the Security aspect — enroll a target component, adopt the paved road, scaffold stewardship stubs, and pre-flight the trials before opening the CR. The Create-page door is this repo's template.yaml; both read the same module.
+description: Agent-side adoption for the Security aspect — enroll a target component, adopt the paved road, scaffold stewardship stubs, and pre-flight the trials before opening the CR. The Create-page door is this repo's template.yaml; both read the same module.
 ---
 
-# Apply the Security aspect (agent graft)
+# Apply the Security aspect (agent door)
 
-You are grafting this aspect onto a target component. Same steps as the scaffolder template — you are the other front door (design §3.7: some users never leave their CLI, and neither do you).
+You are applying this aspect to a target component. Same steps as the scaffolder template — you are the other front door (design §3.7: some users never leave their CLI, and neither do you).
 
 1. **Read the module.** `standard.yaml` in this repo is the source of truth: blocks, facet applicability, trials, tier ladder. Determine which blocks apply to the target (its `spec.type` sets default facets — service→api, website→web-ui; a `siliconsaga.org/facets` annotation overrides).
 2. **Enroll.** In the target's `catalog-info.yaml`, add `security` to the `siliconsaga.org/aspects` annotation (create it if absent). Add a `siliconsaga.org/facets` annotation only if the type defaults are wrong.
