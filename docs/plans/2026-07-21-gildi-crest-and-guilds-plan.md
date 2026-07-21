@@ -87,14 +87,10 @@ describe('blazonFor', () => {
     expect(blazonFor('security-gildi')).toEqual(blazonFor('security-gildi'));
   });
   it('honours the rule of tincture (field colour ↔ charge metal or vice versa)', () => {
-    const colours = ['gules', 'azure', 'vert', 'sable', 'purpure'];
     const metals = ['or', 'argent'];
     for (const seed of ['a', 'security-gildi', 'release-captains-gildi', 'platform', 'data', 'zzz']) {
       const b = blazonFor(seed);
-      const fieldIsColour = colours.includes(b.fieldTincture);
-      const chargeIsMetal = metals.includes(b.chargeTincture);
-      expect(fieldIsColour).toBe(!chargeIsMetal ? fieldIsColour : true);
-      // exactly one side is a metal
+      // rule of tincture: exactly one of field/charge is a metal (colour on metal, or metal on colour)
       expect(metals.includes(b.fieldTincture)).not.toEqual(metals.includes(b.chargeTincture));
     }
   });
