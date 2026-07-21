@@ -21,7 +21,7 @@ Two framing decisions set by this design:
 **Target the new frontend system.** This repo is on Backstage 1.52 with the new frontend system as default (`@backstage/frontend-defaults`, Blueprints, app modules) — no legacy `App.tsx` route tree. `gildi` is built with `createFrontendPlugin` (from `@backstage/frontend-plugin-api`), default-exported from `src/index.ts`, and composed via extensions from Blueprints:
 
 - **`PageBlueprint`** — the Guild Hall page, mounted at `/guild-hall` (route ref in `src/routes.ts`).
-- **`NavItemBlueprint`** — a "Guild Hall" sidebar entry (see §9 on the eventual "Hubs" group).
+- **Sidebar entry** — surfaced from the `PageBlueprint`'s own `title`/`icon` (the standalone `NavItemBlueprint` was removed in `frontend-plugin-api@0.17.0`); see §9 on the eventual "Hubs" group.
 - **`EntityCardBlueprint`** — the entity-page decoration cards (guild / practice / aspect), mirroring the existing `packages/app/src/modules/cycle/` card as the in-repo pattern.
 - **`ApiBlueprint`** (`createApiRef` + `useApi`) — shared read/query logic and the crest generator (§5).
 

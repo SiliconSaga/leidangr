@@ -4,7 +4,7 @@
 
 **Goal:** Stand up the `gildi` plugin as a mounted, sidebar-linked (empty) Guild Hall page on the new frontend system, get Mermaid rendering in TechDocs, and rename the guild **group type** `gildi` → `guild` — the prerequisites every later slice builds on.
 
-**Architecture:** A new workspace package `plugins/gildi` exposes a `createFrontendPlugin` default export with a `PageBlueprint` (route `/guild-hall`) and a `NavItemBlueprint` (sidebar "Guild Hall"); the app registers it in `packages/app/src/App.tsx` `features`. Mermaid is wired via the TechDocs Addons framework. The seed's guild Groups switch `spec.type: gildi` → `guild`. No catalog querying or cards yet — that is Plan 2+.
+**Architecture:** A new workspace package `plugins/gildi` exposes a `createFrontendPlugin` default export with a `PageBlueprint` (route `/guild-hall`, whose `title`/`icon` also provide the sidebar entry — the standalone `NavItemBlueprint` was removed in frontend-plugin-api 0.17.0); the app registers it in `packages/app/src/App.tsx` `features`. Mermaid is wired via the TechDocs Addons framework. The seed's guild Groups switch `spec.type: gildi` → `guild`. No catalog querying or cards yet — that is Plan 2+.
 
 **Tech Stack:** Backstage 1.52 (new frontend system), `@backstage/frontend-plugin-api@^0.17.2`, `@backstage/plugin-catalog-react@^3.1.0`, `@backstage/frontend-test-utils@^0.6.1`, TypeScript ~5.8, React 18, Yarn 4.13 (Corepack).
 
@@ -25,7 +25,7 @@
 **Files:**
 - Modify: `examples/mock-org/org.yaml` (the two guild Groups' `spec.type`)
 - Modify: `scripts/smoke-catalog.sh` (the type assertion)
-- Modify (label/type references only): `docs/guildhall-model.md`, `docs/demo-visir.md`, `examples/mock-org/README.md`, `docs/plans/2026-07-10-guilds-skills-standards-design.md`
+- Modify (label/type references only): `docs/guildhall-model.md`, `docs/demo-visir.md`, `examples/mock-org/README.md`, `docs/plans/2026-07-10-guilds-skills-standards-design.md`, `docs/adrs/0009-guildhall-practice-model.md`
 - Test: `scripts/smoke-catalog.sh` (existing runtime proof)
 
 **Interfaces:**
@@ -33,7 +33,7 @@
 
 - [ ] **Step 1: Find every occurrence of the type, separating type-value from concept/name.**
 
-Run: `rg -n "gildi" components/leidangr` (via the Grep tool). Classify each hit: **rename** only where it is the *type value* (`spec.type: gildi`, "type `gildi`", "`spec.type:gildi`", "gildi-typed"); **leave** group *names* (`security-gildi`, `release-captains-gildi`), the plugin/concept word "gildi", and the `-gildi` suffixes in refs.
+Run: `rg -n "gildi" .` (via the Grep tool, from the repo root). Classify each hit: **rename** only where it is the *type value* (`spec.type: gildi`, "type `gildi`", "`spec.type:gildi`", "gildi-typed"); **leave** group *names* (`security-gildi`, `release-captains-gildi`), the plugin/concept word "gildi", and the `-gildi` suffixes in refs.
 
 - [ ] **Step 2: Change the two Groups' type in the seed.**
 
@@ -211,7 +211,7 @@ export default createApp({
 ```
 Add `"@siliconsaga/plugin-gildi": "^0.1.0"` to `packages/app/package.json` dependencies, then re-run `ws exec leidangr corepack yarn install`.
 
-- [ ] **Step 10: Ensure the sidebar shows "Guild Hall".** The nav renders `nav.rest({ sortBy: 'title' })` inside the Menu group (`Sidebar.tsx:38-40`), so a `NavItemBlueprint` surfaces automatically — no edit needed unless you want it pinned above `nav.rest`; if pinning, add `{nav.take('nav-item:gildi')}` after `nav.take('page:scaffolder')`. Confirm the id with the app-visualizer.
+- [ ] **Step 10: Ensure the sidebar shows "Guild Hall".** The nav renders `nav.rest({ sortBy: 'title' })` inside the Menu group (`Sidebar.tsx:38-40`), so the `PageBlueprint`'s `title`/`icon` surface as a sidebar item automatically — no edit needed. (If you ever want it pinned above `nav.rest`, `nav.take(<the page's nav id>)` after `nav.take('page:scaffolder')`, confirming the id with the app-visualizer.)
 
 - [ ] **Step 11: Verify the whole app builds and the page mounts.**
 
