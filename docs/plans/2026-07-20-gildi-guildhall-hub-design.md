@@ -66,7 +66,7 @@ Each guild gets a **generated coat of arms** — GitHub-identicon energy, but a 
 - **Deterministic from the guild id.** Hash the id → pick a field division (plain / per pale / per fess / per bend / quarterly), two tinctures from the heraldic palette (respecting the rule of tincture — colour-on-metal / metal-on-colour), and a charge (key, chevron, mullet, roundel, cross, lion, …). Render as **inline SVG** — no art assets, no external calls.
 - **Deliberately simple.** Recognizability over ornament; over-complex arms lose the at-a-glance identicon quality. Keep charges bold and few.
 - **Escape hatches.** An annotation (e.g. `siliconsaga.org/arms`) overrides with a hand-picked blazon or image; a plain **monogram** is the fallback if generation is disabled.
-- **Self-contained module.** Isolated enough to be its own small piece so other hubs (a future people hub, etc.) reuse it. Applies to any `Group`, so teams could carry arms too if ever wanted.
+- **Self-contained module.** Isolated enough to be its own small piece so other hubs (a future people hub, etc.) reuse it. **v1 renders crests for guilds only** — the generator works on any `Group`, so non-guild teams could carry arms later, but that stays out of v1.
 
 ## 6. Annotation-driven decoration (cross-kind)
 
@@ -106,11 +106,11 @@ The hub page's customization surface is **extension config** in `app-config.yaml
 
 ## 10. Actions — scaffolder links, tag-sourced
 
-The Actions section is **links to Scaffolder Templates** (the idiomatic Backstage "Create" surface), not bespoke buttons — so "establish a new guild", "charter a practice", "start a drive" ride the same adoption/two-door machinery rather than being special-cased. The hub surfaces Templates **by a convention tag** (e.g. `guildhall`) — least coupling, composes with owner-based discovery later. Dogfooding falls out cleanly: **running a guild hall is itself a practice**, so the guild hall's operational scaffolders are the adoption templates of the guild hall's own practice. For v1 these are the existing mock adoption Templates plus a couple of new mock ones; a light `guildhall` practice + aspect can model the dogfood as a small flourish (not a blocker).
+The Actions section is **links to Scaffolder Templates** (the idiomatic Backstage "Create" surface), not bespoke buttons — so "establish a new guild", "charter a practice", "start a drive" ride the same adoption/two-door machinery rather than being special-cased. The hub surfaces Templates **by a convention tag `guild-hall`** — a lowercase slug (tags render in filter chips / URLs and are never the user-facing label; the action card's friendly name comes from the Template *title*, so "Guild Hall" stays the display and the tag stays a tidy identifier). Tag-based discovery is least-coupling and composes with owner-based discovery later. Dogfooding falls out cleanly: **running a guild hall is itself a practice**, so the guild hall's operational scaffolders are the adoption templates of the guild hall's own practice. **v1 ships at least a light dogfood**: a `guildhall` practice + its aspect (with one or two mock adoption Templates tagged `guild-hall`), so the hub demonstrably runs on its own model rather than only describing it.
 
 ## 11. Mermaid via the TechDocs Addons framework
 
-Adopt the community TechDocs **Addons** mermaid addon (`backstage-plugin-techdocs-addon-mermaid`) so existing ```` ```mermaid ```` fences (in root `docs/guildhall-model.md` and elsewhere) render client-side inside TechDocs' shadow DOM — the path already flagged in `mkdocs.yml` and the demo retro. This replaces the intentionally-removed `mkdocs-mermaid2` plugin (absent from the Docker generator image, shadow-DOM-blocked). Verify currency of the addon against the installed TechDocs version before wiring. This is small and self-contained; it can ride in the same effort or land as its own step.
+Adopt the community TechDocs **Addons** mermaid addon (`backstage-plugin-techdocs-addon-mermaid`) so existing ```` ```mermaid ```` fences (in root `docs/guildhall-model.md` and elsewhere) render client-side inside TechDocs' shadow DOM — the path already flagged in `mkdocs.yml` and the demo retro. This replaces the intentionally-removed `mkdocs-mermaid2` plugin (absent from the Docker generator image, shadow-DOM-blocked). Verify currency of the addon against the installed TechDocs version before wiring. **Prioritized:** it's small, self-contained, and independent of the rest of the plugin, so land it **as early as practical** (its own step is fine) — the concept diagrams should render in-product as soon as we can.
 
 ## 12. Scope and phasing
 
@@ -120,9 +120,9 @@ Multi-day is acceptable; presentation is the priority. Rough order (each a shipp
 2. **Crest module** (generated heraldic SVG from group id) — the visual keystone; unit-tested for determinism + tincture rules.
 3. **Guilds section** — typed catalog query + the guild card (crest, description, stewards, practice/aspect chips), the wide growing column.
 4. **Drives band + Chronicle rail** — drive cards (progress) and saga preview cards (front-matter), swappable zones.
-5. **Actions** — tag-sourced scaffolder-link cards.
+5. **Actions + the `guildhall` dogfood** — tag-sourced (`guild-hall`) scaffolder-link action cards, plus the light dogfood: a `guildhall` practice + aspect with one or two mock adoption Templates so the hub runs on its own model.
 6. **Entity-page decoration** — guild page (annotation-driven charter/links/roster), practice & aspect cards (aspect shows the tier ladder; component shows the earned badge).
-7. **Mermaid TechDocs addon** (independent; any time).
+7. **Mermaid TechDocs addon** — independent of the plugin; land **early / in parallel** (prioritized, §11), not last.
 
 ## 13. Out of scope / deferred / fast-follows
 
@@ -135,8 +135,8 @@ Multi-day is acceptable; presentation is the priority. Rough order (each a shipp
 - **Cards/page:** `renderInTestApp` / `createExtensionTester` (from `@backstage/frontend-test-utils`, already a dev dep) with a mocked `catalogApi` returning seed-shaped entities; assert curated content renders (names, chips, identity marks) and empty states are graceful.
 - **Seed:** extend `make smoke-catalog` for the `guild`-typed Group assertion (replacing the `gildi` type check); the full `make ci` gate (config-check + lint + tsc + tests) covers the plugin build.
 
-## 15. Open questions
+## 15. Decisions and open questions
 
-- Exact heraldic charge set and palette (kept small); whether teams (non-guild Groups) also get arms in v1 or later.
-- The `guildhall` action tag's final spelling and whether the dogfood `guildhall` practice/aspect ships in v1 or is deferred.
-- Whether the Mermaid addon rides this plugin's first PR or lands separately.
+**Resolved in review (2026-07-20):** action discovery tag = **`guild-hall`** (a slug; "Guild Hall" remains the display, sourced from the Template title); **crests are guilds-only in v1** (non-guild teams may get arms later); the **`guildhall` dogfood practice + aspect ships in v1**; **Mermaid is prioritized** to land early and independently.
+
+**Still open (detail, non-blocking):** the exact heraldic charge set and tincture palette — kept deliberately small for recognizability; pin it during the crest slice (§12.2).
