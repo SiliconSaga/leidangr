@@ -9,7 +9,7 @@ graph TD
     subgraph "People layer"
         SKILL["Skill (vocabulary term on a person's profile)"]
         CRAFT["Craft / Role (skill bundle; what staffing asks for)"]
-        GILDI["Gildi / Guild (Group spec.type:gildi) — the fellowship"]
+        GILDI["Gildi / Guild (Group spec.type:guild) — the fellowship"]
     end
 
     subgraph "Concern layer"

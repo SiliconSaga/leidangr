@@ -26,7 +26,7 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 **Verify checklist** (run the day before a demo, not the morning of):
 
 - [ ] Catalog loads; the Kind dropdown includes **Cycle** and **Saga**
-- [ ] `ravenline` Group shows the org tree (two departments — `rl-engineering`, `foxholm`) plus two `gildi`-typed Groups
+- [ ] `ravenline` Group shows the org tree (two departments — `rl-engineering`, `foxholm`) plus two `guild`-typed Groups
 - [ ] `guild-hall` Component (type `hub`) exists, owned by `team-devex`, linking to this vísir
 - [ ] `security-practice` Component (type `practice`) shows its links into the aspect repo
 - [ ] Create page lists **Apply the Security aspect** (the adoption template)
@@ -41,7 +41,7 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 **2. Catalog tour (6 min).**
 
 - *Catalog → Kind dropdown*: **Cycle** and **Saga** next to Component/Group. Talking point: two custom kinds total; the entire practice layer adds **zero** more — typed Groups, vocabularies, annotations, links.
-- *`ravenline` Group → relations graph*: the org tree — two departments, engineering and the acquired **Foxholm** returns line — plus two **guilds** (`spec.type: gildi`) cross-cutting it — one practice-aligned (Security), one role-aligned (Release Captains). A guild is deliberately just a typed Group: membership, rollups, and the graph come free. Point out Dagny: a Foxholm engineer in the security guild — the guild spans departments, and that's the whole point.
+- *`ravenline` Group → relations graph*: the org tree — two departments, engineering and the acquired **Foxholm** returns line — plus two **guilds** (`spec.type: guild`) cross-cutting it — one practice-aligned (Security), one role-aligned (Release Captains). A guild is deliberately just a typed Group: membership, rollups, and the graph come free. Point out Dagny: a Foxholm engineer in the security guild — the guild spans departments, and that's the whole point.
 - *`team-devex` → `guild-hall`*: the instance you are standing in is itself cataloged (type `hub` — anticipating hub pages: singleton overviews per plugin feature group), owned by the DevEx team, and its vísir is this document. Dogfood moment.
 - *`security-practice` Component (type `practice`)*: the **practice** is the institution (the guild runs it); its **aspect** is the module — a repo holding the blocked standard, the paved road, the adoption templates, and the remediation docs. The entity links go straight into that repo, one click each.
 - *Create page → **Apply the Security aspect***: the **adoption** — applying a practice is a self-service action, not a wiki page. Run it against `label-service` (the pristine, unenrolled component): the mock edition logs its weave plan — annotation, CI includes, stewardship stubs, PR. Then the CLI beat: the same repo ships `SKILL.md`, the identical adoption for agents — *some users never leave their terminal, and neither do their agents.*

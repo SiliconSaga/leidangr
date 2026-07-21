@@ -128,12 +128,12 @@ check_rel "Saga ownedBy owner (mtl-soccer)" "$SAGA"  ownedBy   group:default/mtl
 check_rel "Saga dependsOn Cycle (touches)"  "$SAGA"  dependsOn cycle:default/soccer-2026-spring  || pass=0
 check     "Saga doc annotation preserved"   "$SAGA"  'siliconsaga.org/saga-doc'                  || pass=0
 # Mock software org (Ravenline — Guildhall running example): the software
-# side of the two-family model plus a gildi-typed Group, ingesting with the
+# side of the two-family model plus a guild-typed Group, ingesting with the
 # same machinery and zero new code.
 check     "Ravenline Cycle ingested (release)"       "$RLCYCLE" '"type":"release"'                          || pass=0
 check_rel "Ravenline Cycle partOf parcel-tracking"   "$RLCYCLE" partOf    system:default/parcel-tracking    || pass=0
 check_rel "Ravenline Cycle dependsOn prod-cluster"   "$RLCYCLE" dependsOn resource:default/prod-cluster     || pass=0
-check     "Gildi Group ingested (type gildi)"        "$GILDI"   '"type":"gildi"'                            || pass=0
+check     "Guild Group ingested (type guild)"        "$GILDI"   '"type":"guild"'                            || pass=0
 check     "Guild Hall hub ingested (type hub)"       "$HUB"     '"type":"hub"'                              || pass=0
 check_rel "Guild Hall hub ownedBy team-devex"        "$HUB"     ownedBy   group:default/team-devex          || pass=0
 # Live-topology per-repo catalog-info + the aspect's adoption template (vanilla Template kind).

@@ -36,10 +36,10 @@ The `guildhall/` tree and most of `repos/` are **plain YAML/markdown, deliberate
 
 | Ingests today (catalog) | Waits for plugins |
 |---|---|
-| Org tree, gildi Groups (`spec.type: gildi`), Users | Skill profiles decorating Users |
+| Org tree, guild Groups (`spec.type: guild`), Users | Skill profiles decorating Users |
 | Software graph, enrollment + vísir annotations (inert but present) | Standards evaluation / scorecards (Tech Insights or custom) |
 | `Cycle` (release + drive) and `Saga` with relations | Runbooks plugin (parameterized vísar) |
 
 Until the scorecard engine exists, the **practice → aspect → standard → trials tie is navigational**: the `security-practice` Component's and `security-gildi` Group's entity links jump straight into the aspect repo — standard, paved road, adoption templates, remediation docs. The scorecard plugin later turns that chain into live data on entity pages. The adoption template renders on the **Create page** today (it logs its weave plan rather than opening a real PR — designed-not-executed, like the ratings).
 
-`make smoke-catalog` asserts the mock org ingests at runtime alongside the MTL seed (gildi Group typed, release Cycle with its relations, the Saga touching it).
+`make smoke-catalog` asserts the mock org ingests at runtime alongside the MTL seed (guild Group typed, release Cycle with its relations, the Saga touching it).
