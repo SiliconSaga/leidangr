@@ -258,15 +258,16 @@ Run: `ws exec leidangr make dev` with local TechDocs (`app-config.local.yaml` �
 
 ---
 
-### Decision needed — retiring the `guild-hall` Component (do NOT delete blind)
+### Decision (made 2026-07-20) — retire the `guild-hall` Component by re-homing its docs (Option 1)
 
-The design retires the `guild-hall` `type: hub` Component (the plugin page replaces it). But that entity is **also the root TechDocs anchor**: its `backstage.io/techdocs-ref: dir:.` is what makes `docs/guildhall-model.md` + root `mkdocs.yml` render (a `dir:.` ref can only anchor an entity whose file sits at the repo root — and `catalog-info.yaml` is the only root entity). It also carries `siliconsaga.org/visir: docs/demo-visir.md` and is referenced by `docs/demo-visir.md`, `examples/mock-org/README.md`, and the app-config location at `app-config.yaml:132-135`.
+Cervator's pick: **re-home, not demote.** The `guild-hall` `type: hub` Component is retired and its root TechDocs re-homed. That entity currently anchors `docs/guildhall-model.md` + root `mkdocs.yml` via `backstage.io/techdocs-ref: dir:.` (a `dir:.` ref can only anchor an entity whose file sits at the repo root — and `catalog-info.yaml` is the only root entity), carries `siliconsaga.org/visir: docs/demo-visir.md`, and is referenced by `docs/demo-visir.md`, `examples/mock-org/README.md`, and the app-config location at `app-config.yaml:132-135`.
 
-Deleting it outright orphans the root TechDocs. Resolve before doing the retirement (its own task in a later plan):
-- **Option 1 — Re-home the root docs, then delete the entity.** Move `guildhall-model.md` (and root `mkdocs.yml`) under an entity that legitimately owns them (e.g. the `rl-platform` System, or a docs-only anchor), or surface the concept map inside the Guild Hall page itself (mermaid-in-app, once the page is real). Cleanest long-term; more work.
-- **Option 2 — Demote, don't delete.** Keep a single minimal root entity purely as the TechDocs/vísir anchor but drop `spec.type: hub` (e.g. a `type: documentation` Component), so the "hub as entity" concept is gone while the docs keep their home. Smallest change; keeps one root entity.
+The retirement is **its own later plan** (it must run *after* the Guild Hall page is real, so the docs have somewhere to land). That plan will:
+1. **Re-home the model docs onto the Guild Hall experience** — surface the `guildhall-model.md` concept map on the plugin's page (mermaid-in-app, leaning on the Task C addon or an in-page mermaid render) and/or move the root `mkdocs.yml` docs to plugin-scoped docs, so the model overview lives with the hub it describes rather than a placeholder entity. Re-home the vísir link too.
+2. **Delete the `guild-hall` entity** — remove root `catalog-info.yaml`, its `app-config.yaml` catalog location (lines 130-135), and sweep the `guild-hall` references in `demo-visir.md` / `examples/mock-org/README.md`.
+3. **Verify** — update `make smoke-catalog` so it no longer expects the hub entity; confirm the concept map still renders (now in-app) and no TechDocs 404s.
 
-Recommendation: **Option 2** for the first pass (retires the *hub* concept immediately, zero doc-orphaning), revisiting Option 1 when the page can host the model diagram. **This needs Cervator's pick before implementation.**
+Not part of Plan 1 (Plan 1's page is the prerequisite). Captured here so the sequencing is unambiguous.
 
 ---
 
