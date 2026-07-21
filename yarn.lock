@@ -9040,6 +9040,26 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@siliconsaga/plugin-gildi@npm:^0.1.0, @siliconsaga/plugin-gildi@workspace:plugins/gildi":
+  version: 0.0.0-use.local
+  resolution: "@siliconsaga/plugin-gildi@workspace:plugins/gildi"
+  dependencies:
+    "@backstage/cli": "npm:^0.36.3"
+    "@backstage/core-components": "npm:^0.18.11"
+    "@backstage/frontend-plugin-api": "npm:^0.17.2"
+    "@backstage/frontend-test-utils": "npm:^0.6.1"
+    "@backstage/plugin-catalog-react": "npm:^3.1.0"
+    "@backstage/ui": "npm:^0.16.0"
+    "@material-ui/icons": "npm:^4.9.1"
+    "@testing-library/jest-dom": "npm:^6.0.0"
+    "@testing-library/react": "npm:^14.0.0"
+    react-router-dom: "npm:^6.30.2"
+  peerDependencies:
+    react: ^17 || ^18
+    react-dom: ^17 || ^18
+  languageName: unknown
+  linkType: soft
+
 "@sinclair/typebox@npm:^0.27.8":
   version: 0.27.10
   resolution: "@sinclair/typebox@npm:0.27.10"
@@ -12512,6 +12532,7 @@ __metadata:
     "@material-ui/core": "npm:^4.12.2"
     "@material-ui/icons": "npm:^4.9.1"
     "@playwright/test": "npm:^1.32.3"
+    "@siliconsaga/plugin-gildi": "npm:^0.1.0"
     "@testing-library/dom": "npm:^9.0.0"
     "@testing-library/jest-dom": "npm:^6.0.0"
     "@testing-library/react": "npm:^14.0.0"
