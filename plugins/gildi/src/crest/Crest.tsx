@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { blazonFor, tinctureHex, Charge } from './blazon';
 
 const SHIELD = 'M9 7 L51 7 L51 33 Q51 52 30 63 Q9 52 9 33 Z';
@@ -9,13 +10,14 @@ function ChargeShape({ charge, fill }: { charge: Charge; fill: string }) {
     case 'mullet': return <polygon points="30,21 33.4,30 42.6,30 35.2,36 38.4,45.5 30,39.5 21.6,45.5 24.8,36 17.4,30 26.6,30" fill={fill} />;
     case 'roundel': return <circle cx="30" cy="33" r="7" fill={fill} />;
     case 'cross': return <g><rect x="27" y="18" width="6" height="30" fill={fill} /><rect x="18" y="27" width="24" height="6" fill={fill} /></g>;
+    default: return null;
   }
 }
 
 export function Crest({ seed, size = 44, title }: { seed: string; size?: number; title?: string }) {
+  const id = useId();
   if (!seed) return null;
   const b = blazonFor(seed);
-  const id = `gildi-crest-${seed.replace(/[^a-z0-9]/gi, '')}`;
   const f1 = tinctureHex(b.fieldTincture);
   const f2 = tinctureHex(b.fieldTincture2);
   const charge = tinctureHex(b.chargeTincture);
