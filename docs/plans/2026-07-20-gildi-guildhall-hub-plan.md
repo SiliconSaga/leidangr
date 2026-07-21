@@ -147,31 +147,29 @@ export function GuildHallPage() {
 }
 ```
 
-- [ ] **Step 5: Write the plugin with its page + nav extensions** (`plugins/gildi/src/plugin.tsx`):
+- [ ] **Step 5: Write the plugin with its page extension** (`plugins/gildi/src/plugin.tsx`). As-built: `NavItemBlueprint` was removed in `@backstage/frontend-plugin-api@0.17.0`, so the sidebar entry is discovered from the `PageBlueprint`'s own `title`/`icon` — one blueprint, no separate nav item:
 ```tsx
-import { createFrontendPlugin, PageBlueprint, NavItemBlueprint } from '@backstage/frontend-plugin-api';
+import { createFrontendPlugin, PageBlueprint } from '@backstage/frontend-plugin-api';
 import ShieldIcon from '@material-ui/icons/Security';
 import { rootRouteRef } from './routes';
 
 const guildHallPage = PageBlueprint.make({
   params: {
-    defaultPath: '/guild-hall',
+    path: '/guild-hall',
+    title: 'Guild Hall',
+    icon: <ShieldIcon fontSize="inherit" />,
     routeRef: rootRouteRef,
     loader: () => import('./components/GuildHallPage').then(m => <m.GuildHallPage />),
   },
 });
 
-const guildHallNavItem = NavItemBlueprint.make({
-  params: { title: 'Guild Hall', routeRef: rootRouteRef, icon: ShieldIcon },
-});
-
 export const gildiPlugin = createFrontendPlugin({
   pluginId: 'gildi',
-  extensions: [guildHallPage, guildHallNavItem],
+  extensions: [guildHallPage],
   routes: { root: rootRouteRef },
 });
 ```
-(If `PageBlueprint`/`NavItemBlueprint` param names differ at 0.17.2, adjust per the installed types — Step 8's build is the gate.)
+(Historical note: this was originally drafted with a separate `NavItemBlueprint` + `defaultPath`; the 0.17.x API folds nav into `PageBlueprint` via `path`/`title`/`icon`. The Step 8 build is the gate that caught it.)
 
 - [ ] **Step 6: Export the plugin as the default** (`plugins/gildi/src/index.ts`):
 ```ts
