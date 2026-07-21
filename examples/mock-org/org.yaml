@@ -71,7 +71,7 @@ metadata:
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/template.yaml
       title: Adoption — Apply the Security aspect
 spec:
-  type: gildi
+  type: guild
   parent: ravenline
   children: []
 ---
@@ -83,7 +83,7 @@ metadata:
   annotations:
     siliconsaga.org/stewards: 'craft:release-captain'
 spec:
-  type: gildi
+  type: guild
   parent: ravenline
   children: []
 ---
