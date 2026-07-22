@@ -171,6 +171,10 @@ catalog:
       target: ../../examples/mock-org/guildhall/actions/charter-practice.template.yaml
       rules:
         - allow: [Template]
+    - type: file
+      target: ../../examples/mock-org/guildhall/actions/guild-actions.template.yaml
+      rules:
+        - allow: [Template]
 
     ## Uncomment these lines to add more example data
     # - type: url

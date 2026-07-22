@@ -1,0 +1,46 @@
+# Two more Guild Hall dogfood actions (mock — debug:log only), tagged guild-hall
+# so the Actions panel shows the full set: New guild / Charter a practice /
+# Start a drive. Real scaffolding is future work; these log their plan.
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: establish-a-guild
+  title: Establish a guild
+  description: Form a new guild (a typed Group) to steward a craft or an aspect — the Guild Hall dogfooding its own model.
+  tags: [guild-hall]
+spec:
+  type: guildhall-action
+  owner: group:default/team-devex
+  parameters:
+    - title: New guild
+      properties:
+        guild: { title: Guild name, type: string }
+        stewards: { title: 'Stewards (aspect:<id> or craft:<id>)', type: string }
+  steps:
+    - id: log
+      name: Plan
+      action: debug:log
+      input:
+        message: 'Would establish the ${{ parameters.guild }} guild stewarding ${{ parameters.stewards }}.'
+---
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: start-a-drive
+  title: Start a drive
+  description: Launch a time-bound adoption drive (a Cycle) to push a practice across the fleet — the Guild Hall dogfooding its own model.
+  tags: [guild-hall]
+spec:
+  type: guildhall-action
+  owner: group:default/team-devex
+  parameters:
+    - title: New drive
+      properties:
+        drive: { title: Drive name, type: string }
+        guild: { title: Owning guild, type: string }
+  steps:
+    - id: log
+      name: Plan
+      action: debug:log
+      input:
+        message: 'Would start the ${{ parameters.drive }} drive owned by ${{ parameters.guild }}.'
