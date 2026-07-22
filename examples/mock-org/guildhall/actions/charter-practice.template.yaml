@@ -1,0 +1,20 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: charter-a-practice
+  title: Charter a practice
+  description: Stand up a new practice and its guild — the Guild Hall dogfooding its own model.
+  tags: [guild-hall]
+spec:
+  type: guildhall-action
+  owner: group:default/team-devex
+  parameters:
+    - title: New practice
+      properties:
+        practice: { title: Practice name, type: string }
+  steps:
+    - id: log
+      name: Plan
+      action: debug:log
+      input:
+        message: 'Would charter the ${{ parameters.practice }} practice and stand up its guild.'
