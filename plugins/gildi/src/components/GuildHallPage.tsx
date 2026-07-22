@@ -10,10 +10,10 @@ export function GuildHallPage() {
     <Page themeId="home">
       <Header title="Guild Hall" subtitle="The practice layer — guilds, their practices and aspects, drives, and sagas" />
       <Content>
-        <DrivesBand />
-        <Grid container spacing={3} style={{ marginTop: 8 }}>
+        <Grid container spacing={3}>
           <Grid item xs={12} md={8}>
-            <h2 style={{ marginTop: 0 }}>Guilds</h2>
+            <DrivesBand />
+            <h2>Guilds</h2>
             <GuildsSection />
           </Grid>
           <Grid item xs={12} md={4}>

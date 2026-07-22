@@ -1,4 +1,4 @@
-import { Typography } from '@material-ui/core';
+import { Divider, Typography } from '@material-ui/core';
 import { Progress, ResponseErrorPanel } from '@backstage/core-components';
 import { useSagas } from './useSagas';
 import { SagaCard } from './SagaCard';
@@ -11,9 +11,14 @@ export function ChronicleRail({ max = 4 }: { max?: number }) {
   const shown = sagas.slice(0, max);
   return (
     <div>
-      <h2 style={{ marginTop: 0 }}>Recent chronicle</h2>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        {shown.map(s => (<SagaCard key={s.name} saga={s} />))}
+      <h2>Recent chronicle</h2>
+      <div>
+        {shown.map((s, i) => (
+          <div key={s.name}>
+            {i > 0 && <Divider light />}
+            <SagaCard saga={s} />
+          </div>
+        ))}
       </div>
       {sagas.length > shown.length && (
         <Typography variant="caption" color="textSecondary">

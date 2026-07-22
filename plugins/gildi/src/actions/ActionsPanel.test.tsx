@@ -27,15 +27,14 @@ const catalogApi = {
 };
 
 describe('ActionsPanel', () => {
-  it('renders a curated action card linking to its Create page', async () => {
+  it('renders a curated action as a button linking to its Create page', async () => {
     await renderInTestApp(
       <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
         <ActionsPanel />
       </TestApiProvider>,
     );
 
-    expect(await screen.findByText('Charter a practice')).toBeInTheDocument();
-    const link = screen.getByText('Open in Create →').closest('a');
+    const link = (await screen.findByText('Charter a practice')).closest('a');
     expect(link).toHaveAttribute('href', '/create/templates/default/charter-a-practice');
   });
 });
