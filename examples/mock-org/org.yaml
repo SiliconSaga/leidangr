@@ -8,7 +8,7 @@ metadata:
   description: Ravenline — parcel-logistics SaaS (mock org, Guildhall demo)
 spec:
   type: organization
-  children: [rl-engineering, foxholm, security-gildi, release-captains-gildi]
+  children: [rl-engineering, foxholm, security-gildi, release-captains-gildi, platform-gildi, incident-commanders-gildi]
 ---
 apiVersion: backstage.io/v1alpha1
 kind: Group
@@ -89,6 +89,35 @@ spec:
   parent: ravenline
   children: []
 ---
+# Aspect-aligned gildi around the (steward-less until now) operational-readiness
+# aspect — gives the guilds grid and the drives band a second concern to show.
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-gildi
+  title: Platform guild
+  description: The Platform guild — stewards operational readiness (rollback runbooks, SLOs, on-call health) (aspect-aligned gildi)
+  annotations:
+    siliconsaga.org/stewards: 'aspect:operational-readiness'
+spec:
+  type: guild
+  parent: ravenline
+  children: []
+---
+# Craft-aligned gildi around the incident-commander craft (guildhall/crafts.yaml).
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: incident-commanders-gildi
+  title: Incident Commanders
+  description: The Incident Commanders guild — stewards the incident-commander craft (craft-aligned gildi)
+  annotations:
+    siliconsaga.org/stewards: 'craft:incident-commander'
+spec:
+  type: guild
+  parent: ravenline
+  children: []
+---
 # People — membership carries both team and gildi affiliation via memberOf.
 # Skill profiles are NOT entity fields: see guildhall/skills.yaml.
 apiVersion: backstage.io/v1alpha1
@@ -113,13 +142,13 @@ spec: { memberOf: [team-tracking, security-gildi] }
 ---
 apiVersion: backstage.io/v1alpha1
 kind: User
-metadata: { name: sigrid, description: 'Shipping engineer' }
-spec: { memberOf: [team-shipping] }
+metadata: { name: sigrid, description: 'Shipping engineer, incident commander' }
+spec: { memberOf: [team-shipping, incident-commanders-gildi] }
 ---
 apiVersion: backstage.io/v1alpha1
 kind: User
-metadata: { name: egil, description: 'Platform engineer' }
-spec: { memberOf: [team-platform] }
+metadata: { name: egil, description: 'Platform engineer, on-call lead' }
+spec: { memberOf: [team-platform, platform-gildi] }
 ---
 apiVersion: backstage.io/v1alpha1
 kind: User
