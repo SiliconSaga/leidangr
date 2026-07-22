@@ -62,6 +62,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: security-gildi
+  title: Security guild
   description: The Security guild — stewards the security aspect (aspect-aligned gildi)
   annotations:
     siliconsaga.org/stewards: 'aspect:security'
@@ -79,6 +80,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Group
 metadata:
   name: release-captains-gildi
+  title: Release Captains
   description: The Release Captains guild — stewards the release-captain craft (craft-aligned gildi)
   annotations:
     siliconsaga.org/stewards: 'craft:release-captain'

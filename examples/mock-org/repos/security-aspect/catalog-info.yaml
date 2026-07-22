@@ -6,6 +6,7 @@ apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
   name: security-practice
+  title: Security practice
   description: 'The Security practice: its aspect module — standard, paved road, adoption templates, and remediation vísar'
   annotations:
     siliconsaga.org/aspect: 'security'

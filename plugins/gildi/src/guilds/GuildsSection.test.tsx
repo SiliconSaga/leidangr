@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react';
 import { renderInTestApp, TestApiProvider } from '@backstage/frontend-test-utils';
-import { catalogApiRef } from '@backstage/plugin-catalog-react';
+import { catalogApiRef, entityRouteRef } from '@backstage/plugin-catalog-react';
 import { GuildsSection } from './GuildsSection';
 
 const catalogApi = {
@@ -18,6 +18,7 @@ describe('GuildsSection', () => {
       <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
         <GuildsSection />
       </TestApiProvider>,
+      { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
     );
     expect(await screen.findByText('Security guild')).toBeInTheDocument();
     expect(screen.getByText('Keeps things safe.')).toBeInTheDocument();
