@@ -164,6 +164,17 @@ catalog:
       target: ../../examples/mock-org/cycles.yaml
       rules:
         - allow: [Cycle, Saga]
+    # Guild Hall dogfood: a mock scaffolder Template tagged guild-hall so the
+    # Actions panel has something to render (the guildhall/ vocabularies
+    # above it are deliberately NOT ingested; this one is).
+    - type: file
+      target: ../../examples/mock-org/guildhall/actions/charter-practice.template.yaml
+      rules:
+        - allow: [Template]
+    - type: file
+      target: ../../examples/mock-org/guildhall/actions/guild-actions.template.yaml
+      rules:
+        - allow: [Template]
 
     ## Uncomment these lines to add more example data
     # - type: url
