@@ -106,7 +106,8 @@ apiVersion: siliconsaga.org/v1alpha1
 kind: Saga
 metadata:
   name: saga-soccer-2026-spring
-  description: 'The Saga of MTL Soccer, Spring 2026'
+  title: MTL Soccer, Spring 2026
+  description: 'A youth soccer season, narrated — the community-side twin of the software retrospectives.'
   annotations:
     siliconsaga.org/saga-doc: ./sagas/soccer-2026-spring.md
 spec:
