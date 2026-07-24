@@ -14,8 +14,9 @@ spec:
   parameters:
     - title: New guild
       properties:
-        guild: { title: Guild name, type: string }
-        stewards: { title: 'Stewards (aspect:<id> or craft:<id>)', type: string }
+        guild: { title: Guild name, type: string, minLength: 1 }
+        stewards: { title: 'Stewards (aspect:<id> or craft:<id>)', type: string, minLength: 1 }
+      required: [guild, stewards]
   steps:
     - id: log
       name: Plan
@@ -36,8 +37,9 @@ spec:
   parameters:
     - title: New drive
       properties:
-        drive: { title: Drive name, type: string }
-        guild: { title: Owning guild, type: string }
+        drive: { title: Drive name, type: string, minLength: 1 }
+        guild: { title: Owning guild, type: string, minLength: 1 }
+      required: [drive, guild]
   steps:
     - id: log
       name: Plan

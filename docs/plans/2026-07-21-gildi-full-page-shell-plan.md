@@ -119,7 +119,7 @@ export function useSagas() {
     const res = await catalog.getEntities({ filter: { kind: 'Saga' } });
     const views = res.items.map(s => {
       const touches = (s.spec?.touches as string[]) ?? [];
-      const guildRef = touches.find(t => t.startsWith('group:') && t.includes('gildi')) ?? touches.find(t => t.startsWith('group:'));
+      const guildRef = touches.find(t => t.startsWith('group:') && (t.split('/').pop() ?? '').endsWith('-gildi')) ?? touches.find(t => t.startsWith('group:'));
       const tf = (s.spec?.timeframe as { end?: string }) ?? {};
       return {
         name: s.metadata.name,

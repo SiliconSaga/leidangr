@@ -18,7 +18,7 @@ const catalogApi = {
           spec: {
             type: 'drive',
             owner: 'group:default/security-gildi',
-            timeframe: { start: '2026-05-01', end: '2026-07-31' },
+            timeframe: { start: '2026-05-01', end: '2099-12-31' },
           },
         }],
       };

@@ -11,7 +11,8 @@ spec:
   parameters:
     - title: New practice
       properties:
-        practice: { title: Practice name, type: string }
+        practice: { title: Practice name, type: string, minLength: 1 }
+      required: [practice]
   steps:
     - id: log
       name: Plan

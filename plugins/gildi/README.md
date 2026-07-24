@@ -4,7 +4,7 @@ The **Guild Hall** — a curated overview of the practice layer for this Backsta
 
 ## Status
 
-Foundation shipped: a page at `/guild-hall` with a sidebar entry. Sections land incrementally (guilds first). See `docs/plans/2026-07-20-gildi-guildhall-hub-design.md` in the leidangr repo for the full design.
+A page at `/guild-hall` with a sidebar entry. Guilds, Drives, Chronicle, and Actions all render. See `docs/plans/2026-07-20-gildi-guildhall-hub-design.md` in the leidangr repo for the full design.
 
 ## Install
 

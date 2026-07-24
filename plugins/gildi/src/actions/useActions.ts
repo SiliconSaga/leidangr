@@ -24,7 +24,7 @@ export function useActions() {
         name: t.metadata.name,
         title: t.metadata.title ?? t.metadata.name,
         description: t.metadata.description,
-        createHref: `/create/templates/default/${t.metadata.name}`,
+        createHref: `/create/templates/${t.metadata.namespace ?? 'default'}/${t.metadata.name}`,
       } as ActionView));
   }, [catalog]);
   return { actions: state.value ?? [], loading: state.loading, error: state.error };

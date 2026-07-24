@@ -1,6 +1,7 @@
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
+import { parseEntityRef, stringifyEntityRef } from '@backstage/catalog-model';
 import type { Entity } from '@backstage/catalog-model';
 
 export interface GuildView {
@@ -25,11 +26,12 @@ export function useGuilds() {
     const practicesByOwner = new Map<string, Entity[]>();
     for (const p of practicesRes.items) {
       const owner = (p.spec?.owner as string) ?? '';
-      const key = owner.includes('/') ? owner : `group:default/${owner.replace(/^group:/, '')}`;
+      if (!owner) continue;
+      const key = stringifyEntityRef(parseEntityRef(owner, { defaultKind: 'Group', defaultNamespace: 'default' }));
       practicesByOwner.set(key, [...(practicesByOwner.get(key) ?? []), p]);
     }
     const guilds: GuildView[] = guildsRes.items.map(g => {
-      const ref = `group:default/${g.metadata.name}`;
+      const ref = stringifyEntityRef(g);
       const stewards = (g.metadata.annotations?.[STEWARDS] ?? '')
         .split(',').map(s => s.trim()).filter(Boolean)
         .filter(s => s.startsWith('aspect:')).map(s => s.slice('aspect:'.length));

@@ -13,7 +13,7 @@
 - Node **22 || 24**; Yarn **4.13** via Corepack. Build/test through `ws`: `ws exec leidangr corepack yarn workspace @siliconsaga/plugin-gildi <tsc|test>`, `ws test leidangr` (= `make ci`). Commit via `ws commit leidangr <bodyfile>`; one shell command per call; no raw `git commit`/`push`.
 - **New frontend system only.** Keep the plugin's public surface stable (`gildiPlugin` default export, `rootRouteRef`, `GuildHallPage`).
 - **Presentation is a first-class goal** — curated cards, never a raw metadata dump. Clean display names + a brief description.
-- **Crests are deterministic** from the group id/name (same input → same arms), honour the **rule of tincture** (a colour field pairs with a metal charge, or vice versa), render as **inline SVG** (no assets, no network), and fall back to a **monogram** if generation is disabled. Guilds only in v1.
+- **Crests are deterministic** from the group id/name (same input → same arms), honour the **rule of tincture** (a colour field pairs with a metal charge, or vice versa), render as **inline SVG** (no assets, no network). A **monogram** fallback for a disabled/empty seed is DEFERRED — as shipped, an empty seed renders nothing (`null`). Guilds only in v1.
 - **Guild data model** (from the seed): guilds are `Group` `spec.type: guild` with a `siliconsaga.org/stewards` annotation (e.g. `aspect:security`); practices are `Component` `spec.type: practice` with `spec.owner` = the guild; the practice's aspect is on its `siliconsaga.org/aspect` annotation.
 - Design source of truth: `docs/plans/2026-07-20-gildi-guildhall-hub-design.md` §4 (card system), §5 (crests), §7 (data model).
 - Verify catalog-react / hook imports (`useApi`, `catalogApiRef`, `useAsync`) against the installed package versions — the `tsc`/build gate is the safety net, as in Plan 1.
@@ -153,8 +153,9 @@ export function tinctureHex(t: Tincture): string {
 
 - [ ] **Step 5: Run the test, expect PASS**: `ws exec leidangr corepack yarn workspace @siliconsaga/plugin-gildi test crest/blazon`. Fix until green (in particular the rule-of-tincture assertion: exactly one of field/charge is a metal).
 
-- [ ] **Step 6: The Crest SVG component** (`plugins/gildi/src/crest/Crest.tsx`) — renders a heater shield clipped to its outline, a field (with optional division), and the charge; monogram fallback:
+- [ ] **Step 6: The Crest SVG component** (`plugins/gildi/src/crest/Crest.tsx`) — renders a heater shield clipped to its outline, a field (with optional division), and the charge; an empty seed renders nothing (no monogram fallback — deferred):
 ```tsx
+import { useId } from 'react';
 import { blazonFor, tinctureHex, Charge } from './blazon';
 
 const SHIELD = 'M9 7 L51 7 L51 33 Q51 52 30 63 Q9 52 9 33 Z';
@@ -170,9 +171,9 @@ function ChargeShape({ charge, fill }: { charge: Charge; fill: string }) {
 }
 
 export function Crest({ seed, size = 44, title }: { seed: string; size?: number; title?: string }) {
+  const id = useId();
   if (!seed) return null;
   const b = blazonFor(seed);
-  const id = `gildi-crest-${seed.replace(/[^a-z0-9]/gi, '')}`;
   const f1 = tinctureHex(b.fieldTincture);
   const f2 = tinctureHex(b.fieldTincture2);
   const charge = tinctureHex(b.chargeTincture);
