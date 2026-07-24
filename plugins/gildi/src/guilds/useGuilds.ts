@@ -27,7 +27,12 @@ export function useGuilds() {
     for (const p of practicesRes.items) {
       const owner = (p.spec?.owner as string) ?? '';
       if (!owner) continue;
-      const key = stringifyEntityRef(parseEntityRef(owner, { defaultKind: 'Group', defaultNamespace: 'default' }));
+      let key: string;
+      try {
+        key = stringifyEntityRef(parseEntityRef(owner, { defaultKind: 'Group', defaultNamespace: 'default' }));
+      } catch {
+        continue; // skip a practice with a malformed owner ref rather than failing the whole section
+      }
       practicesByOwner.set(key, [...(practicesByOwner.get(key) ?? []), p]);
     }
     const guilds: GuildView[] = guildsRes.items.map(g => {

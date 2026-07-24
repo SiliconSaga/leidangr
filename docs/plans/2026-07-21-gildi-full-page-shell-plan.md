@@ -30,6 +30,7 @@
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
+import { stringifyEntityRef } from '@backstage/catalog-model';
 
 export interface DriveView {
   name: string; title: string; description?: string;
@@ -42,7 +43,7 @@ export function useDrives() {
   const catalog = useApi(catalogApiRef);
   const state = useAsync(async () => {
     const res = await catalog.getEntities({ filter: { kind: 'Cycle', 'spec.type': 'drive' } });
-    return res.items.map(c => {
+    const views = res.items.map(c => {
       const owner = (c.spec?.owner as string) ?? '';
       const ownerName = owner.startsWith('group:') ? owner.split('/').pop() : undefined;
       const tf = (c.spec?.timeframe as { start?: string; end?: string }) ?? {};
@@ -50,11 +51,15 @@ export function useDrives() {
         name: c.metadata.name,
         title: c.metadata.title ?? c.metadata.name,
         description: c.metadata.description,
-        entityRef: `cycle:default/${c.metadata.name}`,
+        entityRef: stringifyEntityRef(c),
         ownerGuildName: ownerName,
         start: tf.start, end: tf.end,
       } as DriveView;
     });
+    // active & upcoming only — drop drives whose end date has passed (local date)
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return views.filter(d => !d.end || d.end >= today);
   }, [catalog]);
   return { drives: state.value ?? [], loading: state.loading, error: state.error };
 }
@@ -104,6 +109,7 @@ export function DriveCard({ drive }: { drive: DriveView }) {
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
+import { stringifyEntityRef } from '@backstage/catalog-model';
 
 export interface SagaView {
   name: string; title: string; description?: string;
@@ -125,7 +131,7 @@ export function useSagas() {
         name: s.metadata.name,
         title: s.metadata.title ?? s.metadata.name,
         description: s.metadata.description,
-        entityRef: `saga:default/${s.metadata.name}`,
+        entityRef: stringifyEntityRef(s),
         skaldRef: s.spec?.skald as string | undefined,
         guildName: guildRef ? guildRef.split('/').pop() : undefined,
         end: tf.end,

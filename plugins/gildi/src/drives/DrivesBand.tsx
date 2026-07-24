@@ -15,7 +15,7 @@ export function DrivesBand() {
   } else {
     body = (
       <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
-        {drives.map(d => (<DriveCard key={d.name} drive={d} />))}
+        {drives.map(d => (<DriveCard key={d.entityRef} drive={d} />))}
       </div>
     );
   }

@@ -154,6 +154,7 @@ export function tinctureHex(t: Tincture): string {
 - [ ] **Step 5: Run the test, expect PASS**: `ws exec leidangr corepack yarn workspace @siliconsaga/plugin-gildi test crest/blazon`. Fix until green (in particular the rule-of-tincture assertion: exactly one of field/charge is a metal).
 
 - [ ] **Step 6: The Crest SVG component** (`plugins/gildi/src/crest/Crest.tsx`) — renders a heater shield clipped to its outline, a field (with optional division), and the charge; an empty seed renders nothing (no monogram fallback — deferred):
+
 ```tsx
 import { useId } from 'react';
 import { blazonFor, tinctureHex, Charge } from './blazon';

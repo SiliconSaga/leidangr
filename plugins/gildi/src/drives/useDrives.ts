@@ -27,7 +27,8 @@ export function useDrives() {
         start: tf.start, end: tf.end,
       } as DriveView;
     });
-    const today = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     return views.filter(d => !d.end || d.end >= today);
   }, [catalog]);
   return { drives: state.value ?? [], loading: state.loading, error: state.error };

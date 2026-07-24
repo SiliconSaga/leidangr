@@ -19,7 +19,7 @@ export function ChronicleRail({ max = 4 }: { max?: number }) {
       <>
         <div>
           {shown.map((s, i) => (
-            <div key={s.name}>
+            <div key={s.entityRef}>
               {i > 0 && <Divider light />}
               <SagaCard saga={s} />
             </div>

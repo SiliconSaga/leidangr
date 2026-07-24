@@ -19,6 +19,17 @@ const catalogApi = {
             },
             spec: { type: 'guildhall-action', owner: 'group:default/team-devex' },
           },
+          {
+            apiVersion: 'scaffolder.backstage.io/v1beta3',
+            kind: 'Template',
+            metadata: {
+              name: 'establish-a-guild',
+              namespace: 'custom',
+              title: 'Establish a guild',
+              tags: ['guild-hall'],
+            },
+            spec: { type: 'guildhall-action', owner: 'group:default/team-devex' },
+          },
         ],
       };
     }
@@ -36,5 +47,9 @@ describe('ActionsPanel', () => {
 
     const link = (await screen.findByText('Charter a practice')).closest('a');
     expect(link).toHaveAttribute('href', '/create/templates/default/charter-a-practice');
+
+    // a non-default namespace is preserved in the Create link
+    const nsLink = (await screen.findByText('Establish a guild')).closest('a');
+    expect(nsLink).toHaveAttribute('href', '/create/templates/custom/establish-a-guild');
   });
 });
