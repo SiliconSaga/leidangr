@@ -1,7 +1,7 @@
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
-import { stringifyEntityRef } from '@backstage/catalog-model';
+import { parseEntityRef, stringifyEntityRef } from '@backstage/catalog-model';
 
 export interface SagaView {
   name: string; title: string; description?: string;
@@ -17,7 +17,19 @@ export function useSagas() {
     const res = await catalog.getEntities({ filter: { kind: 'Saga' } });
     const views = res.items.map(s => {
       const touches = (s.spec?.touches as string[]) ?? [];
-      const guildRef = touches.find(t => t.startsWith('group:') && (t.split('/').pop() ?? '').endsWith('-gildi')) ?? touches.find(t => t.startsWith('group:'));
+      // resolve each touch to a guild name via the backend's ref defaults, so
+      // group:name / Group:default/name / bare name all seed the crest correctly
+      const guildNames = touches
+        .map(t => {
+          try {
+            const ref = parseEntityRef(t, { defaultKind: 'Group', defaultNamespace: 'default' });
+            return ref.kind.toLowerCase() === 'group' ? ref.name : undefined;
+          } catch {
+            return undefined;
+          }
+        })
+        .filter((n): n is string => !!n);
+      const guildName = guildNames.find(n => n.endsWith('-gildi')) ?? guildNames[0];
       const tf = (s.spec?.timeframe as { end?: string }) ?? {};
       return {
         name: s.metadata.name,
@@ -25,7 +37,7 @@ export function useSagas() {
         description: s.metadata.description,
         entityRef: stringifyEntityRef(s),
         skaldRef: s.spec?.skald as string | undefined,
-        guildName: guildRef ? guildRef.split('/').pop() : undefined,
+        guildName,
         end: tf.end,
       } as SagaView;
     });
