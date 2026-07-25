@@ -11,7 +11,7 @@ export interface SagaView {
   end?: string;
 }
 
-export function useSagas() {
+export function useSagas(opts?: { guild?: string }) {
   const catalog = useApi(catalogApiRef);
   const state = useAsync(async () => {
     const res = await catalog.getEntities({ filter: { kind: 'Saga' } });
@@ -41,7 +41,8 @@ export function useSagas() {
         end: tf.end,
       } as SagaView;
     });
-    return views.sort((a, b) => (b.end ?? '').localeCompare(a.end ?? ''));
-  }, [catalog]);
+    const scoped = opts?.guild ? views.filter(v => v.guildName === opts.guild) : views;
+    return scoped.sort((a, b) => (b.end ?? '').localeCompare(a.end ?? ''));
+  }, [catalog, opts?.guild]);
   return { sagas: state.value ?? [], loading: state.loading, error: state.error };
 }
