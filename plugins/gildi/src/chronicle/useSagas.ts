@@ -8,6 +8,7 @@ export interface SagaView {
   entityRef: string;                 // saga:default/<name>
   skaldRef?: string;                 // user:default/<name>
   guildName?: string;                // touched guild for the crest
+  guildNames: string[];              // full resolved touched-guild-name set, for scoping
   end?: string;
 }
 
@@ -38,10 +39,11 @@ export function useSagas(opts?: { guild?: string }) {
         entityRef: stringifyEntityRef(s),
         skaldRef: s.spec?.skald as string | undefined,
         guildName,
+        guildNames,
         end: tf.end,
       } as SagaView;
     });
-    const scoped = opts?.guild ? views.filter(v => v.guildName === opts.guild) : views;
+    const scoped = opts?.guild ? views.filter(v => v.guildNames.includes(opts.guild!)) : views;
     return scoped.sort((a, b) => (b.end ?? '').localeCompare(a.end ?? ''));
   }, [catalog, opts?.guild]);
   return { sagas: state.value ?? [], loading: state.loading, error: state.error };

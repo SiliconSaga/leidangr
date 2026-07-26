@@ -42,4 +42,38 @@ describe('GuildChronicleCard', () => {
     expect(await screen.findByText('Dependency scanning drive')).toBeInTheDocument();
     expect(screen.getByText('Q2 hardening drive')).toBeInTheDocument();
   });
+
+  it('lists a saga touching this guild even when it is not the saga\'s primary guildName', async () => {
+    const platformGuild = {
+      apiVersion: 'backstage.io/v1alpha1', kind: 'Group',
+      metadata: { name: 'platform-gildi', title: 'Platform guild' },
+      spec: { type: 'guild' },
+    } as any;
+
+    const multiGuildCatalogApi = {
+      getEntities: async ({ filter }: any) => {
+        if (filter.kind === 'Saga') {
+          return { items: [{
+            apiVersion: 'backstage.io/v1alpha1', kind: 'Saga',
+            metadata: { name: 'cross-guild-migration', title: 'Cross-guild migration saga' },
+            spec: {
+              touches: ['group:default/security-gildi', 'group:default/platform-gildi'],
+              timeframe: { end: '2026-06-01' },
+            },
+          }] };
+        }
+        return { items: [] };
+      },
+    };
+
+    await renderInTestApp(
+      <TestApiProvider apis={[[catalogApiRef, multiGuildCatalogApi]]}>
+        <EntityProvider entity={platformGuild}>
+          <GuildChronicleCard />
+        </EntityProvider>
+      </TestApiProvider>,
+      { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
+    );
+    expect(await screen.findByText('Cross-guild migration saga')).toBeInTheDocument();
+  });
 });
