@@ -1,7 +1,7 @@
 import { createFrontendPlugin, PageBlueprint } from '@backstage/frontend-plugin-api';
 import ShieldIcon from '@material-ui/icons/Security';
 import { rootRouteRef } from './routes';
-import { guildCharterCard, guildRosterCard, guildChronicleCard } from './entity';
+import { guildOverviewLayout } from './entity';
 
 // NOTE: `NavItemBlueprint` was removed in @backstage/frontend-plugin-api@0.17.0
 // (BREAKING). Nav items are now discovered from `PageBlueprint` extensions via
@@ -18,6 +18,6 @@ const guildHallPage = PageBlueprint.make({
 
 export const gildiPlugin = createFrontendPlugin({
   pluginId: 'gildi',
-  extensions: [guildHallPage, guildCharterCard, guildRosterCard, guildChronicleCard],
+  extensions: [guildHallPage, guildOverviewLayout],
   routes: { root: rootRouteRef },
 });

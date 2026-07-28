@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react';
 import { renderInTestApp, TestApiProvider, createExtensionTester } from '@backstage/frontend-test-utils';
 import { catalogApiRef, entityRouteRef } from '@backstage/plugin-catalog-react';
 import { GuildHallPage } from './components/GuildHallPage';
-import { guildCharterCard, guildRosterCard, guildChronicleCard } from './entity';
+import { guildOverviewLayout } from './entity';
 
 // GuildHallPage mounts GuildsSection, DrivesBand, ActionsPanel, and
 // ChronicleRail, which together query the catalog for Group (guilds),
@@ -41,18 +41,11 @@ describe('GuildHallPage', () => {
 // `extensions` array — only `pluginId`/`routes`/etc are part of the public
 // API. `createExtensionTester(...).snapshot().id` is the documented way
 // (frontend-test-utils) to resolve an extension's real id, so we assert
-// directly against the same extension objects that plugin.tsx wires into
+// directly against the same extension object that plugin.tsx wires into
 // `gildiPlugin`'s `extensions` array.
-describe('gildi plugin entity cards', () => {
-  it('registers the guild entity-decoration cards', () => {
-    const ids = [
-      createExtensionTester(guildCharterCard).snapshot().id,
-      createExtensionTester(guildRosterCard).snapshot().id,
-      createExtensionTester(guildChronicleCard).snapshot().id,
-    ];
-    const joined = ids.join(' ');
-    expect(joined).toMatch(/guild-charter/);
-    expect(joined).toMatch(/guild-roster/);
-    expect(joined).toMatch(/guild-chronicle/);
+describe('gildi guild overview layout', () => {
+  it('registers the guild-only overview layout extension', () => {
+    const id = createExtensionTester(guildOverviewLayout).snapshot().id;
+    expect(id).toMatch(/guild-overview/);
   });
 });

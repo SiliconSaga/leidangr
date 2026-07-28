@@ -1,27 +1,17 @@
-import { EntityCardBlueprint } from '@backstage/plugin-catalog-react/alpha';
+import { EntityContentLayoutBlueprint } from '@backstage/plugin-catalog-react/alpha';
 
-const guildFilter = { kind: 'Group', 'spec.type': 'guild' };
-
-export const guildCharterCard = EntityCardBlueprint.make({
-  name: 'guild-charter',
+// A guild-only overview layout: matched first (before the stock
+// DefaultEntityContentLayout) for kind:Group spec.type:guild, so only guild
+// pages get the bespoke two-zone composition. Every other Group and kind falls
+// through to the default layout untouched. The blueprint's attachTo
+// (entity-content:catalog/overview -> layouts) is baked in.
+export const guildOverviewLayout = EntityContentLayoutBlueprint.make({
+  name: 'guild-overview',
   params: {
-    filter: guildFilter,
-    loader: () => import('./GuildCharterCard').then(m => <m.GuildCharterCard />),
-  },
-});
-
-export const guildRosterCard = EntityCardBlueprint.make({
-  name: 'guild-roster',
-  params: {
-    filter: guildFilter,
-    loader: () => import('./GuildRosterCard').then(m => <m.GuildRosterCard />),
-  },
-});
-
-export const guildChronicleCard = EntityCardBlueprint.make({
-  name: 'guild-chronicle',
-  params: {
-    filter: guildFilter,
-    loader: () => import('./GuildChronicleCard').then(m => <m.GuildChronicleCard />),
+    filter: { kind: 'group', 'spec.type': 'guild' },
+    loader: async () => {
+      const { GuildOverviewLayout } = await import('./GuildOverviewLayout');
+      return props => <GuildOverviewLayout {...props} />;
+    },
   },
 });
