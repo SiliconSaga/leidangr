@@ -9,13 +9,12 @@ const guild = {
     name: 'security-gildi', title: 'Security guild',
     description: 'Keeps things safe.',
     annotations: { 'siliconsaga.org/stewards': 'aspect:security' },
-    links: [{ url: 'https://example.test/charter', title: 'Charter doc' }],
   },
   spec: { type: 'guild' },
 } as any;
 
 describe('GuildCharterCard', () => {
-  it('renders charter prose, a steward aspect chip and a featured link', async () => {
+  it('renders charter prose and a steward aspect chip', async () => {
     await renderInTestApp(
       <EntityProvider entity={guild}>
         <GuildCharterCard />
@@ -23,6 +22,5 @@ describe('GuildCharterCard', () => {
     );
     expect(await screen.findByText('Keeps things safe.')).toBeInTheDocument();
     expect(screen.getByText('security aspect')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Charter doc/ })).toHaveAttribute('href', 'https://example.test/charter');
   });
 });

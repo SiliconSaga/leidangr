@@ -1,5 +1,5 @@
 import { Chip, Typography } from '@material-ui/core';
-import { InfoCard, Link } from '@backstage/core-components';
+import { InfoCard } from '@backstage/core-components';
 import { useEntity } from '@backstage/plugin-catalog-react';
 import { Crest } from '../crest';
 import { stewardAspectsOf } from '../guilds/roster';
@@ -11,7 +11,6 @@ export function GuildCharterCard() {
   const title = entity.metadata.title ?? entity.metadata.name;
   const charter = entity.metadata.annotations?.[CHARTER] ?? entity.metadata.description;
   const aspects = stewardAspectsOf(entity);
-  const links = entity.metadata.links ?? [];
 
   return (
     <InfoCard title="Charter">
@@ -23,18 +22,9 @@ export function GuildCharterCard() {
             {charter ?? 'No charter recorded yet.'}
           </Typography>
           {aspects.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
               {aspects.map(a => (
                 <Chip key={a} label={`${a} aspect`} size="small" variant="outlined" />
-              ))}
-            </div>
-          )}
-          {links.length > 0 && (
-            <div>
-              {links.map(l => (
-                <div key={l.url}>
-                  <Link to={l.url}>{l.title ?? l.url}</Link>
-                </div>
               ))}
             </div>
           )}
