@@ -1,7 +1,7 @@
 # Gildi — Guild entity-page decoration (design)
 
 **Date:** 2026-07-24
-**Status:** Design approved, plan pending
+**Status:** Superseded — the appended-cards *composition* below was replaced by a guild-only layout in [`2026-07-27-gildi-guild-page-layout-design.md`](2026-07-27-gildi-guild-page-layout-design.md); the card *content* defined here shipped in PR #13.
 **Arc:** leidangr-guildhall (slice 6 of the guildhall-hub design)
 **Predecessors:** `2026-07-20-gildi-guildhall-hub-design.md` (§6 annotation-driven
 decoration, §12 slice 6), `2026-07-21-gildi-crest-and-guilds-plan.md`,
@@ -26,7 +26,7 @@ Three focused `EntityCardBlueprint` cards attach to the Group Overview, each
 gated `kind:Group spec.type:guild`, so they mount only on guild pages and leave
 every other `Group` untouched:
 
-```
+```text
 Group Overview
 ┌─ Charter ──────────┐  ┌─ About (Backstage default) ┐
 │ [crest]  title     │  │ members, ownership, links   │
@@ -51,7 +51,7 @@ the extraction-ready `@siliconsaga/plugin-gildi` package cohesive. (The `cycle`
 card lives in `packages/app` only because `Cycle` is an ecosystem kind gildi
 does not own; guilds are gildi's domain.)
 
-```
+```text
 plugins/gildi/src/
   entity/
     GuildCharterCard.tsx     # identity: crest, title, charter prose, stewards, links

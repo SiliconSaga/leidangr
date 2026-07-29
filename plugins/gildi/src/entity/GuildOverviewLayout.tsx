@@ -33,7 +33,7 @@ export function GuildOverviewLayout(_props: EntityContentLayoutProps) {
   return (
     <Grid container spacing={3}>
       <Grid item xs={12} md={8}>
-        <div style={column}>
+        <div style={column} data-testid="guild-overview-main">
           <GuildCharterCard />
           <EntityOwnershipCard entityFilterKind={OWNED_KINDS} />
           <EntityMembersListCard />
@@ -41,7 +41,7 @@ export function GuildOverviewLayout(_props: EntityContentLayoutProps) {
         </div>
       </Grid>
       <Grid item xs={12} md={4}>
-        <div style={column}>
+        <div style={column} data-testid="guild-overview-rail">
           <EntityGroupProfileCard />
           <EntityLinksCard />
           <GuildChronicleCard />

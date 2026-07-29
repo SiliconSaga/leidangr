@@ -1,16 +1,17 @@
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import { renderInTestApp, TestApiProvider } from '@backstage/frontend-test-utils';
 import { catalogApiRef, entityRouteRef, EntityProvider } from '@backstage/plugin-catalog-react';
 
 // Stub the stock cards — they each pull their own plugin APIs (catalog-graph,
-// permissions, …) which are out of scope here. We only assert OUR composition:
-// that the layout renders Charter + Chronicle and mounts a slot for each stock
-// card in the right zone. The stock cards' real rendering is Backstage's to
-// test, and the composed page is proven in manual acceptance.
+// permissions, …) which are out of scope here. The Ownership stub echoes its
+// entityFilterKind so we can assert the Template addition; the rest render a
+// labelled slot so we can assert which ZONE each lands in.
 jest.mock('@backstage/plugin-org', () => ({
   EntityGroupProfileCard: () => <div>[group-profile]</div>,
   EntityMembersListCard: () => <div>[members]</div>,
-  EntityOwnershipCard: () => <div>[ownership]</div>,
+  EntityOwnershipCard: (props: { entityFilterKind?: string[] }) => (
+    <div>[ownership kinds={(props.entityFilterKind ?? []).join(',')}]</div>
+  ),
 }));
 jest.mock('@backstage/plugin-catalog', () => ({
   EntityLinksCard: () => <div>[links]</div>,
@@ -36,7 +37,7 @@ const guild = {
 const catalogApi = { getEntities: async () => ({ items: [] }) } as any;
 
 describe('GuildOverviewLayout', () => {
-  it('composes Charter and Chronicle alongside the stock cards', async () => {
+  it('places our cards and the stock cards in the right zones', async () => {
     await renderInTestApp(
       <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
         <EntityProvider entity={guild}>
@@ -46,14 +47,19 @@ describe('GuildOverviewLayout', () => {
       { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
     );
 
-    // our cards
-    expect(await screen.findByText('Charter')).toBeInTheDocument();
-    expect(screen.getByText('Chronicle')).toBeInTheDocument();
-    // a slot for each stock card, one per zone
-    expect(screen.getByText('[ownership]')).toBeInTheDocument();
-    expect(screen.getByText('[members]')).toBeInTheDocument();
-    expect(screen.getByText('[entity-graph]')).toBeInTheDocument();
-    expect(screen.getByText('[group-profile]')).toBeInTheDocument();
-    expect(screen.getByText('[links]')).toBeInTheDocument();
+    const main = within(await screen.findByTestId('guild-overview-main'));
+    const rail = within(screen.getByTestId('guild-overview-rail'));
+
+    // Main column: Charter leads, then Ownership (with Template added so the
+    // owned aspect surfaces), Members, and the demoted entity graph.
+    expect(main.getByText('Charter')).toBeInTheDocument();
+    expect(main.getByText(/\[ownership kinds=.*Template.*\]/)).toBeInTheDocument();
+    expect(main.getByText('[members]')).toBeInTheDocument();
+    expect(main.getByText('[entity-graph]')).toBeInTheDocument();
+
+    // Right rail: Group Profile, Links, then our Chronicle.
+    expect(rail.getByText('[group-profile]')).toBeInTheDocument();
+    expect(rail.getByText('[links]')).toBeInTheDocument();
+    expect(rail.getByText('Chronicle')).toBeInTheDocument();
   });
 });

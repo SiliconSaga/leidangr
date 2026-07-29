@@ -56,7 +56,7 @@ entity data; Charter is human-friendly prose. Both earn their place.
 
 ## 4. Layout
 
-```
+```text
 Guild overview  (ONLY kind:Group spec.type:guild — other Groups keep the default)
 ┌── main column (2fr) ────────────┐   ┌── right rail (1fr, sticky) ─┐
 │ Charter        (ours)           │   │ Group Profile  "Security …" │

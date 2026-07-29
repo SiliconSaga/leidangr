@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Superseded:** the Roster card and the appended-`EntityCardBlueprint` composition below were replaced by the guild-only layout in [`2026-07-27-gildi-guild-page-layout-plan.md`](2026-07-27-gildi-guild-page-layout-plan.md). The Charter and Chronicle cards this plan builds shipped (repositioned) in PR #13.
+
 **Goal:** Decorate the guild (`Group` with `spec.type: guild`) entity page with three curated cards — Charter, Roster, Chronicle — owned by the `gildi` plugin.
 
 **Architecture:** Three `EntityCardBlueprint` extensions registered by the gildi plugin attach to the catalog Group Overview, gated `kind:Group spec.type:guild`. Charter reads the guild entity directly (`useEntity`); Roster and Chronicle read the catalog via typed search, reusing the shipped hub query logic (extracted to shared helpers and additive optional hook params, so the hub is unaffected). Reuses the existing crest module and `SagaCard`/`DriveCard` components.

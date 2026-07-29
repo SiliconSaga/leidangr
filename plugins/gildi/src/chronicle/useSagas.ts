@@ -43,7 +43,14 @@ export function useSagas(opts?: { guild?: string }) {
         end: tf.end,
       } as SagaView;
     });
-    const scoped = opts?.guild ? views.filter(v => v.guildNames.includes(opts.guild!)) : views;
+    // When scoped to a guild, seed the crest with THAT guild — guildName is the
+    // globally-primary touched guild, which would show the wrong arms on a
+    // multi-guild saga viewed from a non-primary guild's page.
+    const scoped = opts?.guild
+      ? views
+          .filter(v => v.guildNames.includes(opts.guild!))
+          .map(v => ({ ...v, guildName: opts.guild }))
+      : views;
     return scoped.sort((a, b) => (b.end ?? '').localeCompare(a.end ?? ''));
   }, [catalog, opts?.guild]);
   return { sagas: state.value ?? [], loading: state.loading, error: state.error };

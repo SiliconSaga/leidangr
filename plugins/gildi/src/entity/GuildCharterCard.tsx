@@ -9,7 +9,12 @@ const CHARTER = 'siliconsaga.org/charter';
 export function GuildCharterCard() {
   const { entity } = useEntity();
   const title = entity.metadata.title ?? entity.metadata.name;
-  const charter = entity.metadata.annotations?.[CHARTER] ?? entity.metadata.description;
+  // `||` (not `??`) so a blank or whitespace-only annotation/description falls
+  // through to the next candidate rather than rendering an empty paragraph.
+  const charter =
+    entity.metadata.annotations?.[CHARTER]?.trim() ||
+    entity.metadata.description?.trim() ||
+    'No charter recorded yet.';
   const aspects = stewardAspectsOf(entity);
 
   return (
@@ -19,7 +24,7 @@ export function GuildCharterCard() {
         <div style={{ minWidth: 0 }}>
           <Typography variant="h6">{title}</Typography>
           <Typography variant="body2" color="textSecondary" style={{ margin: '4px 0 8px' }}>
-            {charter ?? 'No charter recorded yet.'}
+            {charter}
           </Typography>
           {aspects.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>

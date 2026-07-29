@@ -1,8 +1,8 @@
 import { screen } from '@testing-library/react';
-import { renderInTestApp, TestApiProvider, createExtensionTester } from '@backstage/frontend-test-utils';
+import { renderInTestApp, TestApiProvider } from '@backstage/frontend-test-utils';
 import { catalogApiRef, entityRouteRef } from '@backstage/plugin-catalog-react';
 import { GuildHallPage } from './components/GuildHallPage';
-import { guildOverviewLayout } from './entity';
+import { gildiPlugin } from './plugin';
 
 // GuildHallPage mounts GuildsSection, DrivesBand, ActionsPanel, and
 // ChronicleRail, which together query the catalog for Group (guilds),
@@ -37,15 +37,17 @@ describe('GuildHallPage', () => {
   });
 });
 
-// `FrontendPlugin` (the type of `gildiPlugin`) doesn't publicly expose its
-// `extensions` array — only `pluginId`/`routes`/etc are part of the public
-// API. `createExtensionTester(...).snapshot().id` is the documented way
-// (frontend-test-utils) to resolve an extension's real id, so we assert
-// directly against the same extension object that plugin.tsx wires into
-// `gildiPlugin`'s `extensions` array.
+// `getExtension` is public on the OverridableFrontendPlugin that
+// createFrontendPlugin returns, and it THROWS for an id not wired into the
+// plugin — so a successful lookup of the plugin-qualified id is itself the
+// registration assertion. This fails if guildOverviewLayout is dropped from
+// plugin.tsx's `extensions` array. (Cast: getExtension's id param is a typed
+// literal key; we look it up by the runtime id string.)
 describe('gildi guild overview layout', () => {
-  it('registers the guild-only overview layout extension', () => {
-    const id = createExtensionTester(guildOverviewLayout).snapshot().id;
-    expect(id).toMatch(/guild-overview/);
+  it('registers the guild-only overview layout in the plugin', () => {
+    const wired = (
+      gildiPlugin as unknown as { getExtension(id: string): unknown }
+    ).getExtension('entity-content-layout:gildi/guild-overview');
+    expect(wired).toBeDefined();
   });
 });

@@ -5,9 +5,12 @@ const STEWARDS = 'siliconsaga.org/stewards';
 const ASPECT = 'siliconsaga.org/aspect';
 
 export function stewardAspectsOf(guild: Entity): string[] {
-  return (guild.metadata.annotations?.[STEWARDS] ?? '')
+  const ids = (guild.metadata.annotations?.[STEWARDS] ?? '')
     .split(',').map(s => s.trim()).filter(Boolean)
-    .filter(s => s.startsWith('aspect:')).map(s => s.slice('aspect:'.length));
+    .filter(s => s.startsWith('aspect:'))
+    .map(s => s.slice('aspect:'.length).trim())
+    .filter(Boolean);
+  return [...new Set(ids)]; // trim the post-prefix value and dedupe (stable keys)
 }
 
 export function indexPracticesByOwner(practices: Entity[]): Map<string, Entity[]> {
