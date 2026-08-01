@@ -1,8 +1,8 @@
 import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
-import { parseEntityRef, stringifyEntityRef } from '@backstage/catalog-model';
-import type { Entity } from '@backstage/catalog-model';
+import { stringifyEntityRef } from '@backstage/catalog-model';
+import { stewardAspectsOf, indexPracticesByOwner, practiceView } from './roster';
 
 export interface GuildView {
   name: string;
@@ -13,9 +13,6 @@ export interface GuildView {
   practices: { name: string; title: string; aspect?: string }[];
 }
 
-const STEWARDS = 'siliconsaga.org/stewards';
-const ASPECT = 'siliconsaga.org/aspect';
-
 export function useGuilds() {
   const catalog = useApi(catalogApiRef);
   const state = useAsync(async () => {
@@ -23,34 +20,17 @@ export function useGuilds() {
       catalog.getEntities({ filter: { kind: 'Group', 'spec.type': 'guild' } }),
       catalog.getEntities({ filter: { kind: 'Component', 'spec.type': 'practice' } }),
     ]);
-    const practicesByOwner = new Map<string, Entity[]>();
-    for (const p of practicesRes.items) {
-      const owner = (p.spec?.owner as string) ?? '';
-      if (!owner) continue;
-      let key: string;
-      try {
-        key = stringifyEntityRef(parseEntityRef(owner, { defaultKind: 'Group', defaultNamespace: 'default' }));
-      } catch {
-        continue; // skip a practice with a malformed owner ref rather than failing the whole section
-      }
-      practicesByOwner.set(key, [...(practicesByOwner.get(key) ?? []), p]);
-    }
+    const practicesByOwner = indexPracticesByOwner(practicesRes.items);
     const guilds: GuildView[] = guildsRes.items.map(g => {
       const ref = stringifyEntityRef(g);
-      const stewards = (g.metadata.annotations?.[STEWARDS] ?? '')
-        .split(',').map(s => s.trim()).filter(Boolean)
-        .filter(s => s.startsWith('aspect:')).map(s => s.slice('aspect:'.length));
-      const practices = (practicesByOwner.get(ref) ?? []).map(p => ({
-        name: p.metadata.name,
-        title: p.metadata.title ?? p.metadata.name,
-        aspect: p.metadata.annotations?.[ASPECT],
-      }));
+      const stewardAspects = stewardAspectsOf(g);
+      const practices = (practicesByOwner.get(ref) ?? []).map(practiceView);
       return {
         name: g.metadata.name,
         title: g.metadata.title ?? g.metadata.name,
         description: g.metadata.description,
         entityRef: ref,
-        stewardAspects: stewards,
+        stewardAspects,
         practices,
       };
     });

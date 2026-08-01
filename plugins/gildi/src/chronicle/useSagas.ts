@@ -8,10 +8,11 @@ export interface SagaView {
   entityRef: string;                 // saga:default/<name>
   skaldRef?: string;                 // user:default/<name>
   guildName?: string;                // touched guild for the crest
+  guildNames: string[];              // full resolved touched-guild-name set, for scoping
   end?: string;
 }
 
-export function useSagas() {
+export function useSagas(opts?: { guild?: string }) {
   const catalog = useApi(catalogApiRef);
   const state = useAsync(async () => {
     const res = await catalog.getEntities({ filter: { kind: 'Saga' } });
@@ -38,10 +39,19 @@ export function useSagas() {
         entityRef: stringifyEntityRef(s),
         skaldRef: s.spec?.skald as string | undefined,
         guildName,
+        guildNames,
         end: tf.end,
       } as SagaView;
     });
-    return views.sort((a, b) => (b.end ?? '').localeCompare(a.end ?? ''));
-  }, [catalog]);
+    // When scoped to a guild, seed the crest with THAT guild — guildName is the
+    // globally-primary touched guild, which would show the wrong arms on a
+    // multi-guild saga viewed from a non-primary guild's page.
+    const scoped = opts?.guild
+      ? views
+          .filter(v => v.guildNames.includes(opts.guild!))
+          .map(v => ({ ...v, guildName: opts.guild }))
+      : views;
+    return scoped.sort((a, b) => (b.end ?? '').localeCompare(a.end ?? ''));
+  }, [catalog, opts?.guild]);
   return { sagas: state.value ?? [], loading: state.loading, error: state.error };
 }

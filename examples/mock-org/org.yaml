@@ -63,14 +63,21 @@ kind: Group
 metadata:
   name: security-gildi
   title: Security guild
-  description: The Security guild — stewards the security aspect (aspect-aligned gildi)
+  description: Keeps the org's software safe and its incidents short.
   annotations:
     siliconsaga.org/stewards: 'aspect:security'
+    siliconsaga.org/charter: >-
+      The Security guild stewards the security aspect across the org — setting
+      the standard, paving the road, and shepherding components up the tiers.
   links: # the practice→standard tie, one click from the guild's page
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/standard.yaml
       title: Security standard (blocks of trials, tiered)
     - url: https://github.com/SiliconSaga/leidangr/blob/main/examples/mock-org/repos/security-aspect/template.yaml
       title: Adoption — Apply the Security aspect
+    - url: https://example.test/security-guild/charter
+      title: Guild charter
+    - url: https://example.test/security-guild/oncall
+      title: On-call rota
 spec:
   type: guild
   parent: ravenline

@@ -2,6 +2,7 @@ import { screen } from '@testing-library/react';
 import { renderInTestApp, TestApiProvider } from '@backstage/frontend-test-utils';
 import { catalogApiRef, entityRouteRef } from '@backstage/plugin-catalog-react';
 import { GuildHallPage } from './components/GuildHallPage';
+import { gildiPlugin } from './plugin';
 
 // GuildHallPage mounts GuildsSection, DrivesBand, ActionsPanel, and
 // ChronicleRail, which together query the catalog for Group (guilds),
@@ -33,5 +34,20 @@ describe('GuildHallPage', () => {
       { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
     );
     expect(await screen.findByText('Guild Hall')).toBeInTheDocument();
+  });
+});
+
+// `getExtension` is public on the OverridableFrontendPlugin that
+// createFrontendPlugin returns, and it THROWS for an id not wired into the
+// plugin — so a successful lookup of the plugin-qualified id is itself the
+// registration assertion. This fails if guildOverviewLayout is dropped from
+// plugin.tsx's `extensions` array. (Cast: getExtension's id param is a typed
+// literal key; we look it up by the runtime id string.)
+describe('gildi guild overview layout', () => {
+  it('registers the guild-only overview layout in the plugin', () => {
+    const wired = (
+      gildiPlugin as unknown as { getExtension(id: string): unknown }
+    ).getExtension('entity-content-layout:gildi/guild-overview');
+    expect(wired).toBeDefined();
   });
 });
