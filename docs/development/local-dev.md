@@ -17,9 +17,11 @@ tree. An unclean exit can also leave the terminal in raw mode, so it starts
   whole process tree cleanly, no Ctrl-C dance. Keep it in its own terminal you
   don't type into.
 - **Force-kill from a shell** when Ctrl-C won't. Target the dev ports (frontend
-  `:3000`, backend `:7007`): find the PID with `netstat -ano` and
-  `taskkill //F //PID <pid>`, or bluntly `taskkill //F //IM node.exe` (kills
-  every node process on the machine).
+  `:3000`, backend `:7007`): find the PID with `netstat -ano`, then kill it. In
+  **PowerShell / cmd** use single-slash switches — `taskkill /F /PID <pid>` (or
+  `taskkill /F /IM node.exe` to bluntly kill every node process). In **Git Bash**
+  double the slashes — `taskkill //F //PID <pid>` — so MSYS doesn't mangle the
+  `/F` flag into a path.
 - **Recover a "funny" terminal** (eaten keystrokes / no echo) after an unclean
   kill: run `reset` (or `stty sane`) in Git Bash.
 - `winpty make dev` under Git Bash also improves Ctrl-C/TTY behaviour for native

@@ -1,7 +1,7 @@
 # Gildi — Practice entity page + practice/aspect page themes (design)
 
 **Date:** 2026-08-01
-**Status:** Design approved (in-session), plan pending
+**Status:** Implemented in PR #14
 **Arc:** leidangr-guildhall (follows the guild entity-page layout, PR #13)
 **Predecessors:** `2026-07-27-gildi-guild-page-layout-design.md` (the layout pattern this reuses).
 
