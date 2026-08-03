@@ -3,6 +3,28 @@
 A running how-to for local-dev setup and gotchas beyond the README quickstart
 (`make deps` / `make dev`). Add to this as new friction is discovered.
 
+## Managing the dev server (stopping it cleanly)
+
+`make dev` runs Backstage's dev server — the frontend and backend together, both
+in watch mode. On Windows Git Bash (MinTTY) this is awkward to stop: Ctrl-C often
+lands on the file-watcher as a *reload* (a soft restart) rather than terminating,
+and MinTTY doesn't cleanly propagate the kill across the frontend+backend process
+tree. An unclean exit can also leave the terminal in raw mode, so it starts
+"eating" keystrokes.
+
+- **Best — run it in a terminal with a real kill control.** VS Code's integrated
+  terminal (the trash/kill button) or Windows Terminal (PowerShell) terminate the
+  whole process tree cleanly, no Ctrl-C dance. Keep it in its own terminal you
+  don't type into.
+- **Force-kill from a shell** when Ctrl-C won't. Target the dev ports (frontend
+  `:3000`, backend `:7007`): find the PID with `netstat -ano` and
+  `taskkill //F //PID <pid>`, or bluntly `taskkill //F //IM node.exe` (kills
+  every node process on the machine).
+- **Recover a "funny" terminal** (eaten keystrokes / no echo) after an unclean
+  kill: run `reset` (or `stty sane`) in Git Bash.
+- `winpty make dev` under Git Bash also improves Ctrl-C/TTY behaviour for native
+  console apps like node.
+
 ## TechDocs — local rendering
 
 Entities with a `backstage.io/techdocs-ref` (e.g. the `security-practice`
