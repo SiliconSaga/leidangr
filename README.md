@@ -64,6 +64,10 @@ Secrets are **never** committed and **never** hand-edited into config. `make sec
 
 `make test` runs the **envelope** suite — the TDD'd tooling (`scripts/lib/*.ts`) and the BDD acceptance specs (`tests/acceptance/*.feature`, via jest-cucumber). It's a separate jest config from Backstage's own tests (`make test-app`). See [`docs/development/testing.md`](docs/development/testing.md) for how the two stacks fit together and how to add a test.
 
+## Local development notes
+
+[`docs/development/local-dev.md`](docs/development/local-dev.md) is the running how-to for local-dev setup and gotchas beyond the quickstart — currently **TechDocs local rendering** (avoiding the Docker generator, and the Windows/pyenv `spawn mkdocs ENOENT` fix) and the **guildhall page themes** (how the practice/aspect/guild colours work and how to add a new one).
+
 ## Layout
 
 ```text

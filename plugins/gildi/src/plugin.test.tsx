@@ -43,11 +43,15 @@ describe('GuildHallPage', () => {
 // registration assertion. This fails if guildOverviewLayout is dropped from
 // plugin.tsx's `extensions` array. (Cast: getExtension's id param is a typed
 // literal key; we look it up by the runtime id string.)
-describe('gildi guild overview layout', () => {
+describe('gildi entity overview layouts', () => {
+  const getExtension = (id: string) =>
+    (gildiPlugin as unknown as { getExtension(id: string): unknown }).getExtension(id);
+
   it('registers the guild-only overview layout in the plugin', () => {
-    const wired = (
-      gildiPlugin as unknown as { getExtension(id: string): unknown }
-    ).getExtension('entity-content-layout:gildi/guild-overview');
-    expect(wired).toBeDefined();
+    expect(getExtension('entity-content-layout:gildi/guild-overview')).toBeDefined();
+  });
+
+  it('registers the practice-only overview layout in the plugin', () => {
+    expect(getExtension('entity-content-layout:gildi/practice-overview')).toBeDefined();
   });
 });

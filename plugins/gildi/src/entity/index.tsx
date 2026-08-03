@@ -15,3 +15,16 @@ export const guildOverviewLayout = EntityContentLayoutBlueprint.make({
     },
   },
 });
+
+// A practice-only overview layout (kind:Component spec.type:practice), same
+// mechanism as the guild layout. Other Components fall through to the default.
+export const practiceOverviewLayout = EntityContentLayoutBlueprint.make({
+  name: 'practice-overview',
+  params: {
+    filter: { kind: 'component', 'spec.type': 'practice' },
+    loader: async () => {
+      const { PracticeOverviewLayout } = await import('./PracticeOverviewLayout');
+      return props => <PracticeOverviewLayout {...props} />;
+    },
+  },
+});
