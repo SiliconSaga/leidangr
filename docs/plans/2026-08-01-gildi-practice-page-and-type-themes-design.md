@@ -32,10 +32,13 @@ a complete theme. So the plugin cannot own the theme, only the *definitions*.
 
 - **gildi exports the definitions.** `plugins/gildi/src/theme/pageThemes.ts`
   exports `guildhallPageThemes: Record<string, PageTheme>` built with
-  `genPageTheme` — `practice` (deep regal purple) and `aspect` (lighter violet),
-  differing in **lightness** (not just hue) for at-a-glance and colour-vision
-  distinction, white tile/heading text on both. The purple preference thus ships
-  with the extraction-ready package.
+  `genPageTheme` — `guild` (royal purple), `practice` (deep regal purple), and
+  `aspect` (lighter violet), differing in **lightness** (not just hue) for
+  at-a-glance and colour-vision distinction, white tile/heading text on both. The
+  purple preference thus ships with the extraction-ready package. (The `guild`
+  colour and repainting the Guild Hall page were folded into this branch after
+  acceptance found guild pages still rendered green — the two-colour
+  practice/aspect scope elsewhere in this doc predates that.)
 - **The app composes them.** `packages/app` registers a custom light + dark
   theme (the only place that legally can) that reproduces the default palettes
   and sets `pageTheme: { ...defaultPageTheme, ...guildhallPageThemes }`. The
@@ -91,13 +94,13 @@ Practice overview  (kind:Component spec.type:practice)
 - **Adopters card** (ours) — `useAdopters(aspectId)`: query
   `getEntities({ kind: 'Component' })` and keep those whose
   `siliconsaga.org/aspects` (comma-separated) includes the practice's aspect id,
-  each shown with its `siliconsaga.org/aspect-versions` (parse `security@1.4`).
-  Headings + empty state in all states. The one genuinely new query.
-- **Stock**: `EntityAboutCard`? No — About is excluded for Groups but present for
-  Components; use the stock about/links via the same imports as the guild layout
-  (`EntityLinksCard`, and the Component's about card / relations), plus
-  `EntityCatalogGraphCard` demoted. Confirm the Component about card export at
-  implementation.
+  each shown with its `siliconsaga.org/aspect-versions` version when present
+  (parse `security@1.4`). Headings + empty state in all states. The one genuinely
+  new query.
+- **Stock**: `EntityAboutCard` and `EntityLinksCard` (both from
+  `@backstage/plugin-catalog`, shown for Components) in the right rail, plus
+  `EntityCatalogGraphCard` (from `@backstage/plugin-catalog-graph`) demoted in the
+  main column — the same stock-card imports as the guild layout.
 
 ## 4. Where the code lives
 
@@ -110,10 +113,11 @@ Practice overview  (kind:Component spec.type:practice)
 ## 5. Testing
 
 - Unit tests: `PracticeCard` (crest + maintains chip + run-by), `AdoptersCard`
-  (enrolled components + versions, empty state), `PracticeOverviewLayout`
-  (composition + zones, stock cards stubbed) — mirroring the guild card/layout
-  tests. Theme: a small test that `guildhallPageThemes` has `practice`/`aspect`
-  entries, and that the composed app theme returns them from `getPageTheme`.
+  (enrolled components + versions, no-aspect, loading, and error states),
+  `PracticeOverviewLayout` (composition + zones, stock cards stubbed) — mirroring
+  the guild card/layout tests. Theme: `guildhallPageThemes` has the
+  `guild`/`practice`/`aspect` entries, and the app module's `mergedPageTheme`
+  composes them over the default map.
 - Gate: `ws test leidangr` + `ws lint leidangr`; `make deps` clean.
 - Human visual acceptance: the purple practice/aspect Ownership tiles + page
   headers, and the practice page (cards, crest, adopters, Docs tab vísar).

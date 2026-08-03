@@ -70,4 +70,34 @@ describe('AdoptersCard', () => {
       await screen.findByText('This practice does not declare a maintained aspect.'),
     ).toBeInTheDocument();
   });
+
+  it('shows a spinner while adopters load', async () => {
+    const pending = { getEntities: () => new Promise(() => {}) } as any;
+    await renderInTestApp(
+      <TestApiProvider apis={[[catalogApiRef, pending]]}>
+        <EntityProvider entity={practice}>
+          <AdoptersCard />
+        </EntityProvider>
+      </TestApiProvider>,
+      { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
+    );
+    expect(screen.getByTestId('progress')).toBeInTheDocument();
+  });
+
+  it('shows an error panel when the catalog query fails', async () => {
+    const failing = {
+      getEntities: async () => {
+        throw new Error('catalog boom');
+      },
+    } as any;
+    await renderInTestApp(
+      <TestApiProvider apis={[[catalogApiRef, failing]]}>
+        <EntityProvider entity={practice}>
+          <AdoptersCard />
+        </EntityProvider>
+      </TestApiProvider>,
+      { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
+    );
+    expect((await screen.findAllByText(/catalog boom/)).length).toBeGreaterThan(0);
+  });
 });
