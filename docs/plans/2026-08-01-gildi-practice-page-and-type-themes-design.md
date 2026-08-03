@@ -102,7 +102,7 @@ Practice overview  (kind:Component spec.type:practice)
 ## 4. Where the code lives
 
 - `plugins/gildi/src/theme/pageThemes.ts` — `guildhallPageThemes` export (+ `@backstage/theme` dep on gildi).
-- `packages/app/src/themes/` — the custom light+dark theme module composing the page themes, registered via the app's `ThemeBlueprint` module (wired into `App.tsx` `features`).
+- `packages/app/src/modules/theme/index.tsx` — the custom light+dark theme module composing the page themes, registered via the app's `ThemeBlueprint` module (wired into `App.tsx` `features`).
 - `plugins/gildi/src/entity/PracticeCard.tsx`, `AdoptersCard.tsx`, `useAdopters.ts`, `PracticeOverviewLayout.tsx` — the practice page.
 - `plugins/gildi/src/entity/index.tsx` — add the `practiceOverviewLayout` `EntityContentLayoutBlueprint` extension alongside `guildOverviewLayout`.
 - `plugins/gildi/src/plugin.tsx` — register it.

@@ -20,7 +20,11 @@ export function useAdopters(aspectId?: string) {
   const catalog = useApi(catalogApiRef);
   const state = useAsync(async () => {
     if (!aspectId) return [];
-    const res = await catalog.getEntities({ filter: { kind: 'Component' } });
+    const res = await catalog.getEntities({
+      filter: { kind: 'Component' },
+      // only the fields the reducer reads — avoid pulling full Component bodies
+      fields: ['kind', 'metadata.name', 'metadata.title', 'metadata.namespace', 'metadata.annotations'],
+    });
     return res.items.reduce<AdopterView[]>((acc, c) => {
       const aspects = (c.metadata.annotations?.[ASPECTS] ?? '')
         .split(',').map(s => s.trim()).filter(Boolean);

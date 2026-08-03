@@ -13,7 +13,13 @@ export function AdoptersCard() {
   const { adopters, loading, error } = useAdopters(aspectId);
 
   let body;
-  if (loading) {
+  if (!aspectId) {
+    body = (
+      <Typography variant="body2" color="textSecondary">
+        This practice does not declare a maintained aspect.
+      </Typography>
+    );
+  } else if (loading) {
     body = <Progress />;
   } else if (error) {
     body = <ResponseErrorPanel error={error} />;

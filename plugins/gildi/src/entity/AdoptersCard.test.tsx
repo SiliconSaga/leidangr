@@ -50,4 +50,24 @@ describe('AdoptersCard', () => {
     expect(screen.getByText('v1.4')).toBeInTheDocument();
     expect(screen.queryByText('Unrelated')).not.toBeInTheDocument();
   });
+
+  it('distinguishes a practice that declares no aspect from one with zero adopters', async () => {
+    const noAspect = {
+      apiVersion: 'backstage.io/v1alpha1',
+      kind: 'Component',
+      metadata: { name: 'unconfigured-practice', annotations: {} },
+      spec: { type: 'practice' },
+    } as any;
+    await renderInTestApp(
+      <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
+        <EntityProvider entity={noAspect}>
+          <AdoptersCard />
+        </EntityProvider>
+      </TestApiProvider>,
+      { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
+    );
+    expect(
+      await screen.findByText('This practice does not declare a maintained aspect.'),
+    ).toBeInTheDocument();
+  });
 });

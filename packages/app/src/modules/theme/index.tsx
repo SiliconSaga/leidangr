@@ -15,7 +15,9 @@ import { guildhallPageThemes } from '@siliconsaga/plugin-gildi';
 // these for practice/aspect entities (headers + Ownership tiles); everything
 // else falls back to the default map. Theme composition is app-owned — the
 // gildi plugin only exports the page-theme definitions.
-const mergedPageTheme = { ...defaultPageTheme, ...guildhallPageThemes };
+// Exported for the composition test — the guildhall page themes spread over the
+// default map is the meaningful step this module owns.
+export const mergedPageTheme = { ...defaultPageTheme, ...guildhallPageThemes };
 
 const guildhallLightTheme = createUnifiedTheme({
   palette: palettes.light,
