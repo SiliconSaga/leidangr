@@ -7,7 +7,7 @@ import { ChronicleRail } from '../chronicle/ChronicleRail';
 
 export function GuildHallPage() {
   return (
-    <Page themeId="home">
+    <Page themeId="guild">
       <Header title="Guild Hall" subtitle="The practice layer — guilds, their practices and aspects, drives, and sagas" />
       <Content>
         <Grid container spacing={3}>

@@ -7,6 +7,9 @@ import { genPageTheme, shapes, type PageTheme } from '@backstage/theme';
 // heading/tile text on both. `getPageTheme({ themeId })` keys on `spec.type`,
 // so these colour the practice/aspect page headers and Ownership tiles.
 export const guildhallPageThemes: Record<string, PageTheme> = {
+  // guild: the central fellowship — a royal, magenta-leaning purple, also used
+  // for the Guild Hall hub page.
+  guild: genPageTheme({ colors: ['#6A1B9A', '#8E24AA'], shape: shapes.wave }),
   practice: genPageTheme({ colors: ['#4527A0', '#5E35B1'], shape: shapes.round }),
   aspect: genPageTheme({ colors: ['#7E57C2', '#9575CD'], shape: shapes.wave2 }),
 };
