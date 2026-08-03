@@ -12,3 +12,10 @@
 #   title: Leiðangr (local)
 # organization:
 #   name: SiliconSaga
+#
+# Render TechDocs locally instead of in Docker (the backend can't reach the
+# Rancher Desktop daemon on Windows). Requires `pip install mkdocs-techdocs-core`
+# and mkdocs.exe on PATH — see docs/development/local-dev.md.
+# techdocs:
+#   generator:
+#     runIn: local
