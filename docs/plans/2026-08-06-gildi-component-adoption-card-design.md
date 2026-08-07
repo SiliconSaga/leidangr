@@ -54,17 +54,23 @@ Documented in `plugins/gildi/README.md` so the knob is discoverable without read
 **Seed change (one line):** the `security-practice` Component gains
 
 ```yaml
-siliconsaga.org/aspect-version: '1.4'
+siliconsaga.org/module-release: '1.4'
 ```
 
-making the practice the catalog face of its module's current release, alongside the `siliconsaga.org/aspect` id it already carries. This is consistent with how the practice already works — it is the catalog face of the living institution, and the module's release number is a fact about that institution.
+making the practice the catalog face of its module's current release, alongside the `siliconsaga.org/aspect` id it already carries. This is consistent with how the practice already works — it is the catalog face of the living institution, and the module's release number is a fact about that institution. The term is not invented here: `aspects.yaml` already annotates this very field as *"Current module release."*
 
-Note the deliberate distinction from the existing component-side annotation:
+### Why not `aspect-version`
 
-- `siliconsaga.org/aspect-version` (singular, on a **practice**) — the current release of the one module it maintains.
-- `siliconsaga.org/aspect-versions` (plural, on a **component**) — `<id>@<version>` pairs recording what was adopted, one per enrolled aspect.
+The obvious name — `siliconsaga.org/aspect-version`, singular against the component's plural `aspect-versions` — was rejected. Singular-vs-plural is the wrong axis, and one character of difference between two annotations with different owners and different meanings is a trap in a metadata block.
 
-Like every other guildhall annotation, both stay inert to the backend; only the frontend reads them. The practice page's Adopters card can reuse the same annotation later to flag which of its adopters are behind — unblocked here, not built here.
+The real distinction is **shape**, and it follows from the model:
+
+- A **component** adopts many aspects, each at one version. Its `siliconsaga.org/aspect-versions` is therefore a **map**, `<id>@<version>` per enrolled aspect, and every consumer reads it one entry at a time — the card resolves `security → 1.2` for the `security` row and never looks at the set as a whole.
+- A **practice** maintains exactly one aspect (`siliconsaga.org/aspect`, singular). Its release is therefore a **scalar**, and can never become a map.
+
+`module-release` carries that: a different noun and a different unit from `aspect-versions`, sharing no prefix, and "module" is singular by nature for a practice — so the name cannot be misread as keyed by anything.
+
+Like every other guildhall annotation, both stay inert to the backend; only the frontend reads them. The practice page's Adopters card can reuse `module-release` later to flag which of its adopters are behind — unblocked here, not built here.
 
 ## 5. Architecture
 
@@ -97,9 +103,10 @@ component entity annotations
              fields: metadata.name/title/annotations, spec.owner
                     │
         index practices by siliconsaga.org/aspect
+        each carrying siliconsaga.org/module-release  → currentRelease
                     │
                     ▼
-  per aspect id → { adoptedVersion?, currentVersion?, status,
+  per aspect id → { adoptedVersion?, currentRelease?, status,
                     practiceRef?, guildName?, recordUrl? }
 ```
 
@@ -164,3 +171,18 @@ The call-to-action card uses a react-router `Link` rather than `<a href>`, avoid
 - **Guild-level maturity rollup** ("its components at bronze/silver/gold", hub design §8) — depends on tier data that does not exist.
 - **Component overview layout ownership** — explicitly rejected in §2.
 - **Aspect `Template` entity-page decoration** — still intentionally none, per the practice-page design §1.
+- **Normalising the component's parallel per-aspect maps** — see below. Observed here, deliberately not fixed here.
+
+### Known shape problem: parallel per-aspect maps
+
+A component carries three annotations that are all keyed by aspect id — rows are aspects, columns are per-aspect facts:
+
+```text
+siliconsaga.org/aspects           'security, operational-readiness'   the rows
+siliconsaga.org/aspect-versions   'security@1.4'                      column: adopted version
+siliconsaga.org/adoption-record   'security: https://…/pull/412'      column: record of application
+```
+
+Each new per-aspect fact means another flat annotation with its own ad-hoc encoding, and the two that exist already disagree on separator — `@` in one, `: ` in the other. Every consumer has to know both.
+
+Not fixed in this slice, on purpose: this ships a card, and collapsing the maps would touch the seed, `useAdopters`, the aspect repo's `SKILL.md` and `template.yaml`, and the design docs that specify the shapes. Those shapes are already recorded as tentative until the scorecard engine consumes them, and that engine is the right forcing function for the decision. `aspects.ts` (§5) parses both encodings cleanly in the meantime, which is what keeps the cost of deferring low — one module knows about the inconsistency, not every caller.
