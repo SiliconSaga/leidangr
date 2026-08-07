@@ -2,9 +2,7 @@ import useAsync from 'react-use/lib/useAsync';
 import { useApi } from '@backstage/core-plugin-api';
 import { catalogApiRef } from '@backstage/plugin-catalog-react';
 import { stringifyEntityRef } from '@backstage/catalog-model';
-
-const ASPECTS = 'siliconsaga.org/aspects';
-const ASPECT_VERSIONS = 'siliconsaga.org/aspect-versions';
+import { ASPECTS, ASPECT_VERSIONS, parseKeyed, parseList } from './aspects';
 
 export interface AdopterView {
   name: string;
@@ -14,8 +12,8 @@ export interface AdopterView {
 }
 
 // Components that adopted a given aspect: those whose siliconsaga.org/aspects
-// annotation (comma-separated ids) includes the aspect, with the adopted version
-// parsed from siliconsaga.org/aspect-versions ("<id>@<version>").
+// annotation includes it, with the adopted version from the aspect-versions
+// map. Parsing is shared with the component-side card via ./aspects.
 export function useAdopters(aspectId?: string) {
   const catalog = useApi(catalogApiRef);
   const state = useAsync(async () => {
@@ -26,18 +24,12 @@ export function useAdopters(aspectId?: string) {
       fields: ['kind', 'metadata.name', 'metadata.title', 'metadata.namespace', 'metadata.annotations'],
     });
     return res.items.reduce<AdopterView[]>((acc, c) => {
-      const aspects = (c.metadata.annotations?.[ASPECTS] ?? '')
-        .split(',').map(s => s.trim()).filter(Boolean);
-      if (!aspects.includes(aspectId)) return acc;
-      const version = (c.metadata.annotations?.[ASPECT_VERSIONS] ?? '')
-        .split(',').map(s => s.trim())
-        .map(s => s.split('@'))
-        .find(([id]) => id === aspectId)?.[1];
+      if (!parseList(c.metadata.annotations?.[ASPECTS]).includes(aspectId)) return acc;
       acc.push({
         name: c.metadata.name,
         title: c.metadata.title ?? c.metadata.name,
         entityRef: stringifyEntityRef(c),
-        version,
+        version: parseKeyed(c.metadata.annotations?.[ASPECT_VERSIONS], '@').get(aspectId),
       });
       return acc;
     }, []);
