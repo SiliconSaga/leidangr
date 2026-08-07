@@ -9213,11 +9213,11 @@ __metadata:
     "@material-ui/icons": "npm:^4.9.1"
     "@testing-library/jest-dom": "npm:^6.0.0"
     "@testing-library/react": "npm:^14.0.0"
-    react-router-dom: "npm:^6.30.2"
     react-use: "npm:^17.6.1"
   peerDependencies:
     react: ^17 || ^18
     react-dom: ^17 || ^18
+    react-router-dom: ^6.30.2
   languageName: unknown
   linkType: soft
 
