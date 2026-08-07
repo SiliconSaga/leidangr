@@ -1,58 +1,113 @@
 import type { CSSProperties } from 'react';
-import { Chip, Divider, Link, Typography } from '@material-ui/core';
-import { InfoCard, Progress, ResponseErrorPanel } from '@backstage/core-components';
-import { EntityRefLink, useEntity } from '@backstage/plugin-catalog-react';
+import { Chip, Divider, Typography } from '@material-ui/core';
+import { InfoCard, Link, Progress, ResponseErrorPanel } from '@backstage/core-components';
+import { entityRouteRef, useEntity } from '@backstage/plugin-catalog-react';
+import { useRouteRef } from '@backstage/core-plugin-api';
+import { parseEntityRef } from '@backstage/catalog-model';
 import { Crest } from '../crest';
+import { aspectLabel } from './aspects';
 import { useComponentAspects, type AspectAdoptionView } from './useComponentAspects';
 
-// Three columns: [identity] [body] [badge]. The identity column keeps its
-// width when no crest resolves so rows stay aligned down the card, and the
-// trailing column is the reserved home for the earned tier badge (hub design
-// §8 — the badge belongs to the component, not the aspect).
+// Four columns: [identity] [name + links] [version pills] [badge]. The identity
+// column keeps its width when no crest resolves and the pill column is
+// right-aligned, so both edges form clean vertical lines down the card instead
+// of ragged left-aligned text. The trailing column is the reserved home for the
+// earned tier badge (hub design §8 — the badge belongs to the component).
 const row: CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: '32px 1fr auto',
-  gap: 8,
-  alignItems: 'start',
-  padding: '8px 0',
+  gridTemplateColumns: '32px 1fr auto auto',
+  columnGap: 8,
+  rowGap: 2,
+  alignItems: 'center',
+  padding: '10px 0',
 };
 
-// The verdict line. 'enrolled' rather than a guess whenever either version is
-// missing, and never a distance — see ./aspects adoptionStatus.
-function verdict(a: AspectAdoptionView): string {
-  if (a.status === 'current') return 'current';
-  if (a.status === 'behind') return `behind · current ${a.currentRelease}`;
-  return 'enrolled';
+const pills: CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, justifySelf: 'end' };
+
+// Links sit under the name, in the same grid column, so they indent with it.
+const links: CSSProperties = {
+  gridColumn: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+};
+
+const chip: CSSProperties = { height: 20 };
+
+// Adopted version and currency, both as pills so they read as one row of state
+// rather than a version chip followed by loose prose. 'behind' is the only
+// status that names the other number — equality tells us it differs, never how
+// far, so there is nothing more honest to say (see ./aspects adoptionStatus).
+function VersionPills({ aspect }: { aspect: AspectAdoptionView }) {
+  return (
+    <div style={pills}>
+      {aspect.adoptedVersion && (
+        <Chip label={`v${aspect.adoptedVersion}`} size="small" variant="outlined" style={chip} />
+      )}
+      {aspect.status === 'current' && (
+        <Chip label="current" size="small" variant="default" color="primary" style={chip} />
+      )}
+      {aspect.status === 'behind' && (
+        <Chip
+          label={`current ${aspect.currentRelease}`}
+          size="small"
+          variant="default"
+          color="secondary"
+          style={chip}
+        />
+      )}
+      {aspect.status === 'unknown' && !aspect.adoptedVersion && (
+        <Chip label="enrolled" size="small" variant="outlined" style={chip} />
+      )}
+    </div>
+  );
+}
+
+// A link that reads as a pill, matching the version chips. The anchor wraps a
+// non-clickable Chip rather than using Chip's `component` prop: MUI v4 renders
+// a `clickable` Chip as a ButtonBase, which would nest a <button> inside the
+// <a> and report role="button" for something that navigates. core-components'
+// Link routes internal paths through react-router and emits a plain anchor for
+// external ones — exactly the split between the practice and the record.
+function PillLink({ to, label }: { to: string; label: string }) {
+  return (
+    <Link to={to} style={{ textDecoration: 'none' }}>
+      <Chip label={label} size="small" variant="outlined" style={{ ...chip, cursor: 'pointer' }} />
+    </Link>
+  );
 }
 
 function AspectRow({ aspect }: { aspect: AspectAdoptionView }) {
+  const entityRoute = useRouteRef(entityRouteRef);
+
+  let practiceHref: string | undefined;
+  if (aspect.practiceRef) {
+    const ref = parseEntityRef(aspect.practiceRef);
+    practiceHref = entityRoute({
+      kind: ref.kind.toLowerCase(),
+      namespace: ref.namespace,
+      name: ref.name,
+    });
+  }
+
   return (
     <div style={row}>
       <div>
         {aspect.guildName && (
-          <Crest seed={aspect.guildName} size={24} title={`Arms of ${aspect.guildName}`} />
+          <Crest seed={aspect.guildName} size={26} title={`Arms of ${aspect.guildName}`} />
         )}
       </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Typography variant="body2">{aspect.aspectId}</Typography>
-          {aspect.adoptedVersion && (
-            <Chip label={`v${aspect.adoptedVersion}`} size="small" variant="outlined" />
-          )}
-        </div>
-        <Typography variant="caption" color="textSecondary">{verdict(aspect)}</Typography>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {aspect.practiceRef && (
-            <EntityRefLink entityRef={aspect.practiceRef}>{aspect.practiceTitle}</EntityRefLink>
-          )}
-          {aspect.recordUrl && (
-            <Link href={aspect.recordUrl} target="_blank" rel="noopener noreferrer">record</Link>
-          )}
-        </div>
-      </div>
+      <Typography variant="body2" style={{ minWidth: 0 }}>
+        {aspectLabel(aspect.aspectId)}
+      </Typography>
+      <VersionPills aspect={aspect} />
       {/* Reserved for the earned tier badge. Empty today: no tier data exists,
           and a visible placeholder on every row reads as a broken card. */}
       <div data-testid={`aspect-badge-${aspect.aspectId}`} />
+
+      {(practiceHref || aspect.recordUrl) && (
+        <div style={links}>
+          {practiceHref && <PillLink to={practiceHref} label={aspect.practiceTitle!} />}
+          {aspect.recordUrl && <PillLink to={aspect.recordUrl} label="record" />}
+        </div>
+      )}
     </div>
   );
 }

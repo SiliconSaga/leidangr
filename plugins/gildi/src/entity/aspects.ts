@@ -32,6 +32,15 @@ export function parseKeyed(value: string | undefined, separator: string): Map<st
   return out;
 }
 
+// Aspect ids are slugs ('operational-readiness'), but the hub design's card
+// family rule is curated display names, never raw metadata. There is no aspect
+// entity to carry a title — the registry is a raw file — so the card titles the
+// slug rather than inventing an annotation for it.
+export function aspectLabel(aspectId: string): string {
+  const words = aspectId.replace(/[-_]+/g, ' ').trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : '';
+}
+
 export type AdoptionStatus = 'current' | 'behind' | 'unknown';
 
 // Equality, never ordering: these are opaque module release tags and the

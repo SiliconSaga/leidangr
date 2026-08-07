@@ -3,21 +3,6 @@ import { renderInTestApp } from '@backstage/frontend-test-utils';
 import { AdoptAspectCard } from './AdoptAspectCard';
 
 describe('AdoptAspectCard', () => {
-  // MUI v4's focus-visible helper calls findDOMNode on the rendered anchor, and
-  // React logs a deprecation warning for it on every render — third-party noise
-  // that buries this suite's real failure output. Swallow only that warning;
-  // anything else still reaches the console.
-  let consoleError: jest.SpyInstance;
-  beforeAll(() => {
-    // eslint-disable-next-line no-console -- deliberately filtering console.error
-    const real = console.error;
-    consoleError = jest.spyOn(console, 'error').mockImplementation((...args) => {
-      if (typeof args[0] === 'string' && args[0].includes('findDOMNode is deprecated')) return;
-      real(...args);
-    });
-  });
-  afterAll(() => consoleError.mockRestore());
-
   it('invites adoption and routes to the Create page filtered to aspect templates', async () => {
     await renderInTestApp(<AdoptAspectCard />);
     expect(await screen.findByText('Not enrolled in any aspect.')).toBeInTheDocument();

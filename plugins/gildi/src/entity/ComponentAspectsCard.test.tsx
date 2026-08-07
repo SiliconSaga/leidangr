@@ -44,37 +44,47 @@ describe('ComponentAspectsCard', () => {
       'siliconsaga.org/aspect-versions': 'security@1.4',
       'siliconsaga.org/adoption-record': 'security: https://git.example/x/pull/412',
     }));
-    expect(await screen.findByText('security')).toBeInTheDocument();
+    expect(await screen.findByText('Security')).toBeInTheDocument();
     expect(screen.getByText('v1.4')).toBeInTheDocument();
     expect(screen.getByText('current')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'record' })).toHaveAttribute(
+    // core-components' Link appends a visually-hidden ", Opens in a new window"
+    // to external anchors, and that counts toward the accessible name — so this
+    // must match by prefix, not equality.
+    expect(screen.getByRole('link', { name: /^record/ })).toHaveAttribute(
       'href', 'https://git.example/x/pull/412',
     );
   });
 
-  it('reports a differing version as behind and names the current release, without claiming a distance', async () => {
+  it('pills the current release alongside the adopted one when behind, without claiming a distance', async () => {
     await render(component({
       'siliconsaga.org/aspects': 'security',
       'siliconsaga.org/aspect-versions': 'security@1.2',
     }));
     expect(await screen.findByText('v1.2')).toBeInTheDocument();
-    expect(screen.getByText('behind · current 1.4')).toBeInTheDocument();
+    expect(screen.getByText('current 1.4')).toBeInTheDocument();
     expect(screen.queryByText(/release behind/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'record' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^record/ })).not.toBeInTheDocument();
   });
 
-  it('links the maintaining practice and shows its guild crest', async () => {
+  it('links the maintaining practice as a pill and shows its guild crest', async () => {
     await render(component({ 'siliconsaga.org/aspects': 'security' }));
-    expect(await screen.findByText('Security practice')).toBeInTheDocument();
+    const practice = await screen.findByRole('link', { name: 'Security practice' });
+    expect(practice).toHaveAttribute('href', '/catalog/default/component/security-practice');
     expect(screen.getByLabelText('Arms of security-gildi')).toBeInTheDocument();
+  });
+
+  it('titles the aspect slug rather than showing raw metadata', async () => {
+    await render(component({ 'siliconsaga.org/aspects': 'operational-readiness' }));
+    expect(await screen.findByText('Operational readiness')).toBeInTheDocument();
+    expect(screen.queryByText('operational-readiness')).not.toBeInTheDocument();
   });
 
   it('renders an aspect with no practice as enrolled only — no link, no verdict', async () => {
     await render(component({ 'siliconsaga.org/aspects': 'operational-readiness' }));
-    expect(await screen.findByText('operational-readiness')).toBeInTheDocument();
+    expect(await screen.findByText('Operational readiness')).toBeInTheDocument();
     expect(screen.getByText('enrolled')).toBeInTheDocument();
-    expect(screen.queryByText(/current/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/behind/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^current/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('renders one row per aspect, resolving each independently', async () => {
@@ -82,8 +92,8 @@ describe('ComponentAspectsCard', () => {
       'siliconsaga.org/aspects': 'security, operational-readiness',
       'siliconsaga.org/aspect-versions': 'security@1.4',
     }));
-    expect(await screen.findByText('security')).toBeInTheDocument();
-    expect(screen.getByText('operational-readiness')).toBeInTheDocument();
+    expect(await screen.findByText('Security')).toBeInTheDocument();
+    expect(screen.getByText('Operational readiness')).toBeInTheDocument();
     expect(screen.getByText('current')).toBeInTheDocument();
     expect(screen.getByText('enrolled')).toBeInTheDocument();
   });

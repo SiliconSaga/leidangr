@@ -1,4 +1,6 @@
-import { parseList, parseKeyed, adoptionStatus, hasAdoptedAspects, guildNameOf } from './aspects';
+import {
+  parseList, parseKeyed, adoptionStatus, aspectLabel, hasAdoptedAspects, guildNameOf,
+} from './aspects';
 
 const enrolled = {
   apiVersion: 'backstage.io/v1alpha1', kind: 'Component',
@@ -48,6 +50,23 @@ describe('adoptionStatus', () => {
   it('is unknown when either side is missing', () => {
     expect(adoptionStatus(undefined, '1.4')).toBe('unknown');
     expect(adoptionStatus('1.2', undefined)).toBe('unknown');
+  });
+});
+
+describe('aspectLabel', () => {
+  it('titles a slug into a human-readable name', () => {
+    expect(aspectLabel('operational-readiness')).toBe('Operational readiness');
+    expect(aspectLabel('security')).toBe('Security');
+  });
+  it('treats underscores as separators too', () => {
+    expect(aspectLabel('supply_chain-integrity')).toBe('Supply chain integrity');
+  });
+  it('capitalises only the first word, leaving the rest as written', () => {
+    expect(aspectLabel('api-SLO')).toBe('Api SLO');
+  });
+  it('is empty for an empty id', () => {
+    expect(aspectLabel('')).toBe('');
+    expect(aspectLabel('  ')).toBe('');
   });
 });
 
