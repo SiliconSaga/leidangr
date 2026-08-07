@@ -5,7 +5,8 @@ import { stringifyEntityRef } from '@backstage/catalog-model';
 import type { Entity } from '@backstage/catalog-model';
 import {
   ADOPTION_RECORD, ASPECT, ASPECTS, ASPECT_VERSIONS, MODULE_RELEASE,
-  adoptionStatus, guildNameOf, parseKeyed, parseList, type AdoptionStatus,
+  adoptionStatus, guildNameOf, parseKeyed, parseList, safeHttpUrl, scalar,
+  type AdoptionStatus,
 } from './aspects';
 
 export interface AspectAdoptionView {
@@ -45,7 +46,7 @@ export function useComponentAspects(entity: Entity) {
     });
     const byAspect = new Map<string, Entity>();
     for (const p of res.items) {
-      const id = p.metadata.annotations?.[ASPECT];
+      const id = scalar(p.metadata.annotations?.[ASPECT]);
       if (id && !byAspect.has(id)) byAspect.set(id, p);
     }
 
@@ -55,7 +56,7 @@ export function useComponentAspects(entity: Entity) {
     return ids.map<AspectAdoptionView>(aspectId => {
       const practice = byAspect.get(aspectId);
       const adoptedVersion = versions.get(aspectId);
-      const currentRelease = practice?.metadata.annotations?.[MODULE_RELEASE];
+      const currentRelease = scalar(practice?.metadata.annotations?.[MODULE_RELEASE]);
       return {
         aspectId,
         adoptedVersion,
@@ -64,7 +65,7 @@ export function useComponentAspects(entity: Entity) {
         practiceRef: practice ? stringifyEntityRef(practice) : undefined,
         practiceTitle: practice ? practice.metadata.title ?? practice.metadata.name : undefined,
         guildName: practice ? guildNameOf(practice) : undefined,
-        recordUrl: records.get(aspectId),
+        recordUrl: safeHttpUrl(records.get(aspectId)),
       };
     });
   }, [catalog, aspectsRaw, versionsRaw, recordsRaw]);

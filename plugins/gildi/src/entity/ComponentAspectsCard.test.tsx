@@ -108,6 +108,43 @@ describe('ComponentAspectsCard', () => {
     expect(badge).toBeEmptyDOMElement();
   });
 
+  it('joins and compares through padded practice annotations', async () => {
+    const padded = {
+      getEntities: async () => ({
+        items: [
+          {
+            apiVersion: 'backstage.io/v1alpha1', kind: 'Component',
+            metadata: {
+              name: 'security-practice', title: 'Security practice',
+              annotations: {
+                'siliconsaga.org/aspect': '  security  ',
+                'siliconsaga.org/module-release': ' 1.4 ',
+              },
+            },
+            spec: { type: 'practice', owner: 'group:default/security-gildi' },
+          },
+        ],
+      }),
+    } as any;
+    await render(component({
+      'siliconsaga.org/aspects': 'security',
+      'siliconsaga.org/aspect-versions': 'security@1.4',
+    }), padded);
+    // Untrimmed, the join would miss entirely and this would read 'enrolled';
+    // trimmed-on-one-side-only, ' 1.4 ' !== '1.4' would read 'behind'.
+    expect(await screen.findByText('current')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Security practice' })).toBeInTheDocument();
+  });
+
+  it('drops a record link whose URL is not http(s)', async () => {
+    await render(component({
+      'siliconsaga.org/aspects': 'security',
+      'siliconsaga.org/adoption-record': 'security: javascript:alert(1)',
+    }));
+    expect(await screen.findByText('Security')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /^record/ })).not.toBeInTheDocument();
+  });
+
   it('shows a spinner while the practices load', async () => {
     await render(component({ 'siliconsaga.org/aspects': 'security' }), {
       getEntities: () => new Promise(() => {}),

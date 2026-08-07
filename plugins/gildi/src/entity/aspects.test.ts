@@ -1,5 +1,6 @@
 import {
   parseList, parseKeyed, adoptionStatus, aspectLabel, hasAdoptedAspects, guildNameOf,
+  safeHttpUrl, scalar,
 } from './aspects';
 
 const enrolled = {
@@ -50,6 +51,42 @@ describe('adoptionStatus', () => {
   it('is unknown when either side is missing', () => {
     expect(adoptionStatus(undefined, '1.4')).toBe('unknown');
     expect(adoptionStatus('1.2', undefined)).toBe('unknown');
+  });
+});
+
+describe('scalar', () => {
+  it('trims a padded value', () => {
+    expect(scalar(' security ')).toBe('security');
+    expect(scalar(' 1.4 ')).toBe('1.4');
+  });
+  it('is undefined for missing, empty, or whitespace-only input', () => {
+    expect(scalar(undefined)).toBeUndefined();
+    expect(scalar('')).toBeUndefined();
+    expect(scalar('   ')).toBeUndefined();
+  });
+});
+
+describe('safeHttpUrl', () => {
+  it('passes http and https through, trimming padding', () => {
+    expect(safeHttpUrl('https://git.example/x/pull/1')).toBe('https://git.example/x/pull/1');
+    expect(safeHttpUrl('http://git.example/x')).toBe('http://git.example/x');
+    expect(safeHttpUrl('  https://git.example/x  ')).toBe('https://git.example/x');
+  });
+  it('rejects javascript:, which core-components Link THROWS on rather than skips', () => {
+    /* eslint-disable no-script-url -- the literal is precisely what is under test */
+    expect(safeHttpUrl('javascript:alert(1)')).toBeUndefined();
+    expect(safeHttpUrl('  JavaScript:alert(1)')).toBeUndefined();
+    /* eslint-enable no-script-url */
+  });
+  it('rejects other schemes an anchor would otherwise happily render', () => {
+    expect(safeHttpUrl('data:text/html,<script>alert(1)</script>')).toBeUndefined();
+    expect(safeHttpUrl('file:///etc/passwd')).toBeUndefined();
+    expect(safeHttpUrl('vbscript:msgbox(1)')).toBeUndefined();
+  });
+  it('rejects anything that is not an absolute URL', () => {
+    expect(safeHttpUrl('/relative/path')).toBeUndefined();
+    expect(safeHttpUrl('not a url')).toBeUndefined();
+    expect(safeHttpUrl(undefined)).toBeUndefined();
   });
 });
 

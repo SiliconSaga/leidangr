@@ -683,7 +683,7 @@ Run: `ws commit leidangr .commits/gildi-component-aspects-card.md`
 - Consumes: nothing from earlier tasks — this card reads no annotations, because its filter has already established there are none.
 - Produces: `AdoptAspectCard(): JSX.Element`
 
-**Verify before implementing:** the design leaves the Create-page filter query-parameter form unpinned. Check the running app or `@backstage/plugin-scaffolder` docs for how the Create page reads type filters from the URL. If a filter form cannot be confirmed, use plain `/create` — a working link to an unfiltered Create page beats a filtered link that 404s or silently ignores the parameter. Record which you chose in the commit body.
+**Resolved during execution — use `/create/templates?filters[type]=aspect`.** The plan originally left the query-parameter form unpinned with plain `/create` as a fallback; both halves turned out to be wrong in an instructive way. The filter form is real (`qs` → `useEntityListProvider.queryParameters` → `useEntityTypeFilter` → `TemplateGroups`), and the fallback path is the actual bug: `/create` is a shell that redirects to the list and **the redirect drops the query string**, so a link there renders every template with no error to notice. `useActions` already encoded the right base path.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -701,7 +701,7 @@ describe('AdoptAspectCard', () => {
     const cta = screen.getByRole('link', { name: /adopt an aspect/i });
     // A react-router Link renders a relative href; an <a href> to an absolute
     // URL would mean a full page reload — the pattern the 2026-07-22 review flagged.
-    expect(cta.getAttribute('href')).toMatch(/^\/create/);
+    expect(cta.getAttribute('href')).toMatch(/^\/create\/templates/);
   });
 });
 ```
@@ -713,7 +713,7 @@ Expected: FAIL — `Cannot find module './AdoptAspectCard'`.
 
 - [ ] **Step 3: Write the implementation**
 
-Create `plugins/gildi/src/entity/AdoptAspectCard.tsx`. If Step 0's check confirmed a filter form, append it to the `to` prop; otherwise leave it as `/create`.
+Create `plugins/gildi/src/entity/AdoptAspectCard.tsx`.
 
 ```tsx
 import { Button, Typography } from '@material-ui/core';
@@ -731,7 +731,7 @@ export function AdoptAspectCard() {
         Not enrolled in any aspect.
       </Typography>
       {/* Router Link, not <a href> — an anchor would full-page-reload the app. */}
-      <Button component={RouterLink} to="/create" variant="outlined" size="small">
+      <Button component={RouterLink} to="/create/templates?filters[type]=aspect" variant="outlined" size="small">
         Adopt an aspect
       </Button>
     </InfoCard>
@@ -1061,6 +1061,6 @@ Run: `ws review leidangr <cr#>` and work the findings. Expect several bot rounds
 
 **Spec coverage.** Design §2 (appended rail cards, `type: 'info'`) → Task 5. §3 (two extensions, native gate, README) → Task 5. §4 (`module-release`, equality-only comparison) → Tasks 1 and 6. §5 (file layout, `aspects.ts` extraction) → Task 1. §6 (data flow, independent resolution) → Task 2. §7 (all five states + loading + error) → Task 3 tests and Task 6 Step 4. §8 (three-column grid, crest, empty badge cell, router Link) → Tasks 3 and 4. §9 (testing) → every task. §10 out-of-scope items are absent from the plan, as intended.
 
-**Placeholder scan.** One deliberate open question survives, in Task 4: the Create-page filter query-parameter form. It is not a placeholder — it carries a stated verification step, a concrete fallback (`/create`), and a rule for choosing. Pinning a guessed query parameter in the plan would be worse than naming the uncertainty.
+**Placeholder scan.** One deliberate open question survived into execution, in Task 4: the Create-page filter query-parameter form, carried with a stated verification step and a fallback rather than a guessed value. Naming the uncertainty was right; the *fallback* was not, because it named a path (`/create`) that fails silently. Task 4 now records the resolved route. Lesson for the next plan: a fallback is a claim too, and deserves the same verification as the thing it backs up.
 
 **Type consistency.** `AdoptionStatus` and `adoptionStatus` are defined in Task 1 and consumed under those names in Tasks 2 and 3. `AspectAdoptionView` field names (`aspectId`, `adoptedVersion`, `currentRelease`, `status`, `practiceRef`, `practiceTitle`, `guildName`, `recordUrl`) are defined in Task 2 and used unchanged in Task 3's `AspectRow` and `verdict`. `hasAdoptedAspects` is defined in Task 1 and consumed in Task 5. `Crest`'s props match its existing signature. `currentRelease` is used consistently — the design's earlier `currentVersion` does not appear anywhere in this plan.

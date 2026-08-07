@@ -57,8 +57,12 @@ export const componentAspectsCard = EntityCardBlueprint.make({
   },
 });
 
-// Disable the call to action in app-config to switch it off entirely:
-//   app: { extensions: ['entity-card:gildi/component-adopt': false] }
+// Disable the call to action in app-config to switch it off entirely — the
+// extension then never mounts:
+//
+//   app:
+//     extensions:
+//       - entity-card:gildi/component-adopt: false
 export const componentAdoptCard = EntityCardBlueprint.make({
   name: 'component-adopt',
   params: {

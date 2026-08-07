@@ -41,6 +41,30 @@ export function aspectLabel(aspectId: string): string {
   return words ? words.charAt(0).toUpperCase() + words.slice(1) : '';
 }
 
+// Scalar annotations get no trimming from parseList/parseKeyed (those only see
+// the comma-separated component-side maps), so read them through this. A stray
+// space is not cosmetic here: ' security ' silently breaks the practice join,
+// and a release of ' 1.4 ' renders a confident 'behind' against an adopted 1.4.
+export function scalar(value?: string): string | undefined {
+  return value?.trim() || undefined;
+}
+
+// Record links come from catalog annotations, which in a real deployment are
+// authored by anyone who can commit a catalog-info.yaml. Only http(s) reaches
+// an anchor: core-components' Link THROWS on `javascript:` (breaking the whole
+// card via its error boundary, not just the link), and happily renders other
+// schemes. Anything else is treated as absent.
+export function safeHttpUrl(value?: string): string | undefined {
+  const raw = scalar(value);
+  if (!raw) return undefined;
+  try {
+    const { protocol } = new URL(raw);
+    return protocol === 'http:' || protocol === 'https:' ? raw : undefined;
+  } catch {
+    return undefined; // not an absolute URL at all
+  }
+}
+
 export type AdoptionStatus = 'current' | 'behind' | 'unknown';
 
 // Equality, never ordering: these are opaque module release tags and the
