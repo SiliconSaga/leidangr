@@ -61,7 +61,9 @@ describe('ComponentAspectsCard', () => {
       'siliconsaga.org/aspect-versions': 'security@1.2',
     }));
     expect(await screen.findByText('v1.2')).toBeInTheDocument();
-    expect(screen.getByText('current 1.4')).toBeInTheDocument();
+    // Leads with 'behind', not 'current', so the two states differ by wording
+    // and not only by colour — the card must read in greyscale.
+    expect(screen.getByText('behind · 1.4')).toBeInTheDocument();
     expect(screen.queryByText(/release behind/)).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /^record/ })).not.toBeInTheDocument();
   });
@@ -84,6 +86,7 @@ describe('ComponentAspectsCard', () => {
     expect(await screen.findByText('Operational readiness')).toBeInTheDocument();
     expect(screen.getByText('enrolled')).toBeInTheDocument();
     expect(screen.queryByText(/^current/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^behind/)).not.toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 

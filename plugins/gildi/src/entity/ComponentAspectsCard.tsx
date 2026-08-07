@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
-import { Chip, Divider, Typography } from '@material-ui/core';
+import { Chip, Divider, Typography, makeStyles } from '@material-ui/core';
+import CheckIcon from '@material-ui/icons/CheckCircleOutline';
+import UpgradeIcon from '@material-ui/icons/ArrowUpward';
 import { InfoCard, Link, Progress, ResponseErrorPanel } from '@backstage/core-components';
 import { entityRouteRef, useEntity } from '@backstage/plugin-catalog-react';
 import { useRouteRef } from '@backstage/core-plugin-api';
@@ -31,25 +33,48 @@ const links: CSSProperties = {
 
 const chip: CSSProperties = { height: 20 };
 
+// Currency colours come from the Backstage status palette rather than hardcoded
+// hex, so they track the light and dark themes. Green/amber (not green/red) is
+// the friendlier pair for red-green colour vision deficiency — and colour is
+// never the only channel here: each state also carries its own icon and its own
+// wording, so the card still reads correctly in greyscale.
+const useStyles = makeStyles(theme => ({
+  ok: { borderColor: theme.palette.status.ok, color: theme.palette.status.ok },
+  behind: { borderColor: theme.palette.status.warning, color: theme.palette.status.warning },
+}));
+
+const statusIcon: CSSProperties = { color: 'inherit', fontSize: 14, marginLeft: 4 };
+
 // Adopted version and currency, both as pills so they read as one row of state
-// rather than a version chip followed by loose prose. 'behind' is the only
-// status that names the other number — equality tells us it differs, never how
-// far, so there is nothing more honest to say (see ./aspects adoptionStatus).
+// rather than a version chip followed by loose prose. The behind label leads
+// with the word 'behind' rather than repeating 'current', so the two states are
+// distinguishable from their first character and not just their colour.
+// 'behind' names the other number but never a distance — equality tells us the
+// versions differ, never how far (see ./aspects adoptionStatus).
 function VersionPills({ aspect }: { aspect: AspectAdoptionView }) {
+  const classes = useStyles();
   return (
     <div style={pills}>
       {aspect.adoptedVersion && (
         <Chip label={`v${aspect.adoptedVersion}`} size="small" variant="outlined" style={chip} />
       )}
       {aspect.status === 'current' && (
-        <Chip label="current" size="small" variant="default" color="primary" style={chip} />
+        <Chip
+          label="current"
+          icon={<CheckIcon style={statusIcon} />}
+          size="small"
+          variant="outlined"
+          className={classes.ok}
+          style={chip}
+        />
       )}
       {aspect.status === 'behind' && (
         <Chip
-          label={`current ${aspect.currentRelease}`}
+          label={`behind · ${aspect.currentRelease}`}
+          icon={<UpgradeIcon style={statusIcon} />}
           size="small"
-          variant="default"
-          color="secondary"
+          variant="outlined"
+          className={classes.behind}
           style={chip}
         />
       )}
