@@ -1,7 +1,7 @@
 # Gildi — Component adoption decoration (design)
 
 **Date:** 2026-08-06
-**Status:** Designed
+**Status:** Implemented on `feat/gildi-component-adoption-card` (§8 rendering revised after the first manual-acceptance pass)
 **Arc:** leidangr-guildhall (follows the practice page + type themes, PR #14)
 **Predecessors:** `2026-08-01-gildi-practice-page-and-type-themes-design.md` (§6 deferred this slice), `2026-07-27-gildi-guild-page-layout-design.md` (the layout pattern), `2026-07-20-gildi-guildhall-hub-design.md` (§8, the aspect ladder and the component badge).
 
@@ -132,32 +132,38 @@ Loading renders `Progress`, error renders `ResponseErrorPanel` — matching `Ado
 
 ## 8. Rendering
 
-Each aspect is one row on a **three-column grid** — `[identity] [body] [badge]`:
+Each aspect is one row on a **four-column grid** — `[identity] [name] [pills] [badge]` — with the links wrapping onto a second line under the name:
 
 ```text
-┌─ Aspects ─────────────────────────┐
-│                                   │
-│  ⬡   security        v1.2    [  ] │
-│      behind · current 1.4         │
-│      Security practice · record → │
-│  ─────────────────────────────────│
-│  ⬡   operational-readiness   [  ] │
-│      enrolled · no version        │
-│                                   │
-└───────────────────────────────────┘
+┌─ Aspects ──────────────────────────────────┐
+│                                            │
+│  ⬡   Security             (v1.2)(current 1.4)│
+│      (Security practice) (record)          │
+│  ──────────────────────────────────────────│
+│  ⬡   Operational readiness      (enrolled) │
+│                                            │
+└────────────────────────────────────────────┘
 ```
 
+**The first cut of this card was rejected at manual acceptance** for reading as three lines of ragged left-aligned text — the version was a chip but the verdict and links were loose prose, so nothing lined up between rows. The fix is columns plus consistent pill treatment:
+
 - **Identity (leading, fixed width).** The stewarding guild's `Crest`, seeded by the guild's name exactly as `PracticeCard`'s "Run by" line seeds it, so one guild shows the same arms on every page in the app. This is the identity-mark rule from the hub design §"card family": the guild stewarding the aspect is the actor on that row. The column keeps its fixed width when no crest resolves, so rows stay aligned down the card.
-- **Body.** Aspect id, adopted-version chip, the currency line, then the practice link and — when the `adoption-record` annotation carries a URL for that aspect — a record link.
+- **Name.** The aspect id, **titled for display** — `operational-readiness` renders as "Operational readiness". Aspect ids are slugs and there is no aspect entity to carry a title (the registry is a raw file), but the card family rule is curated display names, never raw metadata, so the card titles the slug rather than inventing an annotation for it.
+- **Pills (right-aligned).** Adopted version and currency as two chips, so they read as one row of state rather than a chip followed by prose — and, because the column is right-aligned, they form a clean vertical edge down the card. `current` is a primary chip; `behind` names the other number in a secondary chip (`current 1.4`); an enrollment with no version reads `enrolled`.
 - **Badge (trailing).** Reserved for the earned tier badge. Per hub design §8 the badge belongs on the component, not the aspect, so this card is its eventual home.
+- **Links (second line, under the name).** The practice and the adoption record, both as pills matching the version chips.
+
+**Link pills wrap a plain `Chip` in an anchor** rather than using `Chip`'s `component` prop. MUI v4 renders a `clickable` Chip as a `ButtonBase` — a `<button>` nested inside the `<a>`, reporting `role="button"` for something that navigates. Wrapping keeps one interactive element with honest link semantics. `core-components`' `Link` routes internal paths through react-router and emits a plain anchor for external ones, which is exactly the split between the practice link and the record link.
 
 **The badge cell renders nothing today.** Tier data does not exist — bronze/silver/gold is prose in `metadata.description`, and inventing a tier annotation would seed fiction as though it were real. Rendering a visible empty placeholder on every row would read as a broken card, so the slot is structural: the grid column exists and the row component has the cell, so adding the badge later is a change inside the row with no re-layout of the card and no re-acceptance of the surrounding page.
 
-The call-to-action card uses a react-router `Link` rather than `<a href>`, avoiding the full-page reload the 2026-07-22 whole-branch review flagged on the Actions panel. Its target is the Create page filtered to aspect templates; the exact filter query-parameter form is verified against the running app at implementation rather than assumed here, and the plain `/create` path is the fallback if the filter form does not hold.
+The call-to-action card uses a react-router `Link` rather than `<a href>`, avoiding the full-page reload the 2026-07-22 whole-branch review flagged on the Actions panel.
+
+Its target is `/create?filters[type]=aspect` — the Create page filtered to aspect adoption templates. The chain is verified, not assumed: `useEntityListProvider` parses the query string with `qs` and exposes `filters` as `queryParameters`; `useEntityTypeFilter` seeds its selection from `queryParameters.type` and pushes it through `updateFilters`; the Create page mounts that hook as its `TemplateCategoryPicker` (labelled "categories" in the UI but backed by the `type` filter); and `TemplateGroups` renders from the filtered `useEntityList().entities`. Confirmed in the running app, which rewrites the URL to carry the type filter alongside the `kind` and `user` filters the provider adds on mount.
 
 ## 9. Testing
 
-- **`aspects.ts`** — parse, dedupe, and malformed input for both annotation shapes, plus the `<id>@<version>` pairing. The most valuable tests in the slice: pure functions, and the code most exposed to bad input.
+- **`aspects.ts`** — parse, dedupe, and malformed input for both annotation shapes, plus the `<id>@<version>` pairing and slug titling. The most valuable tests in the slice: pure functions, and the code most exposed to bad input.
 - **`ComponentAspectsCard`** — the five §7 states plus loading and error.
 - **`AdoptAspectCard`** — renders the call to action and links to the Create page.
 - **Both filter predicates, tested directly** — enrolled, unenrolled, empty-string annotation, wrong kind. This also delivers most of the deferred `renderInTestApp` filter-gating item carried on the arc since 2026-07-29.
