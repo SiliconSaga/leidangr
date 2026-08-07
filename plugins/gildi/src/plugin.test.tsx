@@ -55,3 +55,16 @@ describe('gildi entity overview layouts', () => {
     expect(getExtension('entity-content-layout:gildi/practice-overview')).toBeDefined();
   });
 });
+
+describe('gildi component adoption cards', () => {
+  const getExtension = (id: string) =>
+    (gildiPlugin as unknown as { getExtension(id: string): unknown }).getExtension(id);
+
+  it('registers the enrolled-component aspects card', () => {
+    expect(getExtension('entity-card:gildi/component-aspects')).toBeDefined();
+  });
+
+  it('registers the unenrolled-component adopt card', () => {
+    expect(getExtension('entity-card:gildi/component-adopt')).toBeDefined();
+  });
+});
