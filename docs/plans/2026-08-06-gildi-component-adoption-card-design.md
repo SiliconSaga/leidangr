@@ -159,7 +159,9 @@ Each aspect is one row on a **four-column grid** — `[identity] [name] [pills] 
 
 The call-to-action card uses a react-router `Link` rather than `<a href>`, avoiding the full-page reload the 2026-07-22 whole-branch review flagged on the Actions panel.
 
-Its target is `/create?filters[type]=aspect` — the Create page filtered to aspect adoption templates. The chain is verified, not assumed: `useEntityListProvider` parses the query string with `qs` and exposes `filters` as `queryParameters`; `useEntityTypeFilter` seeds its selection from `queryParameters.type` and pushes it through `updateFilters`; the Create page mounts that hook as its `TemplateCategoryPicker` (labelled "categories" in the UI but backed by the `type` filter); and `TemplateGroups` renders from the filtered `useEntityList().entities`. Confirmed in the running app, which rewrites the URL to carry the type filter alongside the `kind` and `user` filters the provider adds on mount.
+Its target is `/create/templates?filters[type]=aspect` — the template list filtered to aspect adoption templates. `useEntityListProvider` parses the query string with `qs` and exposes `filters` as `queryParameters`; `useEntityTypeFilter` seeds its selection from `queryParameters.type` and pushes it through `updateFilters`; the list page mounts that hook as its `TemplateCategoryPicker` (labelled "categories" in the UI but backed by the `type` filter); and `TemplateGroups` renders from the filtered `useEntityList().entities`.
+
+**The path is `/create/templates`, not `/create`.** `/create` is a shell that redirects to the list, and the redirect drops the query string — so a link to `/create?filters[type]=aspect` lands on an unfiltered page with no error and nothing to debug from the UI. The first implementation had exactly that bug and manual acceptance caught it. `useActions` already encodes the same base path for its deep links (`/create/templates/<namespace>/<name>`), which is the precedent to follow for anything else linking into the scaffolder.
 
 ## 9. Testing
 

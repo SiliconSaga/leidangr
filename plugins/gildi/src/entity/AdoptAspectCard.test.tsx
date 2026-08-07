@@ -18,7 +18,9 @@ describe('AdoptAspectCard', () => {
     // through verbatim or percent-encode the brackets, and qs.parse accepts
     // either — so pinning one literal form would test an incidental detail.
     const url = new URL(cta.getAttribute('href')!, 'http://localhost');
-    expect(url.pathname).toBe('/create');
+    // /create/templates, not /create — /create redirects to the list and the
+    // redirect drops the query string, so the filter silently never applies.
+    expect(url.pathname).toBe('/create/templates');
     expect(url.searchParams.get('filters[type]')).toBe('aspect');
   });
 
@@ -29,6 +31,6 @@ describe('AdoptAspectCard', () => {
     // <a href> to an absolute URL would full-page-reload — the pattern the
     // 2026-07-22 review flagged on the Actions panel.
     expect(cta.tagName).toBe('A');
-    expect(cta.getAttribute('href')).toMatch(/^\/create/);
+    expect(cta.getAttribute('href')).toMatch(/^\/create\/templates/);
   });
 });

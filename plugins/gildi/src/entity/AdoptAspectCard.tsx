@@ -2,12 +2,15 @@ import { Button, Typography } from '@material-ui/core';
 import { Link as RouterLink } from 'react-router-dom';
 import { InfoCard } from '@backstage/core-components';
 
-// The Create page seeds its category picker from the `type` entity filter, and
-// reads filters out of the query string in qs-bracket form
-// (useEntityListProvider -> queryParameters -> useEntityTypeFilter). Aspect
-// adoption templates are spec.type: aspect, so this lands on the Create page
-// with only the adoption doors showing.
-const CREATE_ASPECT_TEMPLATES = '/create?filters[type]=aspect';
+// The template list seeds its category picker from the `type` entity filter,
+// read out of the query string in qs-bracket form (useEntityListProvider ->
+// queryParameters -> useEntityTypeFilter). Aspect adoption templates are
+// spec.type: aspect, so this lands with only the adoption doors showing.
+//
+// The path must be `/create/templates`, NOT `/create`: the latter is a shell
+// that redirects to the list, and the redirect drops the query string — the
+// page then renders every template. Same base path as useActions' deep links.
+const CREATE_ASPECT_TEMPLATES = '/create/templates?filters[type]=aspect';
 
 // The unenrolled half of the adoption decoration: a component that has adopted
 // no aspect gets the Create-page door rather than an empty card. Gated by
