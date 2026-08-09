@@ -1,0 +1,24 @@
+# The Guild Hall cornerstone — the first Component of the leidangr System.
+#
+# Declared in the package's own directory rather than the root file, matching
+# the live-topology shape the Ravenline seed teaches with tracking-api and
+# security-practice: an entity descriptor lives with the thing it describes. It
+# travels with the package when this plugin extracts to its own repo.
+#
+# Owner is a TEAM, not a guild: guilds steward practices and aspects, teams own
+# software. Sibling cornerstones (félag, merki, …) land beside this one as they
+# appear, each its own Component under the same System.
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: gildi
+  title: Guild Hall
+  description: 'The Guild Hall — the practice layer rendered: guilds, their practices and aspects, drives, and the chronicle'
+  links:
+    - url: https://github.com/SiliconSaga/leidangr/blob/main/docs/plans/2026-07-20-gildi-guildhall-hub-design.md
+      title: Guild Hall design doc
+spec:
+  type: plugin
+  lifecycle: production
+  owner: group:default/team-devex
+  system: leidangr

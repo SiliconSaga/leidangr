@@ -1,24 +1,32 @@
-# The leidangr instance itself — the one NON-fiction entity in the Ravenline
-# seed. Lives at the repo root so backstage.io/techdocs-ref: dir:. resolves to
-# the root mkdocs.yml (TechDocs dir: refs cannot traverse up past their own
-# entity file, hence the split from examples/mock-org/software.yaml).
+# The real software behind this instance, cataloged alongside the Ravenline
+# fiction rather than mixed into it. Ravenline is the teaching seed; these three
+# entities are the thing you are actually standing in.
 #
-# This was `guild-hall`, spec.type: hub, until the hub concept retired. A hub is
-# a rendered surface, not a domain noun: the Guild Hall is a page contributed by
-# the gildi plugin and needs no catalog entity at all (design 2026-07-20 §1).
-# What the entity was actually doing was anchoring the root TechDocs — something
-# only a catalog entity can do, since a plugin page can never be a docs target.
-# So it stays, renamed and typed as the thing it always was.
+# Lives at the repo root so backstage.io/techdocs-ref: dir:. on the System
+# resolves to the root mkdocs.yml — TechDocs dir: refs cannot traverse up past
+# their own entity file. (The Docs tab is kind-agnostic: @backstage/plugin-techdocs
+# registers its entity content with no kind filter, so a System anchors docs
+# exactly as a Component would.)
 #
-# Owner is a TEAM, not a guild, on purpose: guilds steward practices and
-# aspects, teams own software. Handing a Component to a guild would contradict
-# the split this seed exists to teach.
+# History: this file once held `guild-hall`, spec.type: hub — a rendered surface
+# pretending to be a domain noun. The hub type retired; the Guild Hall is a page
+# the gildi plugin contributes and needs no entity of its own. What deserved an
+# entity was the instance, and the honest shape for it is a System of parts.
 apiVersion: backstage.io/v1alpha1
-kind: Component
+kind: Domain
+metadata:
+  name: siliconsaga
+  title: SiliconSaga
+  description: 'Volunteer-community and hobby-software tooling — the umbrella these systems belong to'
+spec:
+  owner: group:default/team-devex
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
 metadata:
   name: leidangr
   title: Leiðangr
-  description: 'This Backstage instance — the Guildhall model, its Ravenline seed, and the plugins that render them'
+  description: 'This Backstage instance — the Guildhall model, its Ravenline seed, and the cornerstones that render them'
   annotations:
     siliconsaga.org/visir: 'docs/demo-visir.md'
     backstage.io/techdocs-ref: dir:.
@@ -26,7 +34,5 @@ metadata:
     - url: https://github.com/SiliconSaga/leidangr/blob/main/docs/plans/2026-07-10-guilds-skills-standards-design.md
       title: Guildhall design doc
 spec:
-  type: service
-  lifecycle: production
   owner: group:default/team-devex
-  system: rl-platform
+  domain: siliconsaga

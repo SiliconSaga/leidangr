@@ -127,11 +127,18 @@ catalog:
       rules:
         - allow: [Group, Domain, System, Resource, Component, Cycle, Saga]
 
-    # The instance's own Component: lives at the repo root so techdocs-ref:
-    # dir:. resolves to the root mkdocs.yml without traversing up past the
-    # entity file.
+    # The real software: Domain siliconsaga + System leidangr. At the repo root
+    # so the System's techdocs-ref: dir:. resolves to the root mkdocs.yml
+    # without traversing up past the entity file.
     - type: file
       target: ../../catalog-info.yaml
+      rules:
+        - allow: [Domain, System]
+
+    # Cornerstones of the leidangr System, each declared in its own package
+    # directory (live-topology shape). Add a location per plugin as they appear.
+    - type: file
+      target: ../../plugins/gildi/catalog-info.yaml
       rules:
         - allow: [Component]
 

@@ -105,7 +105,8 @@ spec: { type: cluster, owner: group:default/team-platform, system: rl-platform }
 # catalog-info.yaml (live topology — see repos/security-aspect/, registered in
 # app-config alongside the adoption template.yaml).
 #
-# The instance's own Component (`leidangr`) lives in the repo root
-# catalog-info.yaml (registered separately in app-config) so its
-# backstage.io/techdocs-ref: dir:. resolves to the root mkdocs.yml — TechDocs
-# dir: refs cannot traverse up past the entity file's own directory.
+# The real (non-fiction) software lives outside this file: Domain siliconsaga
+# and System leidangr in the repo root catalog-info.yaml — so the System's
+# backstage.io/techdocs-ref: dir:. resolves to the root mkdocs.yml, since
+# TechDocs dir: refs cannot traverse up past the entity file's own directory —
+# and each cornerstone Component in its own package dir (plugins/gildi/).

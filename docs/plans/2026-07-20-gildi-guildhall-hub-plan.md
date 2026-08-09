@@ -267,7 +267,11 @@ The retirement is **its own later plan** (it must run *after* the Guild Hall pag
 
 Not part of Plan 1 (Plan 1's page is the prerequisite). Captured here so the sequencing is unambiguous.
 
-> **RESOLVED 2026-08-09 — renamed, not deleted; docs stayed where they were.** Steps 1 and 2 above were both dropped, for one reason: **a plugin page can never be a TechDocs anchor.** TechDocs resolves `dir:.` against a catalog entity's own file, so deleting the root entity would have orphaned `guildhall-model.md`, the grand tour, and every ADR — and "re-home onto the Guild Hall experience" had nowhere real to land. What retired was the *hub concept*, which was always the actual problem: `spec.type: hub` made a rendered surface pretend to be a domain noun. So the entity persists as `leidangr`, an ordinary `service` Component for the instance itself, still owned by `team-devex`, still anchoring the root docs. Step 3's verification did happen — `make smoke-catalog` now asserts the renamed entity and its `service` type.
+> **RESOLVED 2026-08-09 — remodelled, not deleted; docs stayed where they were.** Steps 1 and 2 above were both dropped, for one reason: **a plugin page can never be a TechDocs anchor.** TechDocs resolves `dir:.` against a catalog entity's own file, so deleting the root entity would have orphaned `guildhall-model.md`, the grand tour, and every ADR — and "re-home onto the Guild Hall experience" had nowhere real to land. What retired was the *hub concept*, which was always the actual problem: `spec.type: hub` made a rendered surface pretend to be a domain noun.
+>
+> The replacement is the §12 shape brought forward rather than a flat rename: **Domain `siliconsaga` → System `leidangr` → Component `gildi`** (title "Guild Hall", `spec.type: plugin`), with the System anchoring the root docs and each cornerstone declaring itself in its own package directory. The instance is a system of parts, and Guild Hall is the first of them — siblings join as they appear, and an adopting instance repeats the hierarchy with its own. This does not wait on the parked village-package name: leidangr *is* the System. Step 3's verification happened — `make smoke-catalog` asserts the System, its Domain, the cornerstone, and its `partOf`.
+>
+> Confirmed while implementing: `@backstage/plugin-techdocs` registers its entity content with **no kind filter**, so a System renders a Docs tab exactly as a Component does. That was the one thing that could have blocked this shape.
 
 ---
 
