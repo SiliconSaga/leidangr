@@ -70,6 +70,28 @@ Docker CLI works fine — they use different sockets. Switch to local generation
 Restart `make dev` after changing config or `PATH` (both are read at startup, not
 hot-reloaded).
 
+### Rendering rewrites `mkdocs.yml` — do not put comments in one
+
+Generating docs **modifies the `mkdocs.yml` it just rendered**, in place, in your
+working tree. `@backstage/plugin-techdocs-node` patches the file (injecting
+`techdocs-core`, `edit_uri`, and friends) and writes it back with `js-yaml`'s
+`dump()` — see `stages/generate/mkdocsPatchers.cjs.js`. `js-yaml` cannot preserve
+comments and defaults to an 80-column line width, so every render:
+
+- **deletes all comments** in the file, and
+- **refolds any line past 80 columns** into a `>-` block scalar.
+
+This is why a rendered `mkdocs.yml` can turn up dirty for no apparent reason,
+sometimes long after the render — it depends on whether anyone opened that Docs
+tab, not on any command you ran. It is *not* `ws test`, `ws lint`, or
+`yarn install`, each of which was verified clean in isolation while tracking this
+down. Two consequences worth keeping:
+
+1. **Never write a comment into an `mkdocs.yml` that gets rendered.** It will not
+   survive. Document the thing here instead.
+2. **Write long values pre-folded**, in the form `dump()` would emit, so the
+   rewrite is a no-op and the file stops churning.
+
 ## Page themes — the guildhall purple
 
 Guildhall entity types carry their own page colours (the entity **page header**

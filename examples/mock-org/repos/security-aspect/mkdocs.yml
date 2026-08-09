@@ -1,11 +1,4 @@
 site_name: Security Practice
-# Written pre-folded on purpose. Some formatter in the local toolchain reflows
-# this value into exactly this block scalar whenever the line exceeds 80
-# columns, which left the file perpetually dirty and reverted three times.
-# It is NOT ws test, ws lint, or yarn install — each was verified clean in
-# isolation against a clean tree — so an editor or watcher is the remaining
-# suspect. Adopting the formatter's own output ends the churn. Keep any long
-# value in this file folded the same way.
 site_description: >-
   The Security practice's aspect module — standard, paved road, adoption
   templates, and vísar, TechDocs-rendered.
