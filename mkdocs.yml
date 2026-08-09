@@ -1,5 +1,5 @@
-site_name: Leiðangr — Guild Hall
-site_description: Guild Hall hub docs — grand tour, ADRs, and design docs.
+site_name: Leiðangr
+site_description: Leiðangr instance docs — grand tour, model, and ADRs.
 docs_dir: docs
 nav:
   - Home: index.md

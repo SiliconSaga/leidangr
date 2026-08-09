@@ -1,14 +1,24 @@
-# The Guild Hall hub — the one NON-fiction entity in the Ravenline seed.
-# Lives at the repo root so backstage.io/techdocs-ref: dir:. resolves to the
-# root mkdocs.yml (TechDocs dir: refs cannot traverse up from their catalog
+# The leidangr instance itself — the one NON-fiction entity in the Ravenline
+# seed. Lives at the repo root so backstage.io/techdocs-ref: dir:. resolves to
+# the root mkdocs.yml (TechDocs dir: refs cannot traverse up past their own
 # entity file, hence the split from examples/mock-org/software.yaml).
-# spec.type:hub anticipates the hub-page design: singleton overview pages
-# for installed plugin feature groups, of which the Guild Hall is one.
+#
+# This was `guild-hall`, spec.type: hub, until the hub concept retired. A hub is
+# a rendered surface, not a domain noun: the Guild Hall is a page contributed by
+# the gildi plugin and needs no catalog entity at all (design 2026-07-20 §1).
+# What the entity was actually doing was anchoring the root TechDocs — something
+# only a catalog entity can do, since a plugin page can never be a docs target.
+# So it stays, renamed and typed as the thing it always was.
+#
+# Owner is a TEAM, not a guild, on purpose: guilds steward practices and
+# aspects, teams own software. Handing a Component to a guild would contradict
+# the split this seed exists to teach.
 apiVersion: backstage.io/v1alpha1
 kind: Component
 metadata:
-  name: guild-hall
-  description: 'The Guild Hall — practice layer hub for this Backstage instance'
+  name: leidangr
+  title: Leiðangr
+  description: 'This Backstage instance — the Guildhall model, its Ravenline seed, and the plugins that render them'
   annotations:
     siliconsaga.org/visir: 'docs/demo-visir.md'
     backstage.io/techdocs-ref: dir:.
@@ -16,7 +26,7 @@ metadata:
     - url: https://github.com/SiliconSaga/leidangr/blob/main/docs/plans/2026-07-10-guilds-skills-standards-design.md
       title: Guildhall design doc
 spec:
-  type: hub
+  type: service
   lifecycle: production
   owner: group:default/team-devex
   system: rl-platform

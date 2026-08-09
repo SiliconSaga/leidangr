@@ -1,6 +1,6 @@
 # Vísir: the Guildhall Grand Tour
 
-*A teaching vísir owned by the DevEx team (`group:default/team-devex` in the Ravenline seed): the guided tour for demos and for introducing new users to this Backstage instance. In the catalog, the `guild-hall` Component (type `hub`) links here — the tour is discoverable from inside the thing it tours.*
+*A teaching vísir owned by the DevEx team (`group:default/team-devex` in the Ravenline seed): the guided tour for demos and for introducing new users to this Backstage instance. In the catalog, the `leidangr` Component links here — the tour is discoverable from inside the thing it tours.*
 
 Say the corporate words out loud ("Practice", "Guild", "Check") and let the screen show the canonical names (aspect, gildi, trial) — narrating that gap *is* the kenning-layer pitch.
 
@@ -27,7 +27,7 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 
 - [ ] Catalog loads; the Kind dropdown includes **Cycle** and **Saga**
 - [ ] `ravenline` Group shows the org tree (two departments — `rl-engineering`, `foxholm`) plus two `guild`-typed Groups
-- [ ] `guild-hall` Component (type `hub`) exists, owned by `team-devex`, linking to this vísir
+- [ ] `leidangr` Component exists, owned by `team-devex`, linking to this vísir
 - [ ] `security-practice` Component (type `practice`) shows its links into the aspect repo
 - [ ] Create page lists **Apply the Security aspect** (the adoption template)
 - [ ] `tracking-2026-2` Cycle shows the curated overview card
@@ -42,7 +42,7 @@ App: `http://localhost:3000` (backend on 7007). Sign in as **Guest**. First boot
 
 - *Catalog → Kind dropdown*: **Cycle** and **Saga** next to Component/Group. Talking point: two custom kinds total; the entire practice layer adds **zero** more — typed Groups, vocabularies, annotations, links.
 - *`ravenline` Group → relations graph*: the org tree — two departments, engineering and the acquired **Foxholm** returns line — plus two **guilds** (`spec.type: guild`) cross-cutting it — one practice-aligned (Security), one role-aligned (Release Captains). A guild is deliberately just a typed Group: membership, rollups, and the graph come free. Point out Dagny: a Foxholm engineer in the security guild — the guild spans departments, and that's the whole point.
-- *`team-devex` → `guild-hall`*: the instance you are standing in is itself cataloged (type `hub` — anticipating hub pages: singleton overviews per plugin feature group), owned by the DevEx team, and its vísir is this document. Dogfood moment.
+- *`team-devex` → `leidangr`*: the instance you are standing in is itself cataloged — an ordinary Component, owned by the DevEx team, with this document as its vísir. Dogfood moment. Worth saying out loud if anyone asks why it isn't special: the Guild Hall is a *page*, not a thing in the catalog, and giving it an entity would have made a rendered surface pretend to be a domain noun.
 - *`security-practice` Component (type `practice`)*: the **practice** is the institution (the guild runs it); its **aspect** is the module — a repo holding the blocked standard, the paved road, the adoption templates, and the remediation docs. The entity links go straight into that repo, one click each.
 - *Create page → **Apply the Security aspect***: the **adoption** — applying a practice is a self-service action, not a wiki page. Run it against `label-service` (the pristine, unenrolled component): the mock edition logs its weave plan — annotation, CI includes, stewardship stubs, PR. Then the CLI beat: the same repo ships `SKILL.md`, the identical adoption for agents — *some users never leave their terminal, and neither do their agents.*
 - *`tracking-api` Component*: enrollment annotations (`siliconsaga.org/aspects`) — which practices apply to this service. Description carries the demo narrative: silver. If TechDocs generation is available, open its **Docs tab**: the on-call primer and the queue-backlog runbook render as a real doc site (runbooks nest under docs as an interim convention until the parameterized-runbooks plugin exists — say that out loud, it's a roadmap point).

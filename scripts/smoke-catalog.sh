@@ -66,7 +66,7 @@ byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localh
 # iteration, so a fully wedged run can overshoot it by up to one iteration
 # (~65s) — acceptable slack for a smoke.
 CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'
-GILDI='{}'; HUB='{}'; TRACKAPI='{}'; PRACTICE='{}'; ADOPTION='{}'
+GILDI='{}'; INSTANCE='{}'; TRACKAPI='{}'; PRACTICE='{}'; ADOPTION='{}'
 FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'
 deadline=$((SECONDS + 300))
 for _ in $(seq 1 120); do
@@ -77,7 +77,7 @@ for _ in $(seq 1 120); do
   RLCYCLE="$(byname cycle/default/tracking-2026-2)"
   RLSAGA="$(byname saga/default/saga-tracking-2026-2)"
   GILDI="$(byname group/default/security-gildi)"
-  HUB="$(byname component/default/guild-hall)"
+  INSTANCE="$(byname component/default/leidangr)"
   TRACKAPI="$(byname component/default/tracking-api)"
   PRACTICE="$(byname component/default/security-practice)"
   ADOPTION="$(byname template/default/apply-security-aspect)"
@@ -90,7 +90,7 @@ for _ in $(seq 1 120); do
      && printf '%s' "$RLCYCLE" | grep -q 'tracking-2026-2' \
      && printf '%s' "$RLSAGA" | grep -q 'saga-tracking-2026-2' \
      && printf '%s' "$GILDI" | grep -q 'security-gildi' \
-     && printf '%s' "$HUB" | grep -q 'guild-hall' \
+     && printf '%s' "$INSTANCE" | grep -q '"name":"leidangr"' \
      && printf '%s' "$TRACKAPI" | grep -q 'tracking-api' \
      && printf '%s' "$PRACTICE" | grep -q 'security-practice' \
      && printf '%s' "$ADOPTION" | grep -q 'apply-security-aspect' \
@@ -134,8 +134,8 @@ check     "Ravenline Cycle ingested (release)"       "$RLCYCLE" '"type":"release
 check_rel "Ravenline Cycle partOf parcel-tracking"   "$RLCYCLE" partOf    system:default/parcel-tracking    || pass=0
 check_rel "Ravenline Cycle dependsOn prod-cluster"   "$RLCYCLE" dependsOn resource:default/prod-cluster     || pass=0
 check     "Guild Group ingested (type guild)"        "$GILDI"   '"type":"guild"'                            || pass=0
-check     "Guild Hall hub ingested (type hub)"       "$HUB"     '"type":"hub"'                              || pass=0
-check_rel "Guild Hall hub ownedBy team-devex"        "$HUB"     ownedBy   group:default/team-devex          || pass=0
+check     "Instance Component ingested (type service)" "$INSTANCE" '"type":"service"'                       || pass=0
+check_rel "Instance Component ownedBy team-devex"    "$INSTANCE" ownedBy  group:default/team-devex          || pass=0
 # Live-topology per-repo catalog-info + the aspect's adoption template (vanilla Template kind).
 check     "tracking-api facets override (api, batch)" "$TRACKAPI" '"siliconsaga.org/facets":"api, batch"'   || pass=0
 check     "Practice Component (type practice)"       "$PRACTICE" '"type":"practice"'                        || pass=0
