@@ -267,6 +267,8 @@ The retirement is **its own later plan** (it must run *after* the Guild Hall pag
 
 Not part of Plan 1 (Plan 1's page is the prerequisite). Captured here so the sequencing is unambiguous.
 
+> **RESOLVED 2026-08-09 — renamed, not deleted; docs stayed where they were.** Steps 1 and 2 above were both dropped, for one reason: **a plugin page can never be a TechDocs anchor.** TechDocs resolves `dir:.` against a catalog entity's own file, so deleting the root entity would have orphaned `guildhall-model.md`, the grand tour, and every ADR — and "re-home onto the Guild Hall experience" had nowhere real to land. What retired was the *hub concept*, which was always the actual problem: `spec.type: hub` made a rendered surface pretend to be a domain noun. So the entity persists as `leidangr`, an ordinary `service` Component for the instance itself, still owned by `team-devex`, still anchoring the root docs. Step 3's verification did happen — `make smoke-catalog` now asserts the renamed entity and its `service` type.
+
 ---
 
 ## Self-Review
