@@ -136,7 +136,7 @@ check     "Ravenline Cycle ingested (release)"       "$RLCYCLE" '"type":"release
 check_rel "Ravenline Cycle partOf parcel-tracking"   "$RLCYCLE" partOf    system:default/parcel-tracking    || pass=0
 check_rel "Ravenline Cycle dependsOn prod-cluster"   "$RLCYCLE" dependsOn resource:default/prod-cluster     || pass=0
 check     "Guild Group ingested (type guild)"        "$GILDI"   '"type":"guild"'                            || pass=0
-check     "Instance System ingested"                 "$INSTANCE" '"name":"leidangr"'                        || pass=0
+check     "Instance System ingested (type instance)" "$INSTANCE" '"type":"instance"'                        || pass=0
 check_rel "Instance System partOf siliconsaga"       "$INSTANCE" partOf   domain:default/siliconsaga        || pass=0
 check     "Guild Hall cornerstone (type plugin)"     "$CORNERSTONE" '"type":"plugin"'                       || pass=0
 check_rel "Guild Hall cornerstone partOf leidangr"   "$CORNERSTONE" partOf system:default/leidangr          || pass=0

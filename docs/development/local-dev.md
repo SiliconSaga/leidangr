@@ -99,11 +99,19 @@ and the Ownership card **tiles**), keyed off `spec.type` via Backstage's
 `theme.getPageTheme({ themeId })`.
 
 - **Definitions live in the plugin.** `plugins/gildi/src/theme/pageThemes.ts`
-  exports `guildhallPageThemes` — `guild` (royal purple), `practice` (deep
-  indigo-purple), `aspect` (lighter violet) — built with `genPageTheme`. Shades
-  differ in *lightness* (not just hue) so they stay distinct in grayscale, with
-  white text. The plugin owns the palette so it travels when the package is
-  extracted.
+  exports `guildhallPageThemes`, in two tiers. The **practice layer** — `guild`
+  (royal purple), `practice` (deep indigo-purple), `aspect` (lighter violet) —
+  is saturated and separated by *lightness*, so the three stay distinct in
+  greyscale. The **instance structure** — `community` (the Domain), `instance`
+  (the System), `plugin` (each cornerstone) — is the same hue family with the
+  saturation pulled out, so it reads as kin while staying quieter than the
+  practice layer it carries. All use white text. The plugin owns the palette so
+  it travels when the package is extracted.
+- **Why saturation and not hue.** The violet band (hue 255–285) is full:
+  guild, practice and aspect sit in it, Backstage's unused `tool` theme is a
+  vivid purple, and the stock `website` gradient already *ends* on a deep
+  violet (`#270094`). Desaturation was the axis with clearance. The greens to
+  stay away from are `home`/`apis` teal `#005B4B` and `card` `#4BB8A5 → #187656`.
 - **Composition is app-owned.** `packages/app/src/modules/theme/index.tsx` builds
   a custom light+dark theme that spreads `guildhallPageThemes` over the default
   `pageTheme` map, and registers them under the names `light`/`dark` — which
@@ -112,9 +120,18 @@ and the Ownership card **tiles**), keyed off `spec.type` via Backstage's
   `App.tsx`'s `features`. Both `packages/app` and `plugins/gildi` declare
   `@backstage/theme` explicitly.
 - **How an entity picks up its theme.** `EntityLayout` sets the page
-  `themeId = entity.spec.type`, so a `spec.type: practice` entity gets the
-  `practice` theme automatically. Custom (non-entity) pages set it themselves —
-  the Guild Hall page uses `<Page themeId="guild">`.
+  `themeId = entity?.spec?.type?.toString() ?? 'home'`, so a `spec.type: practice`
+  entity gets the `practice` theme automatically. Custom (non-entity) pages set
+  it themselves — the Guild Hall page uses `<Page themeId="guild">`.
+
+  > **A theme key is a `spec.type`, never a kind.** That expression reads
+  > `spec.type` and nothing else, so registering a theme called `system` or
+  > `domain` does *nothing* — it can never be matched. An entity with no
+  > `spec.type` falls through to the literal `home` theme (teal `#005B4B`),
+  > which is why untyped Systems and Domains all render the same green. To
+  > theme one, give it a `spec.type`: `Domain` and `System` both accept an
+  > optional one, which is why `siliconsaga` is `type: community` and
+  > `leidangr` is `type: instance`.
 
 ### Adding a new type colour
 
