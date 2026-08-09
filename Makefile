@@ -39,6 +39,12 @@ smoke-gitea:
 smoke-catalog:
 	bash scripts/smoke-catalog.sh
 
+## theme-swatches — render every page-theme colour (stock + ours) with the
+## spec.types using them, to .tmp/theme-swatches.html. Propose colours with
+## ARGS='--candidate plum:#4A1942,#7A2E63:why this one'
+theme-swatches:
+	node scripts/lib/run-theme-swatches.mjs $(ARGS)
+
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:
 	corepack yarn jest --config jest.envelope.config.cjs

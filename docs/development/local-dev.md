@@ -133,9 +133,33 @@ and the Ownership card **tiles**), keyed off `spec.type` via Backstage's
   > optional one, which is why `siliconsaga` is `type: community` and
   > `leidangr` is `type: instance`.
 
+### Seeing what's already taken
+
+Don't pick a colour blind — the palette is bigger than it looks, and most of it
+is already spoken for:
+
+```bash
+make theme-swatches
+```
+
+That writes `.tmp/theme-swatches.html`: every stock Backstage theme, every one of
+ours, the `spec.type` values actually present in the catalog, and — usually the
+most useful part — which types are currently falling through to the teal
+fallback. Open it in a browser. To weigh proposals side by side with what exists:
+
+```bash
+make theme-swatches ARGS='--candidate plum:#4A1942,#7A2E63:past guild, darker than pink'
+```
+
+It reads the stock map straight out of `@backstage/theme`, so the defaults cannot
+drift from what the app renders, and parses our own themes from source so it
+works on a cold checkout with nothing built.
+
 ### Adding a new type colour
 
-1. Add an entry to `guildhallPageThemes` keyed by the `spec.type`:
+1. Run `make theme-swatches` first (above) to see the hue bands still free.
+
+2. Add an entry to `guildhallPageThemes` keyed by the `spec.type`:
 
    ```ts
    myType: genPageTheme({ colors: ['#hexDark', '#hexLight'], shape: shapes.wave }),
@@ -144,7 +168,7 @@ and the Ownership card **tiles**), keyed off `spec.type` via Backstage's
    (`shapes` = `wave` | `wave2` | `round` | `square`.) Vary lightness from the
    neighbours and keep the default white `fontColor`.
 
-2. That's all for entity pages — the app composition picks it up. For a custom
+3. That's all for entity pages — the app composition picks it up. For a custom
    page, also set `<Page themeId="myType">`.
 
 An unregistered `themeId` silently falls back to the `home` gradient (Backstage's
