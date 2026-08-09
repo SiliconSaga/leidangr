@@ -14,6 +14,16 @@ Registered in the app's `features` (see `packages/app/src/App.tsx`):
     // ...
     features: [/* … */, gildiPlugin]
 
+## Configuration
+
+Components that have adopted no aspect show an "Adopt an aspect" call to action pointing at the Create page. Switch it off in `app-config.yaml` — the card then never mounts:
+
+    app:
+      extensions:
+        - entity-card:gildi/component-adopt: false
+
+The Aspects card on components that *have* adopted one is not gated; it only renders where there is something to show.
+
 ## Development
 
     ws exec leidangr corepack yarn workspace @siliconsaga/plugin-gildi test

@@ -10,6 +10,12 @@ metadata:
   description: 'The Security practice: its aspect module — standard, paved road, adoption templates, and remediation vísar'
   annotations:
     siliconsaga.org/aspect: 'security'
+    # The module's current release — the practice is the catalog face of the
+    # aspect module, so the release number is a fact about the practice. Mirrors
+    # `version` in guildhall/aspects.yaml, which the frontend cannot read (that
+    # registry is a raw file, not a catalog entity). Components record what they
+    # adopted in siliconsaga.org/aspect-versions; the gap is what a drive closes.
+    siliconsaga.org/module-release: '1.4'
     siliconsaga.org/visir: './docs/runbooks/rotate-leaked-credential.md'
     backstage.io/techdocs-ref: dir:.
   links:
