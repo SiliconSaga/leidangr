@@ -1,6 +1,14 @@
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import { useLocation } from 'react-router-dom';
 import { renderInTestApp } from '@backstage/frontend-test-utils';
 import { AdoptAspectCard } from './AdoptAspectCard';
+
+// Renders the router's current location so a click can be observed as
+// navigation rather than inferred from markup.
+function LocationProbe() {
+  const { pathname, search } = useLocation();
+  return <span data-testid="location">{`${pathname}${search}`}</span>;
+}
 
 describe('AdoptAspectCard', () => {
   it('invites adoption and routes to the Create page filtered to aspect templates', async () => {
@@ -24,13 +32,26 @@ describe('AdoptAspectCard', () => {
     expect(url.searchParams.get('filters[type]')).toBe('aspect');
   });
 
-  it('routes without a full page reload', async () => {
-    await renderInTestApp(<AdoptAspectCard />);
+  it('navigates client-side on click rather than reloading the page', async () => {
+    await renderInTestApp(
+      <>
+        <AdoptAspectCard />
+        <LocationProbe />
+      </>,
+    );
     const cta = screen.getByRole('button', { name: /adopt an aspect/i });
-    // A react-router Link renders an anchor with an app-relative href; an
-    // <a href> to an absolute URL would full-page-reload — the pattern the
-    // 2026-07-22 review flagged on the Actions panel.
+
+    // Still an anchor, so middle-click and open-in-new-tab work.
     expect(cta.tagName).toBe('A');
-    expect(cta.getAttribute('href')).toMatch(/^\/create\/templates/);
+
+    // The load-bearing assertion. tagName and href alone are satisfied by a
+    // plain <a href>, which would full-page-reload — the pattern the
+    // 2026-07-22 review flagged on the Actions panel. Only a react-router Link
+    // moves the router in place, so observing useLocation change is what
+    // actually distinguishes the two.
+    fireEvent.click(cta);
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '/create/templates?filters[type]=aspect',
+    );
   });
 });
