@@ -34,4 +34,16 @@ export const guildhallPageThemes: Record<string, PageTheme> = {
   community: genPageTheme({ colors: ['#7A6E94', '#A79BC2'], shape: shapes.wave2 }),
   instance: genPageTheme({ colors: ['#37304A', '#574B70'], shape: shapes.wave }),
   plugin: genPageTheme({ colors: ['#4E4361', '#7C6E96'], shape: shapes.round }),
+
+  // --- Bounded efforts: the Cycle types. Warm, against the cool practice and
+  // instance tiers, because a Cycle is the thing with a clock on it — it reads
+  // as activity rather than structure.
+  //
+  // Amber through gold rather than orange proper: Backstage's `app` already
+  // holds vermilion (#BE2200) and `library` holds ruby (#98002B), so hues below
+  // ~20 are spoken for. These sit at roughly 25 / 38 / 50 and stay dark enough
+  // for white header text.
+  release: genPageTheme({ colors: ['#8F4212', '#B85E1E'], shape: shapes.wave }),
+  drive: genPageTheme({ colors: ['#9A5C08', '#C57F16'], shape: shapes.round }),
+  season: genPageTheme({ colors: ['#7E6510', '#AA8A1E'], shape: shapes.wave2 }),
 };
