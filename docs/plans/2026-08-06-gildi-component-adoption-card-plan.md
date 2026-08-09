@@ -10,6 +10,8 @@
 
 **Design:** `docs/plans/2026-08-06-gildi-component-adoption-card-design.md`
 
+> **Status: executed.** Manual acceptance and review changed several decisions after this plan was written — the card gained a four-column pill layout, aspect slugs are titled for display, and the adopt link moved to `/create/templates`. Task text and code examples below have been corrected where they would actively mislead someone copying them, but **the shipped files under `plugins/gildi/src/entity/` are authoritative**, not these snippets. Read this doc for the reasoning and the task ordering, not as a current spec.
+
 ## Global Constraints
 
 - **Workspace CLI only.** Commit with `ws commit leidangr <bodyfile>` — never raw `git commit`. Test with `ws test leidangr`, lint with `ws lint leidangr`. Never raw `yarn test` / `jest` / `eslint`.
@@ -483,10 +485,13 @@ describe('ComponentAspectsCard', () => {
       'siliconsaga.org/aspect-versions': 'security@1.4',
       'siliconsaga.org/adoption-record': 'security: https://git.example/x/pull/412',
     }));
-    expect(await screen.findByText('security')).toBeInTheDocument();
+    expect(await screen.findByText('Security')).toBeInTheDocument();
     expect(screen.getByText('v1.4')).toBeInTheDocument();
     expect(screen.getByText('current')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'record' })).toHaveAttribute(
+    // Prefix match, not equality: core-components' Link appends a hidden
+    // ", Opens in a new window" to external anchors, and that counts toward
+    // the accessible name.
+    expect(screen.getByRole('link', { name: /^record/ })).toHaveAttribute(
       'href', 'https://git.example/x/pull/412',
     );
   });
@@ -695,12 +700,30 @@ import { renderInTestApp } from '@backstage/frontend-test-utils';
 import { AdoptAspectCard } from './AdoptAspectCard';
 
 describe('AdoptAspectCard', () => {
-  it('invites adoption and routes to the Create page without a full page reload', async () => {
+  it('invites adoption and routes to the Create page filtered to aspect templates', async () => {
     await renderInTestApp(<AdoptAspectCard />);
     expect(await screen.findByText('Not enrolled in any aspect.')).toBeInTheDocument();
-    const cta = screen.getByRole('link', { name: /adopt an aspect/i });
-    // A react-router Link renders a relative href; an <a href> to an absolute
-    // URL would mean a full page reload — the pattern the 2026-07-22 review flagged.
+
+    // MUI v4's Button stamps an explicit role="button" on the anchor it renders
+    // for `component`, so this is NOT queryable as a link despite being an <a>.
+    const cta = screen.getByRole('button', { name: /adopt an aspect/i });
+    // Assert the MEANING, not the encoding: react-router may pass the search
+    // through verbatim or percent-encode the brackets, and qs.parse accepts
+    // either — so pinning one literal form would test an incidental detail.
+    // Asserting only the path prefix is NOT enough: it passes with the filter
+    // missing entirely, which is exactly the bug this route once shipped.
+    const url = new URL(cta.getAttribute('href')!, 'http://localhost');
+    expect(url.pathname).toBe('/create/templates');
+    expect(url.searchParams.get('filters[type]')).toBe('aspect');
+  });
+
+  it('routes without a full page reload', async () => {
+    await renderInTestApp(<AdoptAspectCard />);
+    const cta = screen.getByRole('button', { name: /adopt an aspect/i });
+    // A react-router Link renders an anchor with an app-relative href; an
+    // <a href> to an absolute URL would full-page-reload — the pattern the
+    // 2026-07-22 review flagged on the Actions panel.
+    expect(cta.tagName).toBe('A');
     expect(cta.getAttribute('href')).toMatch(/^\/create\/templates/);
   });
 });
