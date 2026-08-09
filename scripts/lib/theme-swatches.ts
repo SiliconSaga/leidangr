@@ -180,11 +180,166 @@ export function saturationOf(hex: string): number {
   return max === 0 ? 0 : (max - Math.min(r, g, b)) / max;
 }
 
+// ---------------------------------------------------------------------------
+// Colour vision
+//
+// A tool for picking colours has no business ignoring the people who will read
+// them differently. Everything below is a screening aid, not a verdict: it
+// catches the obvious collisions so a human looks harder, and the page can be
+// flipped into each simulation so you can judge with your own eyes.
+// ---------------------------------------------------------------------------
+
+export type Vision = 'normal' | 'protanopia' | 'deuteranopia' | 'tritanopia';
+
+export const VISIONS: Vision[] = ['normal', 'protanopia', 'deuteranopia', 'tritanopia'];
+
+/** Roughly how common each is, for labelling the UI honestly. */
+export const VISION_LABEL: Record<Vision, string> = {
+  normal: 'Normal',
+  protanopia: 'Protanopia (red-blind, ~1% of men)',
+  deuteranopia: 'Deuteranopia (green-blind, ~6% of men)',
+  tritanopia: 'Tritanopia (blue-blind, rare)',
+};
+
+// Machado, Oliveira & Fernandes (2009) severity-1.0 matrices, applied in linear
+// RGB. Chosen over a naive channel swap because it models the actual confusion
+// axes rather than just muting a channel.
+const CVD_MATRIX: Record<Exclude<Vision, 'normal'>, number[]> = {
+  protanopia: [0.152286, 1.052583, -0.204868, 0.114503, 0.786281, 0.099216, -0.003882, -0.048116, 1.051998],
+  deuteranopia: [0.367322, 0.860646, -0.227968, 0.280085, 0.672501, 0.047413, -0.01182, 0.04294, 0.968881],
+  tritanopia: [1.255528, -0.076749, -0.178779, -0.078411, 0.930809, 0.147602, 0.004733, 0.691367, 0.3039],
+};
+
+const toChannels = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+const srgbToLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const linearToSrgb = (c: number) => (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055);
+const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+const toHex = (c: number) =>
+  Math.round(clamp01(c) * 255)
+    .toString(16)
+    .padStart(2, '0');
+
+/** Simulate how a hex colour appears under a given colour vision deficiency. */
+export function simulateVision(hex: string, vision: Vision): string {
+  if (vision === 'normal') return hex.toLowerCase();
+  const m = CVD_MATRIX[vision];
+  const [r, g, b] = toChannels(hex).map(srgbToLinear);
+  const out = [
+    m[0] * r + m[1] * g + m[2] * b,
+    m[3] * r + m[4] * g + m[5] * b,
+    m[6] * r + m[7] * g + m[8] * b,
+  ].map(v => linearToSrgb(clamp01(v)));
+  return `#${out.map(toHex).join('')}`;
+}
+
+/** Relative luminance per WCAG 2.x. */
+export function luminance(hex: string): number {
+  const [r, g, b] = toChannels(hex).map(srgbToLinear);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+/** WCAG contrast ratio between two colours, 1..21. */
+export function contrastRatio(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function toLab(hex: string): [number, number, number] {
+  const [r, g, b] = toChannels(hex).map(srgbToLinear);
+  const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / 0.95047;
+  const y = 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+  const z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  return [116 * f(y) - 16, 500 * (f(x) - f(y)), 200 * (f(y) - f(z))];
+}
+
+/** CIE76 colour difference. Crude next to CIEDE2000, but ample for "are these two the same at a glance". */
+export function deltaE(a: string, b: string): number {
+  const [l1, a1, b1] = toLab(a);
+  const [l2, a2, b2] = toLab(b);
+  return Math.hypot(l1 - l2, a1 - a2, b1 - b2);
+}
+
+/**
+ * Below this, two large flat colours read as the same at a glance. Deliberately
+ * generous — page headers are big blocks seen apart from each other, not
+ * swatches held side by side, so near-misses are worth surfacing.
+ */
+export const CONFUSABLE_DELTA_E = 14;
+
+export interface Confusion {
+  a: string;
+  b: string;
+  vision: Vision;
+  normalDelta: number;
+  visionDelta: number;
+}
+
+/**
+ * Pairs that are clearly distinct to normal vision but collapse under a
+ * simulation. Pairs already similar for everyone are not reported — that is a
+ * palette choice, not an accessibility regression.
+ */
+export function findConfusions(
+  entries: PageThemeEntry[],
+  threshold = CONFUSABLE_DELTA_E,
+): Confusion[] {
+  const found: Confusion[] = [];
+  // Compare the first stop: it is the left edge of the header, where the two
+  // gradients sit closest to a flat block of colour.
+  const swatch = (e: PageThemeEntry) => e.colors[0];
+  for (let i = 0; i < entries.length; i++) {
+    for (let j = i + 1; j < entries.length; j++) {
+      const [x, y] = [entries[i], entries[j]];
+      const normalDelta = deltaE(swatch(x), swatch(y));
+      if (normalDelta < threshold) continue; // already alike for everyone
+      for (const vision of VISIONS) {
+        if (vision === 'normal') continue;
+        const visionDelta = deltaE(
+          simulateVision(swatch(x), vision),
+          simulateVision(swatch(y), vision),
+        );
+        if (visionDelta < threshold) {
+          found.push({ a: x.id, b: y.id, vision, normalDelta, visionDelta });
+        }
+      }
+    }
+  }
+  return found.sort((p, q) => p.visionDelta - q.visionDelta);
+}
+
+/**
+ * Page themes render white header text, so a stop that is too light fails
+ * everyone, not just colour-blind readers. 3:1 is the WCAG AA bar for large
+ * text, which is what a page header is.
+ */
+export const MIN_CONTRAST = 3;
+
+export function contrastWarnings(entries: PageThemeEntry[]): { id: string; hex: string; ratio: number }[] {
+  const out: { id: string; hex: string; ratio: number }[] = [];
+  for (const e of entries) {
+    for (const hex of e.colors) {
+      const ratio = contrastRatio(hex, '#FFFFFF');
+      if (ratio < MIN_CONTRAST) out.push({ id: e.id, hex, ratio });
+    }
+  }
+  return out.sort((a, b) => a.ratio - b.ratio);
+}
+
 const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const gradient = (colors: string[]) =>
   `linear-gradient(90deg, ${(colors.length === 1 ? [colors[0], colors[0]] : colors).join(', ')})`;
+
+/**
+ * Each bar carries all four renderings as custom properties, and the vision
+ * radios swap which one is painted. Simulating in CSS rather than shipping four
+ * copies of every row means you compare the same layout, not four small ones.
+ */
+function visionVars(colors: string[]): string {
+  return VISIONS.map(v => `--${v}: ${gradient(colors.map(c => simulateVision(c, v)))}`).join('; ');
+}
 
 function swatchRow(entry: PageThemeEntry, usage?: TypeUsage): string {
   const used = usage
@@ -192,15 +347,93 @@ function swatchRow(entry: PageThemeEntry, usage?: TypeUsage): string {
         usage.entities.slice(0, 6).join(', '),
       )}${usage.entities.length > 6 ? ', …' : ''}</em>`
     : '<em>no entity uses this today</em>';
+  const worst = Math.min(...entry.colors.map(c => contrastRatio(c, '#FFFFFF')));
+  const contrastFlag =
+    worst < MIN_CONTRAST
+      ? ` <span class="warn-chip">white text ${worst.toFixed(1)}:1</span>`
+      : '';
   return `      <div class="row${entry.source === 'candidate' ? ' tall' : ''}">
-        <div class="bar" style="background: ${gradient(entry.colors)}">${esc(entry.id)}</div>
+        <div class="bar" style="${visionVars(entry.colors)}">${esc(entry.id)}</div>
         <div class="meta">
-          <span class="use">${entry.note ? esc(entry.note) : used}</span>
+          <span class="use">${entry.note ? esc(entry.note) : used}${contrastFlag}</span>
           <span class="hex">${entry.colors.map(esc).join(' → ')}${
             entry.shape ? ` · ${esc(entry.shape)}` : ''
           } · sat ${entry.colors.map(c => saturationOf(c).toFixed(2)).join(' / ')}</span>
         </div>
       </div>`;
+}
+
+/**
+ * Group findings by whether they are ours to fix. An undifferentiated list is
+ * how an accessibility report gets ignored: most collisions in a Backstage
+ * palette are between two stock themes, which no amount of care here can change.
+ * Those still belong on the page — they constrain future choices — but never
+ * above the ones we own.
+ */
+function accessibilitySection(entries: PageThemeEntry[], usage: TypeUsage[]): string {
+  const sourceOf = new Map(entries.map(e => [e.id, e.source]));
+  const inUse = new Set(usage.filter(u => u.registered).map(u => u.specType));
+  const isOurs = (id: string) => sourceOf.get(id) !== 'backstage';
+
+  const confusions = findConfusions(entries);
+  const ours = confusions.filter(c => isOurs(c.a) && isOurs(c.b));
+  // Worth acting on: the stock half is a colour some entity here really renders.
+  const mixed = confusions.filter(
+    c => isOurs(c.a) !== isOurs(c.b) && (inUse.has(c.a) || inUse.has(c.b)),
+  );
+  const stock = confusions.filter(c => !ours.includes(c) && !mixed.includes(c));
+
+  const contrast = contrastWarnings(entries);
+  const contrastOurs = contrast.filter(c => isOurs(c.id));
+  const contrastStock = contrast.filter(c => !isOurs(c.id));
+
+  const line = (c: Confusion) =>
+    `      <li><strong>${esc(c.a)}</strong> and <strong>${esc(c.b)}</strong> converge under
+      ${esc(VISION_LABEL[c.vision])} — apart by ΔE ${c.normalDelta.toFixed(0)} normally,
+      ${c.visionDelta.toFixed(0)} simulated.</li>`;
+
+  const contrastLine = (c: { id: string; hex: string; ratio: number }) =>
+    `      <li><strong>${esc(c.id)}</strong> ${esc(c.hex)} gives white header text only
+      ${c.ratio.toFixed(1)}:1 — under the ${MIN_CONTRAST}:1 WCAG bar for large text.</li>`;
+
+  const group = (title: string, note: string, rows: string[]) =>
+    rows.length
+      ? `    <p class="finding-head">${esc(title)}</p>
+    <p class="section-note">${esc(note)}</p>
+    <ul class="findings">
+${rows.join('\n')}
+    </ul>`
+      : '';
+
+  const actionable = [...ours, ...mixed].length + contrastOurs.length;
+
+  return `  <section>
+    <p class="eyebrow">Accessibility</p>
+    <p class="section-note">A screening pass, not a verdict — flip the radios above and judge with
+    your own eyes. Confusion is only reported for pairs that are clearly distinct to normal vision
+    and collapse under a simulation, since a pair that looks alike to everyone is a palette choice
+    rather than an accessibility regression.</p>
+    ${
+      actionable === 0
+        ? `<p class="ok">Nothing of ours collides above ΔE ${CONFUSABLE_DELTA_E}, and every colour we
+    define clears ${MIN_CONTRAST}:1 for white header text.</p>`
+        : ''
+    }
+${group('Ours — fix these', 'Both colours are defined in this repo, so both are ours to move.', [
+  ...ours.map(line),
+  ...contrastOurs.map(contrastLine),
+])}
+${group(
+  'Ours against a stock colour in use',
+  'One side is a Backstage default that entities here actually render, so the collision is real even though only our half can move.',
+  mixed.map(line),
+)}
+${group(
+  'Between stock defaults — context only',
+  'Neither colour is ours. Nothing to fix, but worth knowing before claiming a hue near either of them.',
+  [...stock.map(line), ...contrastStock.map(contrastLine)],
+)}
+  </section>`;
 }
 
 function section(title: string, note: string, rows: string): string {
@@ -238,7 +471,7 @@ export function renderSwatchPage(input: RenderInput): string {
   const orphanRows = orphans
     .map(
       u => `      <div class="row">
-        <div class="bar" style="background: ${gradient(['#005B4B'])}">${esc(u.specType)} → home</div>
+        <div class="bar" style="${visionVars(['#005B4B'])}">${esc(u.specType)} → home</div>
         <div class="meta">
           <span class="use">${esc(u.entities.slice(0, 6).join(', '))}${
             u.entities.length > 6 ? ', …' : ''
@@ -288,7 +521,31 @@ export function renderSwatchPage(input: RenderInput): string {
   @media (max-width:40rem) { .row { grid-template-columns:1fr; } }
   .bar { height:2.4rem; border-radius:3px; border:1px solid rgba(0,0,0,.18); display:flex;
     align-items:center; padding:0 .7rem; color:#fff; font-size:.8rem; font-weight:600;
-    text-shadow:0 1px 2px rgba(0,0,0,.45); }
+    text-shadow:0 1px 2px rgba(0,0,0,.45); background:var(--normal); }
+  /* Vision simulation: the radios live before .page so a sibling selector can
+     repaint every bar at once. Pure CSS — no script, and the controls stay real
+     focusable radios. */
+  .vision-input { position:absolute; opacity:0; pointer-events:none; }
+  #v-protanopia:checked ~ .page .bar { background:var(--protanopia); }
+  #v-deuteranopia:checked ~ .page .bar { background:var(--deuteranopia); }
+  #v-tritanopia:checked ~ .page .bar { background:var(--tritanopia); }
+  .vision { display:flex; flex-wrap:wrap; gap:.4rem; }
+  .vision label { font-size:.78rem; padding:.3rem .7rem; border:1px solid var(--rule-strong);
+    border-radius:999px; cursor:pointer; color:var(--ink-soft); }
+  .vision label:hover { border-color:var(--accent); color:var(--ink); }
+  #v-normal:checked ~ .page label[for='v-normal'],
+  #v-protanopia:checked ~ .page label[for='v-protanopia'],
+  #v-deuteranopia:checked ~ .page label[for='v-deuteranopia'],
+  #v-tritanopia:checked ~ .page label[for='v-tritanopia'] {
+    background:var(--accent); border-color:var(--accent); color:#fff; }
+  .vision-input:focus-visible ~ .page label[for] { outline:2px solid var(--accent); outline-offset:2px; }
+  .warn-chip { display:inline-block; font-size:.7rem; font-weight:700; padding:.05rem .4rem;
+    border:1px solid var(--warn-rule); background:var(--warn-bg); color:var(--warn-ink);
+    border-radius:2px; margin-left:.4rem; }
+  .findings { margin:0; padding-left:1.1rem; display:flex; flex-direction:column; gap:.45rem;
+    font-size:.9rem; color:var(--ink); max-width:70ch; }
+  .ok { margin:0; font-size:.9rem; color:var(--ink-soft); }
+  .finding-head { margin:.6rem 0 -.5rem; font-size:.85rem; font-weight:700; color:var(--ink); }
   .row.tall .bar { height:3.5rem; font-size:.9rem; }
   .meta { display:flex; flex-direction:column; gap:.15rem; min-width:0; }
   .hex { font-family:var(--mono); font-size:.78rem; font-variant-numeric:tabular-nums; color:var(--ink-soft); }
@@ -299,6 +556,12 @@ export function renderSwatchPage(input: RenderInput): string {
   footer { border-top:1px solid var(--rule-strong); padding-top:1.2rem; color:var(--ink-faint);
     font-size:.85rem; max-width:62ch; }
 </style>
+${VISIONS.map(
+  v =>
+    `<input class="vision-input" type="radio" name="vision" id="v-${v}"${
+      v === 'normal' ? ' checked' : ''
+    }>`,
+).join('\n')}
 <div class="page">
   <header>
     <h1>Backstage page themes — what's taken, what's free</h1>
@@ -307,6 +570,12 @@ export function renderSwatchPage(input: RenderInput): string {
     catalog. Bars show the raw gradient — in the app each also carries a white wave mask, which
     lightens but does not shift the hue. Saturation is printed because it is often the only axis
     left once a hue band fills up.</p>
+    <div class="vision">
+${VISIONS.map(v => `      <label for="v-${v}">${esc(VISION_LABEL[v])}</label>`).join('\n')}
+    </div>
+    <p class="section-note">Repaints every bar below. Deuteranopia is the one worth checking by
+    default — it is by far the most common, and it is the one that flattens the red-green
+    separation most palettes lean on.</p>
   </header>
   <div class="note"><strong>A theme key is a <code>spec.type</code>, never a kind.</strong>
   <code>EntityLayout</code> resolves with <code>entity?.spec?.type ?? 'home'</code>, so a theme named
@@ -317,6 +586,7 @@ ${section('Stock themes in use', 'Backstage defaults that entities in this catal
 ${section('Stock themes unused here', 'Defined by Backstage but unreached today — still worth avoiding, since a future spec.type could land on one.', stockFree.map(e => swatchRow(e)).join('\n'))}
 ${section('Falling through to the fallback', 'These types have no registered theme, so every one of them renders the same teal.', orphanRows)}
 ${section('Candidates', 'Proposals passed in with --candidate. Nothing here is registered yet.', candidates.map(e => swatchRow(e)).join('\n'))}
+${accessibilitySection([...themes, ...candidates], usage)}
   <footer>Generated ${esc(generatedAt)} by <code>make theme-swatches</code>. Re-run after changing
   <code>pageThemes.ts</code> or adding entity types.</footer>
 </div>

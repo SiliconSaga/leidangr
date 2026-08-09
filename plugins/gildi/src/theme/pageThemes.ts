@@ -31,7 +31,11 @@ export const guildhallPageThemes: Record<string, PageTheme> = {
   // 255-285 already holds guild/practice/aspect plus Backstage's unused `tool`,
   // and `website` ends on a deep violet, so hue alone had no room left.
   // Desaturation is the axis with clearance.
-  community: genPageTheme({ colors: ['#7A6E94', '#A79BC2'], shape: shapes.wave2 }),
+  // community was originally lighter (#7A6E94 → #A79BC2), but that second stop
+  // gave white header text only ~2.5:1 — below the 3:1 WCAG bar for large text,
+  // and a failure for every reader rather than a minority. Darkened until both
+  // stops clear it.
+  community: genPageTheme({ colors: ['#6A5E86', '#8E82A6'], shape: shapes.wave2 }),
   instance: genPageTheme({ colors: ['#37304A', '#574B70'], shape: shapes.wave }),
   plugin: genPageTheme({ colors: ['#4E4361', '#7C6E96'], shape: shapes.round }),
 
@@ -41,9 +45,16 @@ export const guildhallPageThemes: Record<string, PageTheme> = {
   //
   // Amber through gold rather than orange proper: Backstage's `app` already
   // holds vermilion (#BE2200) and `library` holds ruby (#98002B), so hues below
-  // ~20 are spoken for. These sit at roughly 25 / 38 / 50 and stay dark enough
-  // for white header text.
-  release: genPageTheme({ colors: ['#8F4212', '#B85E1E'], shape: shapes.wave }),
-  drive: genPageTheme({ colors: ['#9A5C08', '#C57F16'], shape: shapes.round }),
-  season: genPageTheme({ colors: ['#7E6510', '#AA8A1E'], shape: shapes.wave2 }),
+  // ~20 are spoken for.
+  //
+  // Separated by LIGHTNESS, not hue. The first cut of these three sat at one
+  // lightness and differed only along red-green, and `make theme-swatches`
+  // measured drive against season at ΔE 1.0 under protanopia — indistinguishable
+  // for ~1% of men, with deuteranopia barely better. Hue is the wrong axis for a
+  // warm family precisely because warm hues are what red-green deficiency
+  // flattens. Lightness survives every simulation, so these step roughly
+  // 21 / 40 / 56 in L* while staying dark enough for white header text.
+  release: genPageTheme({ colors: ['#5A2A0C', '#7A390F'], shape: shapes.wave }),
+  drive: genPageTheme({ colors: ['#8A520B', '#A9660F'], shape: shapes.round }),
+  season: genPageTheme({ colors: ['#A5832A', '#B08C30'], shape: shapes.wave2 }),
 };
