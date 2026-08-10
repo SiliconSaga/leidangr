@@ -300,23 +300,31 @@ describe('findConfusions', () => {
     expect(findConfusions([entry('a', '#4E4361'), entry('b', '#4F4462')])).toEqual([]);
   });
 
-  it('examines every stop, not just the first', () => {
-    // First stops identical, second stops colliding: the pair is confusable and
-    // a first-stop-only comparison would miss it entirely.
+  // The next two both hinge on a stop OTHER than the first, in opposite
+  // directions. Their colour order is load-bearing: arranged any other way,
+  // a first-stop-only implementation passes them both, which is exactly the
+  // defect they exist to pin down.
+  it('examines the later stops, not just the first', () => {
+    // The first stops are alike to everyone, so they are skipped as a palette
+    // choice rather than a regression. The pair is distinct only at its second
+    // stop — and that is the distinction the simulation destroys. Comparing
+    // first stops alone sees nothing here at all.
     const found = findConfusions([
-      { id: 'a', colors: ['#96581E', '#96581E'], source: 'guildhall' },
-      { id: 'b', colors: ['#7A6A1E', '#7A6A1E'], source: 'guildhall' },
+      { id: 'a', colors: ['#3A3A3A', '#96581E'], source: 'guildhall' },
+      { id: 'b', colors: ['#3A3A3A', '#7A6A1E'], source: 'guildhall' },
     ]);
     expect(found.length).toBeGreaterThan(0);
   });
 
   it('does NOT report a pair that collapses at one stop but not the other', () => {
-    // The left edges stay far apart under every simulation, so the two bars
-    // remain tellable apart no matter what the right edges do. Reporting this
-    // would condemn a palette that works.
+    // The colliding pair sits FIRST deliberately: comparing first stops alone
+    // reports a finding here and fails this test. The right answer is silence —
+    // the second stops stay far apart under every simulation, so the two bars
+    // remain tellable apart and reporting them would condemn a palette
+    // that works.
     const found = findConfusions([
-      { id: 'dark', colors: ['#1B1030', '#96581E'], source: 'guildhall' },
-      { id: 'pale', colors: ['#D9D0EC', '#7A6A1E'], source: 'guildhall' },
+      { id: 'dark', colors: ['#96581E', '#1B1030'], source: 'guildhall' },
+      { id: 'pale', colors: ['#7A6A1E', '#D9D0EC'], source: 'guildhall' },
     ]);
     expect(found).toEqual([]);
   });
