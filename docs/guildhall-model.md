@@ -30,8 +30,8 @@ graph TD
 
     subgraph "Software layer"
         COMPONENT["Component (enrolled via annotation: siliconsaga.org/aspects)"]
-        CYCLE["Cycle (custom kind; bounded effort — release or drive)"]
-        SAGA["Saga (custom kind; narrated retrospective)"]
+        CYCLE["Cycle (custom kind; bounded effort — release, drive or season)"]
+        SAGA["Saga (custom kind; narrated account — after the fact or mid-run)"]
     end
 
     SKILL -->|"bundled into"| CRAFT
@@ -58,11 +58,23 @@ graph TD
 - An **aspect** is supply-side: what a component takes on when it enrolls.
 - A **standard** is the bar: a set of checks, organized by tool (blocks) and maturity (tiers).
 
+## Where the model is rendered
+
+The relationships above are plain annotations and entity links — nothing here needs a custom kind beyond `Cycle` and `Saga`. The `gildi` plugin reads them back as composed entity pages, so the same edge is visible from both ends:
+
+| Surface | Reads |
+|---|---|
+| Guild page — Charter, crest, Chronicle | the guild's practices, aspects, and recent Cycles/Sagas |
+| Practice page — Practice + **Adopters** cards | every Component enrolled in the practice's aspect, and the version each adopted |
+| Component page — **Aspects** card | the same enrollment from the component's side, plus whether its version is the practice's current release |
+
+The last two are one relationship viewed from opposite directions. Currency comes from comparing a component's `siliconsaga.org/aspect-versions` against the practice's `siliconsaga.org/module-release` — an equality check, so a component reads as *behind* but never by how far. Nothing here evaluates trials: tier badges remain unbuilt, and the component card reserves the space rather than inventing a rating.
+
 ## Adoption — two doors, one module
 
 ```mermaid
 flowchart LR
-    PORTAL["Portal user (Create page)"] -->|"clicks"| TEMPLATE["Template spec.type:aspect (template.yaml)"]
+    PORTAL["Create-page user"] -->|"clicks"| TEMPLATE["Template spec.type:aspect (template.yaml)"]
     AGENT["Agent / CLI user (terminal)"] -->|"reads"| SKILL_MD["SKILL.md (agent door)"]
     TEMPLATE -->|"same steps"| MODULE["Aspect module repo (standard + paved road + remediation docs)"]
     SKILL_MD -->|"same steps"| MODULE
