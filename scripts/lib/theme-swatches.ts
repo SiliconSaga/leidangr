@@ -529,6 +529,10 @@ export function renderSwatchPage(input: RenderInput): string {
   #v-protanopia:checked ~ .page .bar { background:var(--protanopia); }
   #v-deuteranopia:checked ~ .page .bar { background:var(--deuteranopia); }
   #v-tritanopia:checked ~ .page .bar { background:var(--tritanopia); }
+  /* A control strip, not body copy — it sat inside the intro text and read as
+     part of the prose. Standing alone above the first section, with the page's
+     3rem gap either side, it reads as something you operate. */
+  .vision-bar { display:flex; flex-direction:column; gap:.85rem; padding:.5rem 0; }
   .vision { display:flex; flex-wrap:wrap; gap:.4rem; }
   .vision label { font-size:.78rem; padding:.3rem .7rem; border:1px solid var(--rule-strong);
     border-radius:999px; cursor:pointer; color:var(--ink-soft); }
@@ -570,17 +574,20 @@ ${VISIONS.map(
     catalog. Bars show the raw gradient — in the app each also carries a white wave mask, which
     lightens but does not shift the hue. Saturation is printed because it is often the only axis
     left once a hue band fills up.</p>
+  </header>
+  <div class="note"><strong>A theme key is a <code>spec.type</code>, never a kind.</strong>
+  <code>EntityLayout</code> resolves with <code>entity?.spec?.type ?? 'home'</code>, so a theme named
+  after a kind can never match, and any entity without a <code>spec.type</code> renders the default
+  teal <code>#005B4B</code> no matter what is registered.</div>
+  <div class="vision-bar">
+    <p class="eyebrow">Colour vision</p>
     <div class="vision">
 ${VISIONS.map(v => `      <label for="v-${v}">${esc(VISION_LABEL[v])}</label>`).join('\n')}
     </div>
     <p class="section-note">Repaints every bar below. Deuteranopia is the one worth checking by
     default — it is by far the most common, and it is the one that flattens the red-green
     separation most palettes lean on.</p>
-  </header>
-  <div class="note"><strong>A theme key is a <code>spec.type</code>, never a kind.</strong>
-  <code>EntityLayout</code> resolves with <code>entity?.spec?.type ?? 'home'</code>, so a theme named
-  after a kind can never match, and any entity without a <code>spec.type</code> renders the default
-  teal <code>#005B4B</code> no matter what is registered.</div>
+  </div>
 ${section('Registered here', 'Defined by this repo and overriding the stock map.', ours.map(e => swatchRow(e, inUse(e))).join('\n'))}
 ${section('Stock themes in use', 'Backstage defaults that entities in this catalog actually resolve to.', stockUsed.map(e => swatchRow(e, inUse(e))).join('\n'))}
 ${section('Stock themes unused here', 'Defined by Backstage but unreached today — still worth avoiding, since a future spec.type could land on one.', stockFree.map(e => swatchRow(e)).join('\n'))}

@@ -31,11 +31,21 @@ export const guildhallPageThemes: Record<string, PageTheme> = {
   // 255-285 already holds guild/practice/aspect plus Backstage's unused `tool`,
   // and `website` ends on a deep violet, so hue alone had no room left.
   // Desaturation is the axis with clearance.
-  // community was originally lighter (#7A6E94 → #A79BC2), but that second stop
-  // gave white header text only ~2.5:1 — below the 3:1 WCAG bar for large text,
-  // and a failure for every reader rather than a minority. Darkened until both
-  // stops clear it.
-  community: genPageTheme({ colors: ['#6A5E86', '#8E82A6'], shape: shapes.wave2 }),
+  // community leaves the purple family on purpose — it is the only member of
+  // this tier that had to, and the swatch report is what proved it.
+  //
+  // As a purple it collided with `service` at ΔE 3 under protanopia, and
+  // `service` is the most-used type in the catalog. The cause is structural:
+  // red-green deficiency preserves the blue-yellow axis, and purple reads as
+  // blue once red is removed — exactly where `service` already sits. A
+  // replacement purple could not fix it, and measuring one confirmed that: a
+  // plum candidate landed ΔE 2 from `plugin` under protanopia.
+  //
+  // A yellow-leaning colour separates on the axis that survives. This muted
+  // clay clears every simulation against every shipped colour, and an earthy
+  // ground suits the Domain the rest of the catalog sits inside. Its earlier
+  // form (#7A6E94 → #A79BC2) also failed white header text at ~2.5:1.
+  community: genPageTheme({ colors: ['#7A5450', '#9C726C'], shape: shapes.wave2 }),
   instance: genPageTheme({ colors: ['#37304A', '#574B70'], shape: shapes.wave }),
   plugin: genPageTheme({ colors: ['#4E4361', '#7C6E96'], shape: shapes.round }),
 

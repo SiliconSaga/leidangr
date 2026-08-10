@@ -256,7 +256,7 @@ describe('findConfusions', () => {
   // fails in CI rather than waiting for someone to notice on a page.
   const shipped = (): PageThemeEntry[] => [
     entry('guild', '#6A1B9A'), entry('practice', '#4527A0'), entry('aspect', '#7E57C2'),
-    entry('community', '#6A5E86'), entry('instance', '#37304A'), entry('plugin', '#4E4361'),
+    entry('community', '#7A5450'), entry('instance', '#37304A'), entry('plugin', '#4E4361'),
     entry('release', '#5A2A0C'), entry('drive', '#8A520B'), entry('season', '#A5832A'),
   ];
 
@@ -269,15 +269,13 @@ describe('findConfusions', () => {
     expect(redGreen).toEqual([]);
   });
 
-  it('holds the shipped palette to its known tritanopia exceptions', () => {
-    // Accepted, not overlooked. Tritanopia affects on the order of 1 in 10,000
-    // and these pairs are never adjacent in the UI, so they were judged not
-    // worth distorting the palette for. Listed explicitly so a NEW collision
-    // still fails here instead of hiding behind a blanket allowance.
-    const tritan = findConfusions(shipped())
-      .filter(c => c.vision === 'tritanopia')
-      .map(c => [c.a, c.b].sort().join('/'));
-    expect(tritan).toEqual(['aspect/community']);
+  it('clears the shipped palette under tritanopia too, with no standing exceptions', () => {
+    // There was one accepted exception (aspect against community) while
+    // community was still a purple. Moving it to clay removed it, so the
+    // palette now has none — asserted as empty rather than deleted, because an
+    // exception creeping back in should have to be argued for again.
+    const tritan = findConfusions(shipped()).filter(c => c.vision === 'tritanopia');
+    expect(tritan).toEqual([]);
   });
 });
 
