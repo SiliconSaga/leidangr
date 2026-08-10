@@ -52,20 +52,34 @@ Docker CLI works fine — they use different sockets. Switch to local generation
        runIn: local
    ```
 
-3. **Windows + pyenv gotcha — `spawn mkdocs ENOENT`.** The backend spawns
-   `mkdocs` through Node *without a shell*, so on Windows it needs a real
-   `mkdocs.exe` on `PATH` — **not** the pyenv shim (`mkdocs.bat`, which Node
-   cannot exec, and which is the only `mkdocs` your Git Bash shell sees). The
-   real executable lives in the active pyenv version's Scripts dir:
+3. **Windows + pyenv gotcha — `spawn mkdocs ENOENT`. Handled for you.** The
+   backend spawns `mkdocs` through Node *without a shell*, so it needs a real
+   `mkdocs.exe` on `PATH` — **not** the pyenv shim (`mkdocs.bat`, or the
+   extensionless launcher beside it, which is what `where.exe mkdocs` finds
+   first and which Node cannot exec). Backstage has no config for the binary
+   path: the generator hardcodes `command: "mkdocs"`, so `PATH` is the only
+   lever.
+
+   `make dev` and `make dev-gitea` both run through `scripts/with-mkdocs.sh`,
+   which resolves one in order:
+
+   1. **`$MKDOCS_BIN`** if set — the escape hatch for system Python, conda, or a
+      venv. `ws run` exports the workspace `.env`, so setting it there is enough.
+   2. **`pyenv which mkdocs`**, which reports the real executable rather than the
+      shim. Zero config on a pyenv machine.
+   3. **Nothing** — a silent no-op if mkdocs is already a real executable or
+      isn't installed. TechDocs is optional for most local work.
+
+   `make doctor` also checks this now, and treats a shim as a *failure* rather
+   than a hit: a shim on `PATH` is worse than nothing there, because it reports
+   as installed and only breaks later, at render time.
+
+   If you launch the dev server some other way, put the Scripts directory on
+   `PATH` yourself:
 
    ```text
    C:\Users\<you>\.pyenv\pyenv-win\versions\<version>\Scripts\mkdocs.exe
    ```
-
-   Add that Scripts directory to your `PATH` (user/system env for a durable fix,
-   or `export PATH="/c/Users/<you>/.pyenv/pyenv-win/versions/<version>/Scripts:$PATH"`
-   in the shell before `make dev` for a one-off). Verify it's the `.exe`, not the
-   shim: `where.exe mkdocs` should list a path ending in `.exe`.
 
 Restart `make dev` after changing config or `PATH` (both are read at startup, not
 hot-reloaded).

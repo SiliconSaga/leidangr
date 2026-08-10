@@ -20,14 +20,17 @@ deps:
 	corepack yarn install --immutable
 
 ## dev — start Backstage in stub mode (zero secrets)
+## Wrapped so TechDocs finds a real mkdocs rather than a pyenv shim — see
+## scripts/with-mkdocs.sh. Keeping it here rather than in the ws adapter means
+## `make dev` behaves identically however it is launched.
 dev:
-	corepack yarn start
+	bash scripts/with-mkdocs.sh corepack yarn start
 
 ## dev-gitea — start Backstage with the Gitea catalog source (after `make secrets`)
 dev-gitea:
 	node scripts/preflight-gitea.mjs
 	test -f .env.local || { echo "dev-gitea: no .env.local — run 'make secrets' first." >&2; exit 1; }
-	set -a; . ./.env.local; set +a; ROOT="$$(cygpath -m "$$PWD" 2>/dev/null || pwd)"; corepack yarn start --config "$$ROOT/app-config.yaml" --config "$$ROOT/app-config.gitea.yaml"
+	set -a; . ./.env.local; set +a; ROOT="$$(cygpath -m "$$PWD" 2>/dev/null || pwd)"; bash scripts/with-mkdocs.sh corepack yarn start --config "$$ROOT/app-config.yaml" --config "$$ROOT/app-config.gitea.yaml"
 
 ## smoke-gitea — headless @live check: assert the Gitea entities ingest, then tear down
 smoke-gitea:
