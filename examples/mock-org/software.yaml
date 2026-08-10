@@ -5,7 +5,11 @@
 apiVersion: backstage.io/v1alpha1
 kind: Domain
 metadata: { name: ravenline }
-spec: { owner: group:default/ravenline }
+# business-unit against siliconsaga/mtl's community: the seed now carries both
+# shapes of Domain, which is the point of the fiction. Deliberately left without
+# a page theme — it falls through to the default teal, and a commercial org
+# reading as neutral next to the two communities is the right default.
+spec: { type: business-unit, owner: group:default/ravenline }
 ---
 apiVersion: backstage.io/v1alpha1
 kind: System
