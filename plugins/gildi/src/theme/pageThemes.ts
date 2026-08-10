@@ -13,13 +13,32 @@ import { genPageTheme, shapes, type PageTheme } from '@backstage/theme';
 // matter what is registered here. That is why the Domain and System carry an
 // explicit `spec.type`: without one they are unthemeable.
 export const guildhallPageThemes: Record<string, PageTheme> = {
-  // --- Practice layer: the Guildhall's own vocabulary. Saturated purples,
-  // separated by lightness so they stay distinct at a glance and in greyscale.
+  // --- Practice layer: the Guildhall's own vocabulary. Saturated purples.
   //
   // guild: the central fellowship — a royal, magenta-leaning purple, also used
   // for the Guild Hall hub page.
+  //
+  // The three step monotonically in lightness — practice L* 13/23, guild 30/38,
+  // aspect 46/56 — which also reads as depth: the practice underneath, the
+  // fellowship, then the aspect as the lightest leaf.
+  //
+  // That ramp is load-bearing, not decorative. `practice` first shipped as
+  // #4527A0 → #5E35B1, one step off guild in lightness and differing from it in
+  // the red channel alone (69 against 106, with green and blue within six
+  // counts). Red is exactly what protanopia deletes, so the two headers measured
+  // ΔE 3.8 and 4.4 at their stops — the same bar twice for ~1% of men.
+  //
+  // Two escapes were measured and rejected. Conventional indigos score *worse*
+  // (Material 800/600: ΔE 5.2) because they keep the mid red that causes the
+  // collapse. A vivid one that empties the red channel does clear guild, but
+  // lands on Backstage's own `tool` (#3E00EA, ΔE 3.4) and near `website`, which
+  // this catalog renders today — the blue-violet corner is already spoken for.
+  //
+  // Going darker is what was actually available. This aubergine clears ΔE 24.9
+  // against guild under protanopia and 17.6 against everything else defined,
+  // ours and Backstage's alike, at 16:1 contrast with white.
   guild: genPageTheme({ colors: ['#6A1B9A', '#8E24AA'], shape: shapes.wave }),
-  practice: genPageTheme({ colors: ['#4527A0', '#5E35B1'], shape: shapes.round }),
+  practice: genPageTheme({ colors: ['#380454', '#541A6C'], shape: shapes.round }),
   aspect: genPageTheme({ colors: ['#7E57C2', '#9575CD'], shape: shapes.wave2 }),
 
   // --- Instance structure: what the instance is *made of*, rather than what it

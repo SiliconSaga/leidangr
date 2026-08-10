@@ -54,17 +54,23 @@ const normalize = (text: string) => text.replace(/\r\n?/g, '\n');
  */
 export function normalizeHex(hex: string): string {
   const v = hex.trim();
-  const short = /^#([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])?$/.exec(v);
+  const short = /^#([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])$/.exec(v);
   if (!short) return v;
-  const [, r, g, b, a] = short;
-  return `#${r}${r}${g}${g}${b}${b}${a ? `${a}${a}` : ''}`;
+  const [, r, g, b] = short;
+  return `#${r}${r}${g}${g}${b}${b}`;
 }
 
 /**
- * Accepts #rgb, #rgba, #rrggbb, #rrggbbaa — and nothing between those widths,
- * since a five- or seven-digit value is a typo rather than a colour.
+ * Opaque colours only — #rgb or #rrggbb.
+ *
+ * Alpha forms are rejected rather than accepted-and-ignored. Every metric here
+ * (contrast, saturation, ΔE, the CVD transforms) is defined against a solid
+ * colour, so analysing `#rrggbbaa` by dropping its alpha would report numbers
+ * for a colour nobody sees. Compositing would need a known backdrop, and a
+ * gradient bar has two of them — the page ground in light and in dark. Refusing
+ * is the honest answer until there is a reason to define that.
  */
-export const HEX_RE = /^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/;
+export const HEX_RE = /^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/;
 
 /**
  * Pull `key: genPageTheme({ colors: [...], shape: shapes.x })` entries out of
@@ -309,25 +315,48 @@ export function findConfusions(
   threshold = CONFUSABLE_DELTA_E,
 ): Confusion[] {
   const found: Confusion[] = [];
-  // Compare the first stop: it is the left edge of the header, where the two
-  // gradients sit closest to a flat block of colour. Entries with no colours
-  // cannot be compared at all — drop them rather than feed undefined into the
-  // colour maths, where it would surface as a NaN verdict.
+  // Entries with no colours cannot be compared at all — drop them rather than
+  // feed undefined into the colour maths, where it surfaces as a NaN verdict.
   const usable = entries.filter(e => e.colors.length > 0);
-  const swatch = (e: PageThemeEntry) => e.colors[0];
+
+  // Compare EVERY rendered stop, not just the first. Both ends of a gradient
+  // are on screen, so two headers whose left edges differ can still be
+  // indistinguishable at their right edges. Single-stop themes are expanded the
+  // same way gradient() expands them, so what is compared is what is painted.
+  const stopsOf = (e: PageThemeEntry) =>
+    e.colors.length === 1 ? [e.colors[0], e.colors[0]] : e.colors;
+
   for (let i = 0; i < usable.length; i++) {
     for (let j = i + 1; j < usable.length; j++) {
       const [x, y] = [usable[i], usable[j]];
-      const normalDelta = deltaE(swatch(x), swatch(y));
-      if (normalDelta < threshold) continue; // already alike for everyone
+      const [xs, ys] = [stopsOf(x), stopsOf(y)];
+      const pairs = Math.min(xs.length, ys.length);
       for (const vision of VISIONS) {
         if (vision === 'normal') continue;
-        const visionDelta = deltaE(
-          simulateVision(swatch(x), vision),
-          simulateVision(swatch(y), vision),
-        );
-        if (visionDelta < threshold) {
-          found.push({ a: x.id, b: y.id, vision, normalDelta, visionDelta });
+        // A pair is confusable only when it collapses at EVERY stop that was
+        // distinct to begin with. One stop matching is not enough: both ends of
+        // a gradient are on screen, so if the left edges stay far apart the two
+        // headers remain tellable apart regardless of what the right edges do.
+        // Flagging any single stop over-reports — it would condemn guild
+        // against practice, whose right edges converge under protanopia while
+        // their left edges never do.
+        let distinct = 0;
+        let collapsed = 0;
+        let worst: Pick<Confusion, 'normalDelta' | 'visionDelta'> | undefined;
+        for (let k = 0; k < pairs; k++) {
+          const normalDelta = deltaE(xs[k], ys[k]);
+          if (normalDelta < threshold) continue; // alike for everyone here
+          distinct++;
+          const visionDelta = deltaE(
+            simulateVision(xs[k], vision),
+            simulateVision(ys[k], vision),
+          );
+          if (visionDelta >= threshold) continue;
+          collapsed++;
+          if (!worst || visionDelta < worst.visionDelta) worst = { normalDelta, visionDelta };
+        }
+        if (worst && distinct > 0 && collapsed === distinct) {
+          found.push({ a: x.id, b: y.id, vision, ...worst });
         }
       }
     }
@@ -404,11 +433,15 @@ function accessibilitySection(entries: PageThemeEntry[], usage: TypeUsage[]): st
 
   const confusions = findConfusions(entries);
   const ours = confusions.filter(c => isOurs(c.a) && isOurs(c.b));
-  // Worth acting on: the stock half is a colour some entity here really renders.
-  const mixed = confusions.filter(
-    c => isOurs(c.a) !== isOurs(c.b) && (inUse.has(c.a) || inUse.has(c.b)),
-  );
-  const stock = confusions.filter(c => !ours.includes(c) && !mixed.includes(c));
+
+  // Ours against a stock default splits by whether that default is *rendered*.
+  // Testing "either half is in use" would pass on our half alone — which is
+  // always in use — and file a dormant stock colour as a live collision.
+  const oneSided = confusions.filter(c => isOurs(c.a) !== isOurs(c.b));
+  const stockHalfLive = (c: Confusion) => inUse.has(isOurs(c.a) ? c.b : c.a);
+  const mixed = oneSided.filter(stockHalfLive);
+  const dormant = oneSided.filter(c => !stockHalfLive(c));
+  const stock = confusions.filter(c => !ours.includes(c) && !oneSided.includes(c));
 
   const contrast = contrastWarnings(entries);
   const contrastOurs = contrast.filter(c => isOurs(c.id));
@@ -454,6 +487,11 @@ ${group(
   'Ours against a stock colour in use',
   'One side is a Backstage default that entities here actually render, so the collision is real even though only our half can move.',
   mixed.map(line),
+)}
+${group(
+  'Ours against a stock colour nothing renders yet',
+  'No entity resolves to that default today, so nothing is wrong on screen. It still costs you the hue: adopting that spec.type later would bring the collision with it.',
+  dormant.map(line),
 )}
 ${group(
   'Between stock defaults — context only',

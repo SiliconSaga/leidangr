@@ -175,12 +175,10 @@ describe('parseCandidates', () => {
 describe('normalizeHex', () => {
   it('expands shorthand to full byte pairs', () => {
     expect(normalizeHex('#abc')).toBe('#aabbcc');
-    expect(normalizeHex('#ABCD')).toBe('#AABBCCDD');
   });
 
   it('leaves full-length values alone', () => {
     expect(normalizeHex('#4E4361')).toBe('#4E4361');
-    expect(normalizeHex('#4E436180')).toBe('#4E436180');
   });
 
   it('keeps the colour maths finite for shorthand — the actual bug', () => {
@@ -198,8 +196,15 @@ describe('normalizeHex', () => {
 });
 
 describe('HEX_RE', () => {
-  it('accepts the four legal widths', () => {
-    for (const v of ['#abc', '#abcd', '#aabbcc', '#aabbccdd']) expect(HEX_RE.test(v)).toBe(true);
+  it('accepts the two opaque widths', () => {
+    for (const v of ['#abc', '#aabbcc']) expect(HEX_RE.test(v)).toBe(true);
+  });
+
+  it('rejects alpha forms rather than analysing them as opaque', () => {
+    // Every metric here is defined against a solid colour. Dropping the alpha
+    // would report confident numbers for a colour nobody sees, and compositing
+    // has no single answer when the backdrop differs between light and dark.
+    for (const v of ['#abcd', '#aabbccdd']) expect(HEX_RE.test(v)).toBe(false);
   });
 
   it('rejects widths that can only be typos', () => {
@@ -293,6 +298,46 @@ describe('findConfusions', () => {
   it('does not report pairs that already look alike to everyone', () => {
     // Not an accessibility regression — just two similar colours.
     expect(findConfusions([entry('a', '#4E4361'), entry('b', '#4F4462')])).toEqual([]);
+  });
+
+  it('examines every stop, not just the first', () => {
+    // First stops identical, second stops colliding: the pair is confusable and
+    // a first-stop-only comparison would miss it entirely.
+    const found = findConfusions([
+      { id: 'a', colors: ['#96581E', '#96581E'], source: 'guildhall' },
+      { id: 'b', colors: ['#7A6A1E', '#7A6A1E'], source: 'guildhall' },
+    ]);
+    expect(found.length).toBeGreaterThan(0);
+  });
+
+  it('does NOT report a pair that collapses at one stop but not the other', () => {
+    // The left edges stay far apart under every simulation, so the two bars
+    // remain tellable apart no matter what the right edges do. Reporting this
+    // would condemn a palette that works.
+    const found = findConfusions([
+      { id: 'dark', colors: ['#1B1030', '#96581E'], source: 'guildhall' },
+      { id: 'pale', colors: ['#D9D0EC', '#7A6A1E'], source: 'guildhall' },
+    ]);
+    expect(found).toEqual([]);
+  });
+
+  it('reports one finding per pair per vision, not one per colliding stop', () => {
+    const found = findConfusions([
+      { id: 'a', colors: ['#96581E', '#96581E'], source: 'guildhall' },
+      { id: 'b', colors: ['#7A6A1E', '#7A6A1E'], source: 'guildhall' },
+    ]);
+    const perVision = found.map(c => c.vision);
+    expect(new Set(perVision).size).toBe(perVision.length);
+  });
+
+  it('expands a single-stop theme the way the gradient does', () => {
+    // `home` ships one colour and renders as a flat bar. It still has to be
+    // comparable against both stops of a two-stop theme.
+    const found = findConfusions([
+      { id: 'flat', colors: ['#96581E'], source: 'backstage' },
+      { id: 'two', colors: ['#7A6A1E', '#7A6A1E'], source: 'guildhall' },
+    ]);
+    expect(found.length).toBeGreaterThan(0);
   });
 
   // The real guard: if a future colour choice collides under simulation, this
@@ -400,6 +445,35 @@ describe('renderSwatchPage', () => {
     });
     expect(grouped).toContain('Ours — fix these');
     expect(grouped).toContain('<strong>rust</strong> and <strong>olive</strong>');
+  });
+
+  it('calls a stock collision live only when that stock theme is really rendered', () => {
+    // Our half of a mixed pair is always in use, so a bucketing rule that asks
+    // "is either half in use" files every dormant default as a live collision.
+    const themes: PageThemeEntry[] = [
+      { id: 'tool', colors: ['#96581E'], source: 'backstage' },
+      { id: 'practice', colors: ['#7A6A1E'], source: 'guildhall' },
+    ];
+    const usedByNobody = renderSwatchPage({
+      themes,
+      usage: [{ specType: 'practice', entities: ['bdd'], resolvesTo: 'practice', registered: true }],
+      candidates: [],
+      generatedAt: 'now',
+    });
+    expect(usedByNobody).toContain('nothing renders yet');
+    expect(usedByNobody).not.toContain('stock colour in use');
+
+    const usedBySomething = renderSwatchPage({
+      themes,
+      usage: [
+        { specType: 'practice', entities: ['bdd'], resolvesTo: 'practice', registered: true },
+        { specType: 'tool', entities: ['ws'], resolvesTo: 'tool', registered: true },
+      ],
+      candidates: [],
+      generatedAt: 'now',
+    });
+    expect(usedBySomething).toContain('stock colour in use');
+    expect(usedBySomething).not.toContain('nothing renders yet');
   });
 
   it('reports a clean bill only about colours we define', () => {
