@@ -96,7 +96,8 @@ const usage = resolveUsage(
 );
 
 const html = renderSwatchPage({
-  // Ours last so an override shadows the stock entry of the same id.
+  // Stock first purely for output order — the renderer groups by `source`, so
+  // neither list shadows the other and duplicate ids would both be shown.
   themes: [...stockThemes, ...ours],
   usage,
   candidates,

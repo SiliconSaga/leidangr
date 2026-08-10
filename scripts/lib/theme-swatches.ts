@@ -47,6 +47,26 @@ const unquote = (v: string) => v.replace(/^['"]|['"]$/g, '');
 const normalize = (text: string) => text.replace(/\r\n?/g, '\n');
 
 /**
+ * Expand shorthand hex so every byte-pair reader sees six or eight digits.
+ * Without this a `#abc` from `--candidate` reads garbage for red and NaN for
+ * green and blue, and the NaN propagates silently into saturation, contrast and
+ * every ΔE — producing a report that looks authoritative and means nothing.
+ */
+export function normalizeHex(hex: string): string {
+  const v = hex.trim();
+  const short = /^#([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])([0-9A-Fa-f])?$/.exec(v);
+  if (!short) return v;
+  const [, r, g, b, a] = short;
+  return `#${r}${r}${g}${g}${b}${b}${a ? `${a}${a}` : ''}`;
+}
+
+/**
+ * Accepts #rgb, #rgba, #rrggbb, #rrggbbaa — and nothing between those widths,
+ * since a five- or seven-digit value is a typo rather than a colour.
+ */
+export const HEX_RE = /^#([0-9A-Fa-f]{3,4}|[0-9A-Fa-f]{6}|[0-9A-Fa-f]{8})$/;
+
+/**
  * Pull `key: genPageTheme({ colors: [...], shape: shapes.x })` entries out of
  * the plugin's pageThemes source. Parsed rather than imported because the plugin
  * is TypeScript that is only compiled as part of an app build — this script has
@@ -60,7 +80,8 @@ export function parseGuildhallThemes(source: string): PageThemeEntry[] {
     const colors = m[2]
       .split(',')
       .map(c => unquote(c.trim()))
-      .filter(c => /^#[0-9A-Fa-f]{3,8}$/.test(c));
+      .filter(c => HEX_RE.test(c))
+      .map(normalizeHex);
     if (colors.length) {
       entries.push({ id: m[1], colors, shape: m[3], source: 'guildhall' });
     }
@@ -159,7 +180,8 @@ export function parseCandidates(args: string[]): PageThemeEntry[] {
     const colors = (hexes ?? '')
       .split(',')
       .map(c => c.trim())
-      .filter(c => /^#[0-9A-Fa-f]{3,8}$/.test(c));
+      .filter(c => HEX_RE.test(c))
+      .map(normalizeHex);
     if (!id || !colors.length) {
       throw new Error(`could not parse --candidate ${raw} (want name:#hex,#hex)`);
     }
@@ -175,7 +197,8 @@ export function parseCandidates(args: string[]): PageThemeEntry[] {
 
 /** Saturation of a hex colour in 0..1, using the HSV definition. */
 export function saturationOf(hex: string): number {
-  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const v = normalizeHex(hex);
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(v.slice(i, i + 2), 16));
   const max = Math.max(r, g, b);
   return max === 0 ? 0 : (max - Math.min(r, g, b)) / max;
 }
@@ -210,7 +233,8 @@ const CVD_MATRIX: Record<Exclude<Vision, 'normal'>, number[]> = {
   tritanopia: [1.255528, -0.076749, -0.178779, -0.078411, 0.930809, 0.147602, 0.004733, 0.691367, 0.3039],
 };
 
-const toChannels = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255);
+const toChannels = (hex: string) =>
+  [1, 3, 5].map(i => parseInt(normalizeHex(hex).slice(i, i + 2), 16) / 255);
 const srgbToLinear = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 const linearToSrgb = (c: number) => (c <= 0.0031308 ? c * 12.92 : 1.055 * c ** (1 / 2.4) - 0.055);
 const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
@@ -286,11 +310,14 @@ export function findConfusions(
 ): Confusion[] {
   const found: Confusion[] = [];
   // Compare the first stop: it is the left edge of the header, where the two
-  // gradients sit closest to a flat block of colour.
+  // gradients sit closest to a flat block of colour. Entries with no colours
+  // cannot be compared at all — drop them rather than feed undefined into the
+  // colour maths, where it would surface as a NaN verdict.
+  const usable = entries.filter(e => e.colors.length > 0);
   const swatch = (e: PageThemeEntry) => e.colors[0];
-  for (let i = 0; i < entries.length; i++) {
-    for (let j = i + 1; j < entries.length; j++) {
-      const [x, y] = [entries[i], entries[j]];
+  for (let i = 0; i < usable.length; i++) {
+    for (let j = i + 1; j < usable.length; j++) {
+      const [x, y] = [usable[i], usable[j]];
       const normalDelta = deltaE(swatch(x), swatch(y));
       if (normalDelta < threshold) continue; // already alike for everyone
       for (const vision of VISIONS) {
@@ -436,6 +463,9 @@ ${group(
   </section>`;
 }
 
+// `note` is interpolated raw so section copy can carry <code> markup. Callers
+// must pass authored, static text — never anything read from the catalog or a
+// CLI arg. Candidate notes, which DO come from user input, go through esc().
 function section(title: string, note: string, rows: string): string {
   if (!rows.trim()) return '';
   return `  <section>
@@ -482,7 +512,16 @@ export function renderSwatchPage(input: RenderInput): string {
     )
     .join('\n');
 
-  return `<title>Backstage page themes — swatches</title>
+  // A standalone document opened over file://, so it declares its own head.
+  // The charset is load-bearing rather than ceremonial: without it a browser
+  // may fall back to a system codepage and mangle the em-dashes, arrows and ΔE
+  // this report is full of.
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backstage page themes — swatches</title>
 <style>
   :root {
     --ground:#F7F5FA; --raised:#FFF; --ink:#1B1824; --ink-soft:#514A61;
@@ -560,6 +599,8 @@ export function renderSwatchPage(input: RenderInput): string {
   footer { border-top:1px solid var(--rule-strong); padding-top:1.2rem; color:var(--ink-faint);
     font-size:.85rem; max-width:62ch; }
 </style>
+</head>
+<body>
 ${VISIONS.map(
   v =>
     `<input class="vision-input" type="radio" name="vision" id="v-${v}"${
@@ -597,5 +638,7 @@ ${accessibilitySection([...themes, ...candidates], usage)}
   <footer>Generated ${esc(generatedAt)} by <code>make theme-swatches</code>. Re-run after changing
   <code>pageThemes.ts</code> or adding entity types.</footer>
 </div>
+</body>
+</html>
 `;
 }

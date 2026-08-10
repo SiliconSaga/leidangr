@@ -23,12 +23,20 @@ describe('checkMkdocs', () => {
     expect(checkMkdocs('C:\\tools\\mkdocs.cmd')).toMatchObject({ ok: false });
   });
 
-  it('fails an extensionless launcher sitting in a shims directory', () => {
+  it('fails pyenv-win\'s extensionless launcher', () => {
     // The case that actually bit: `where.exe mkdocs` lists this first, it looks
     // like a real hit, and it fails only later at render time.
     expect(checkMkdocs('C:\\Users\\x\\.pyenv\\pyenv-win\\shims\\mkdocs')).toMatchObject({
       ok: false,
     });
+  });
+
+  it('passes a POSIX pyenv shim, which execvp can run', () => {
+    // Not every shims/ path is broken. A unix pyenv shim is a shebang script
+    // that a shell-less spawn executes fine — failing it would report a problem
+    // on macOS and Linux where TechDocs actually works.
+    expect(checkMkdocs('/home/x/.pyenv/shims/mkdocs')).toMatchObject({ ok: true });
+    expect(checkMkdocs('/Users/x/.pyenv/shims/mkdocs')).toMatchObject({ ok: true });
   });
 
   it('explains the failure in terms of the error it produces', () => {
@@ -60,7 +68,7 @@ describe('runDoctor', () => {
   it('routes mkdocs through the shim check rather than a plain presence probe', () => {
     const withShim = runDoctor({
       ...deps,
-      which: bin => (bin === 'mkdocs' ? '/home/x/.pyenv/shims/mkdocs' : null),
+      which: bin => (bin === 'mkdocs' ? 'C:\\x\\.pyenv\\pyenv-win\\shims\\mkdocs.bat' : null),
     });
     expect(withShim.find(c => c.name === 'mkdocs')).toMatchObject({ ok: false });
   });

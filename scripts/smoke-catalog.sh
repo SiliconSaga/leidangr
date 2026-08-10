@@ -66,7 +66,7 @@ byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localh
 # iteration, so a fully wedged run can overshoot it by up to one iteration
 # (~65s) — acceptable slack for a smoke.
 CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'
-GILDI='{}'; INSTANCE='{}'; CORNERSTONE='{}'; TRACKAPI='{}'; PRACTICE='{}'; ADOPTION='{}'
+GILDI='{}'; UMBRELLA='{}'; INSTANCE='{}'; CORNERSTONE='{}'; TRACKAPI='{}'; PRACTICE='{}'; ADOPTION='{}'
 FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'
 deadline=$((SECONDS + 300))
 for _ in $(seq 1 120); do
@@ -77,6 +77,7 @@ for _ in $(seq 1 120); do
   RLCYCLE="$(byname cycle/default/tracking-2026-2)"
   RLSAGA="$(byname saga/default/saga-tracking-2026-2)"
   GILDI="$(byname group/default/security-gildi)"
+  UMBRELLA="$(byname domain/default/siliconsaga)"
   INSTANCE="$(byname system/default/leidangr)"
   CORNERSTONE="$(byname component/default/gildi)"
   TRACKAPI="$(byname component/default/tracking-api)"
@@ -91,6 +92,7 @@ for _ in $(seq 1 120); do
      && printf '%s' "$RLCYCLE" | grep -q 'tracking-2026-2' \
      && printf '%s' "$RLSAGA" | grep -q 'saga-tracking-2026-2' \
      && printf '%s' "$GILDI" | grep -q 'security-gildi' \
+     && printf '%s' "$UMBRELLA" | grep -q '"name":"siliconsaga"' \
      && printf '%s' "$INSTANCE" | grep -q '"name":"leidangr"' \
      && printf '%s' "$CORNERSTONE" | grep -q '"name":"gildi"' \
      && printf '%s' "$TRACKAPI" | grep -q 'tracking-api' \
@@ -136,6 +138,7 @@ check     "Ravenline Cycle ingested (release)"       "$RLCYCLE" '"type":"release
 check_rel "Ravenline Cycle partOf parcel-tracking"   "$RLCYCLE" partOf    system:default/parcel-tracking    || pass=0
 check_rel "Ravenline Cycle dependsOn prod-cluster"   "$RLCYCLE" dependsOn resource:default/prod-cluster     || pass=0
 check     "Guild Group ingested (type guild)"        "$GILDI"   '"type":"guild"'                            || pass=0
+check     "Umbrella Domain ingested (type community)" "$UMBRELLA" '"type":"community"'                      || pass=0
 check     "Instance System ingested (type instance)" "$INSTANCE" '"type":"instance"'                        || pass=0
 check_rel "Instance System partOf siliconsaga"       "$INSTANCE" partOf   domain:default/siliconsaga        || pass=0
 check     "Guild Hall cornerstone (type plugin)"     "$CORNERSTONE" '"type":"plugin"'                       || pass=0

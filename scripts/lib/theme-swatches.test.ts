@@ -1,9 +1,13 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   parseGuildhallThemes,
   collectSpecTypes,
   resolveUsage,
   parseCandidates,
   saturationOf,
+  normalizeHex,
+  HEX_RE,
   specTypeOf,
   entityNameOf,
   renderSwatchPage,
@@ -130,7 +134,9 @@ describe('resolveUsage', () => {
   ]);
 
   it('marks registered types as resolving to themselves', () => {
-    const [, plugin] = resolveUsage(types, new Set(['practice', 'plugin']));
+    const plugin = resolveUsage(types, new Set(['practice', 'plugin'])).find(
+      u => u.specType === 'plugin',
+    );
     expect(plugin).toMatchObject({ specType: 'plugin', resolvesTo: 'plugin', registered: true });
   });
 
@@ -163,6 +169,43 @@ describe('parseCandidates', () => {
   it('rejects a malformed value rather than silently proposing nothing', () => {
     expect(() => parseCandidates(['--candidate', 'nope'])).toThrow(/could not parse/);
     expect(() => parseCandidates(['--candidate'])).toThrow(/needs a value/);
+  });
+});
+
+describe('normalizeHex', () => {
+  it('expands shorthand to full byte pairs', () => {
+    expect(normalizeHex('#abc')).toBe('#aabbcc');
+    expect(normalizeHex('#ABCD')).toBe('#AABBCCDD');
+  });
+
+  it('leaves full-length values alone', () => {
+    expect(normalizeHex('#4E4361')).toBe('#4E4361');
+    expect(normalizeHex('#4E436180')).toBe('#4E436180');
+  });
+
+  it('keeps the colour maths finite for shorthand — the actual bug', () => {
+    // Unnormalised, #abc read byte pairs off the end and every metric became
+    // NaN while still rendering as a confident number.
+    expect(Number.isFinite(saturationOf('#abc'))).toBe(true);
+    expect(Number.isFinite(contrastRatio('#abc', '#FFFFFF'))).toBe(true);
+    expect(Number.isFinite(deltaE('#abc', '#def'))).toBe(true);
+    expect(simulateVision('#abc', 'deuteranopia')).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it('agrees with the equivalent full-length value', () => {
+    expect(saturationOf('#abc')).toBeCloseTo(saturationOf('#aabbcc'), 10);
+  });
+});
+
+describe('HEX_RE', () => {
+  it('accepts the four legal widths', () => {
+    for (const v of ['#abc', '#abcd', '#aabbcc', '#aabbccdd']) expect(HEX_RE.test(v)).toBe(true);
+  });
+
+  it('rejects widths that can only be typos', () => {
+    for (const v of ['#ab', '#abcde', '#abcdefg', 'abcdef', '#zzzzzz']) {
+      expect(HEX_RE.test(v)).toBe(false);
+    }
   });
 });
 
@@ -254,11 +297,20 @@ describe('findConfusions', () => {
 
   // The real guard: if a future colour choice collides under simulation, this
   // fails in CI rather than waiting for someone to notice on a page.
-  const shipped = (): PageThemeEntry[] => [
-    entry('guild', '#6A1B9A'), entry('practice', '#4527A0'), entry('aspect', '#7E57C2'),
-    entry('community', '#7A5450'), entry('instance', '#37304A'), entry('plugin', '#4E4361'),
-    entry('release', '#5A2A0C'), entry('drive', '#8A520B'), entry('season', '#A5832A'),
-  ];
+  //
+  // Read from pageThemes.ts rather than restated here. A hand-copied palette
+  // drifts the moment someone reshades a colour and forgets the test, and a
+  // guard testing yesterday's palette is worse than no guard — it reports green
+  // while checking nothing that ships.
+  const shipped = (): PageThemeEntry[] => {
+    const source = readFileSync(
+      join(__dirname, '..', '..', 'plugins', 'gildi', 'src', 'theme', 'pageThemes.ts'),
+      'utf8',
+    );
+    const parsed = parseGuildhallThemes(source);
+    expect(parsed.length).toBeGreaterThan(0); // fail loudly if the format moves
+    return parsed;
+  };
 
   it('clears the shipped palette of every red-green collision', () => {
     // Protanopia and deuteranopia together affect roughly 8% of men, so these

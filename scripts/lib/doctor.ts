@@ -36,7 +36,14 @@ export function checkMkdocs(resolved: string | null): ToolCheck {
   if (resolved === null) {
     return { name: 'mkdocs', ok: false, detail: 'not found on PATH (TechDocs will not render)' };
   }
-  const isShim = /\.(bat|cmd)$/i.test(resolved) || /[\\/]shims[\\/]/i.test(resolved);
+  // Only Windows shims are the problem. A `.bat`/`.cmd` needs a shell, which the
+  // spawn deliberately does not use, and pyenv-win's extensionless launcher is
+  // no better — Windows can only exec a real executable. A POSIX pyenv shim is
+  // an ordinary shebang script that execvp runs happily, so flagging every
+  // `shims/` path would fail this check on macOS and Linux where it works.
+  const isWindowsBatch = /\.(bat|cmd)$/i.test(resolved);
+  const isPyenvWinShim = /pyenv-win/i.test(resolved) && /[\\/]shims[\\/]/i.test(resolved);
+  const isShim = isWindowsBatch || isPyenvWinShim;
   return {
     name: 'mkdocs',
     ok: !isShim,

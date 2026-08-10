@@ -34,8 +34,15 @@ to_unix_path() {
     fi
 }
 
+# Accept either shape for MKDOCS_BIN. "a path for mkdocs" reads equally as the
+# executable or the directory holding it, and guessing wrong used to be a silent
+# no-op: a full path to mkdocs.exe failed the -d test below and was dropped
+# without a word. Point it at either.
 bin_dir="${MKDOCS_BIN:-}"
-[[ -n "$bin_dir" ]] && bin_dir="$(to_unix_path "$bin_dir")"
+if [[ -n "$bin_dir" ]]; then
+    bin_dir="$(to_unix_path "$bin_dir")"
+    [[ -f "$bin_dir" ]] && bin_dir="$(dirname "$bin_dir")"
+fi
 
 if [[ -z "$bin_dir" ]] && command -v pyenv >/dev/null 2>&1; then
     resolved="$(pyenv which mkdocs 2>/dev/null || true)"
