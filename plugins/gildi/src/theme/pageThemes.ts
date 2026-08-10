@@ -66,6 +66,26 @@ export const guildhallPageThemes: Record<string, PageTheme> = {
   // form (#7A6E94 → #A79BC2) also failed white header text at ~2.5:1.
   community: genPageTheme({ colors: ['#7A5450', '#9C726C'], shape: shapes.wave2 }),
   instance: genPageTheme({ colors: ['#37304A', '#574B70'], shape: shapes.wave }),
+
+  // plugin keeps a known, accepted collision: it reads within ΔE 10 of
+  // Backstage's `documentation` magenta under protanopia. Nothing renders that
+  // type today, so the swatch report files it as dormant — and files it as live
+  // by itself the day an entity claims `spec.type: documentation`, which is the
+  // signal to revisit rather than a reason to pre-empt.
+  //
+  // It is accepted because the alternative costs more than it buys, and that was
+  // measured across ~43k candidates rather than assumed. The binding constraint
+  // is lightness, not hue: clearing every collision in this palette requires
+  // L* ≈ 50/62, and a second stop that light gives white text only ~3.0:1 — the
+  // bare WCAG large-text floor, on a colour that also tints Ownership tiles
+  // whose text is smaller than that bar was written for. Hold contrast at 4:1
+  // and NOTHING clears ΔE 14, at any hue or saturation. Steel blue and olive
+  // both hit the same wall; olive at a usable contrast scores 12.2 against this
+  // violet's 13.7, so leaving the family buys nothing either.
+  //
+  // Trading a third of the contrast — which every reader pays — for a
+  // distinction ~1% of men would draw between two docs-adjacent page types is
+  // the wrong side of that bargain.
   plugin: genPageTheme({ colors: ['#4E4361', '#7C6E96'], shape: shapes.round }),
 
   // --- Bounded efforts: the Cycle types. Warm, against the cool practice and
