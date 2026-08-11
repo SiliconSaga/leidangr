@@ -18,3 +18,4 @@ These are written as files from the first decision. The Backstage ADR plugin (`@
 | [0010](0010-aspect-module-adoption-blocks.md) | Aspect is a module, practices are institutions; adoption has two doors; standards block by facet |
 | [0011](0011-instance-as-system-of-cornerstones.md) | The instance is a System of cornerstones; the hub type retires |
 | [0012](0012-entity-page-composition.md) | Entity pages: filtered layout for narrow types, appended cards for broad ones |
+| [0013](0013-derived-medals.md) | Medals are derived from applicable trials, not assigned to rungs |

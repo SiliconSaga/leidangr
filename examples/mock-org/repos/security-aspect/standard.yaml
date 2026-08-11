@@ -5,11 +5,12 @@
 # Two orthogonal axes (design §3.6):
 #   BLOCKS — tool/sub-concern groupings that own trials and carry facet
 #            applicability (which kinds of component each block applies to).
-#   TIERS  — the maturity ladder (bronze/silver/gold), referencing trial ids
-#            across blocks. A tier completes when all its APPLICABLE trials
-#            pass; non-applicable trials skip, they never block.
-# Every trial declares its remediation vísir: a failing check is always one
-# click from the fix.
+#   MEDALS — derived, never listed here (ADR 0013): gold is every APPLICABLE
+#            trial passing, silver is one short, bronze is any. Non-applicable
+#            trials skip, so they never count against the total.
+# Every trial declares the `artifact` a fact source inspects and its remediation
+# vísir: a check that names nothing is prose, and a failing one should always be
+# one click from the fix.
 standard:
   id: security
   aspect: security
@@ -27,10 +28,12 @@ standard:
       trials:
         - id: dependency-scanning
           rule: the default-branch pipeline runs the dependency-scan template
+          artifact: ci-pipeline-config
           factSource: ci-pipeline-results
           remediation: ./docs/dependency-scanning.md
         - id: no-critical-vulns-30d
           rule: no critical finding older than 30 days
+          artifact: dependency-scan-results
           factSource: ci-pipeline-results
           remediation: ./docs/dependency-scanning.md # the 30-day clock is documented there
     - id: secrets
@@ -38,6 +41,7 @@ standard:
       trials:
         - id: no-secrets-in-repo
           rule: secret scanning reports zero findings
+          artifact: secret-scan-results
           factSource: ci-pipeline-results
           remediation: ./docs/runbooks/rotate-leaked-credential.md
     - id: static-analysis
@@ -45,6 +49,7 @@ standard:
       trials:
         - id: sast-scan-clean
           rule: static analysis runs on the default branch with no high findings
+          artifact: sast-results
           factSource: ci-pipeline-results
           remediation: ./docs/static-analysis.md
     - id: stewardship
@@ -52,16 +57,11 @@ standard:
       trials:
         - id: security-contact-declared
           rule: the Component declares a security contact
+          artifact: catalog-info.yaml
           factSource: catalog-annotations
           remediation: ./docs/security-contact.md
         - id: threat-model-current
           rule: threat-models/<component>.md exists with last_reviewed front matter (YYYY-MM-DD) within 365 days
+          artifact: threat-models/<component>.md
           factSource: aspect-repo
           remediation: ./docs/threat-modeling.md
-  tiers: # the maturity ladder — orthogonal to blocks, references trial ids
-    - name: bronze
-      trials: [dependency-scanning, no-secrets-in-repo]
-    - name: silver
-      trials: [no-critical-vulns-30d, sast-scan-clean, security-contact-declared]
-    - name: gold
-      trials: [threat-model-current]
