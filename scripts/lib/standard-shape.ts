@@ -32,7 +32,13 @@ export function validateStandard(path: string): StandardIssue[] {
     return [{ trial: '(standard)', problem: 'no blocks' }];
   }
 
-  const base = dirname(path);
+  // Resolved to absolute before anything compares against it. dirname() of a
+  // relative path stays relative, while resolve() below always returns
+  // absolute — so leaving it relative makes the containment check below reject
+  // every remediation in the file. Unit tests cannot catch this on their own:
+  // mkdtempSync hands out absolute paths, so the bug only appears when a real
+  // caller passes something like ../volundr/aspect/standard.yaml.
+  const base = resolve(dirname(path));
   const issues: StandardIssue[] = [];
 
   for (const block of blocks) {

@@ -1,6 +1,6 @@
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { validateStandard } from './standard-shape';
 
 const SECURITY = join(
@@ -44,6 +44,16 @@ describe('validateStandard', () => {
 
   it('accepts a well-formed standard', () => {
     expect(validateStandard(fixture(WELL_FORMED, ['docs/fix.md']))).toEqual([]);
+  });
+
+  it('accepts a RELATIVE path to the standard, not only an absolute one', () => {
+    // The cross-repo call is relative — `../volundr/aspect/standard.yaml` — and
+    // every other case here is absolute because mkdtempSync says so. Without
+    // this, dirname() leaves the base relative while resolve() returns
+    // absolute, and the containment check rejects every remediation in the
+    // file. Found by running the validator for real, not by these tests.
+    const abs = fixture(WELL_FORMED, ['docs/fix.md']);
+    expect(validateStandard(relative(process.cwd(), abs))).toEqual([]);
   });
 
   it('rejects a trial with no artifact, which is what makes it computable', () => {
