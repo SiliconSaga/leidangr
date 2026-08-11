@@ -1,5 +1,5 @@
-site_name: Leiðangr — Guild Hall
-site_description: Guild Hall hub docs — grand tour, ADRs, and design docs.
+site_name: Leiðangr
+site_description: Leiðangr instance docs — grand tour, model, and ADRs.
 docs_dir: docs
 nav:
   - Home: index.md
@@ -17,5 +17,7 @@ nav:
       - 0008 — Saga git-backed kind: adrs/0008-saga-git-backed-kind.md
       - 0009 — Guildhall practice model: adrs/0009-guildhall-practice-model.md
       - 0010 — Aspect module, adoption, blocks: adrs/0010-aspect-module-adoption-blocks.md
+      - 0011 — Instance as a System of cornerstones: adrs/0011-instance-as-system-of-cornerstones.md
+      - 0012 — Entity page composition: adrs/0012-entity-page-composition.md
 plugins:
   - techdocs-core

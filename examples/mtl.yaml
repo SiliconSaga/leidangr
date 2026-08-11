@@ -45,7 +45,10 @@ spec: { type: sport, parent: mtl, children: [] }
 apiVersion: backstage.io/v1alpha1
 kind: Domain
 metadata: { name: mtl }
-spec: { owner: group:default/mtl }
+# A volunteer league is a community in the same sense siliconsaga is, so it
+# shares the type and therefore the colour — the community-side twin of the
+# software domain, which is what this whole seed exists to show.
+spec: { type: community, owner: group:default/mtl }
 ---
 apiVersion: backstage.io/v1alpha1
 kind: System

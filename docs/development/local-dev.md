@@ -52,23 +52,59 @@ Docker CLI works fine — they use different sockets. Switch to local generation
        runIn: local
    ```
 
-3. **Windows + pyenv gotcha — `spawn mkdocs ENOENT`.** The backend spawns
-   `mkdocs` through Node *without a shell*, so on Windows it needs a real
-   `mkdocs.exe` on `PATH` — **not** the pyenv shim (`mkdocs.bat`, which Node
-   cannot exec, and which is the only `mkdocs` your Git Bash shell sees). The
-   real executable lives in the active pyenv version's Scripts dir:
+3. **Windows + pyenv gotcha — `spawn mkdocs ENOENT`. Handled for you.** The
+   backend spawns `mkdocs` through Node *without a shell*, so it needs a real
+   `mkdocs.exe` on `PATH` — **not** the pyenv shim (`mkdocs.bat`, or the
+   extensionless launcher beside it, which is what `where.exe mkdocs` finds
+   first and which Node cannot exec). Backstage has no config for the binary
+   path: the generator hardcodes `command: "mkdocs"`, so `PATH` is the only
+   lever.
+
+   `make dev` and `make dev-gitea` both run through `scripts/with-mkdocs.sh`,
+   which resolves one in order:
+
+   1. **`$MKDOCS_BIN`** if set — the escape hatch for system Python, conda, or a
+      venv. `ws run` exports the workspace `.env`, so setting it there is enough.
+   2. **`pyenv which mkdocs`**, which reports the real executable rather than the
+      shim. Zero config on a pyenv machine.
+   3. **Nothing** — a silent no-op if mkdocs is already a real executable or
+      isn't installed. TechDocs is optional for most local work.
+
+   `make doctor` also checks this now, and treats a shim as a *failure* rather
+   than a hit: a shim on `PATH` is worse than nothing there, because it reports
+   as installed and only breaks later, at render time.
+
+   If you launch the dev server some other way, put the Scripts directory on
+   `PATH` yourself:
 
    ```text
    C:\Users\<you>\.pyenv\pyenv-win\versions\<version>\Scripts\mkdocs.exe
    ```
 
-   Add that Scripts directory to your `PATH` (user/system env for a durable fix,
-   or `export PATH="/c/Users/<you>/.pyenv/pyenv-win/versions/<version>/Scripts:$PATH"`
-   in the shell before `make dev` for a one-off). Verify it's the `.exe`, not the
-   shim: `where.exe mkdocs` should list a path ending in `.exe`.
-
 Restart `make dev` after changing config or `PATH` (both are read at startup, not
 hot-reloaded).
+
+### Rendering rewrites `mkdocs.yml` — do not put comments in one
+
+Generating docs **modifies the `mkdocs.yml` it just rendered**, in place, in your
+working tree. `@backstage/plugin-techdocs-node` patches the file (injecting
+`techdocs-core`, `edit_uri`, and friends) and writes it back with `js-yaml`'s
+`dump()` — see `stages/generate/mkdocsPatchers.cjs.js`. `js-yaml` cannot preserve
+comments and defaults to an 80-column line width, so every render:
+
+- **deletes all comments** in the file, and
+- **refolds any line past 80 columns** into a `>-` block scalar.
+
+This is why a rendered `mkdocs.yml` can turn up dirty for no apparent reason,
+sometimes long after the render — it depends on whether anyone opened that Docs
+tab, not on any command you ran. It is *not* `ws test`, `ws lint`, or
+`yarn install`, each of which was verified clean in isolation while tracking this
+down. Two consequences worth keeping:
+
+1. **Never write a comment into an `mkdocs.yml` that gets rendered.** It will not
+   survive. Document the thing here instead.
+2. **Write long values pre-folded**, in the form `dump()` would emit, so the
+   rewrite is a no-op and the file stops churning.
 
 ## Page themes — the guildhall purple
 
@@ -77,11 +113,19 @@ and the Ownership card **tiles**), keyed off `spec.type` via Backstage's
 `theme.getPageTheme({ themeId })`.
 
 - **Definitions live in the plugin.** `plugins/gildi/src/theme/pageThemes.ts`
-  exports `guildhallPageThemes` — `guild` (royal purple), `practice` (deep
-  indigo-purple), `aspect` (lighter violet) — built with `genPageTheme`. Shades
-  differ in *lightness* (not just hue) so they stay distinct in grayscale, with
-  white text. The plugin owns the palette so it travels when the package is
-  extracted.
+  exports `guildhallPageThemes`, in two tiers. The **practice layer** — `guild`
+  (royal purple), `practice` (deep indigo-purple), `aspect` (lighter violet) —
+  is saturated and separated by *lightness*, so the three stay distinct in
+  greyscale. The **instance structure** — `community` (the Domain), `instance`
+  (the System), `plugin` (each cornerstone) — is the same hue family with the
+  saturation pulled out, so it reads as kin while staying quieter than the
+  practice layer it carries. All use white text. The plugin owns the palette so
+  it travels when the package is extracted.
+- **Why saturation and not hue.** The violet band (hue 255–285) is full:
+  guild, practice and aspect sit in it, Backstage's unused `tool` theme is a
+  vivid purple, and the stock `website` gradient already *ends* on a deep
+  violet (`#270094`). Desaturation was the axis with clearance. The greens to
+  stay away from are `home`/`apis` teal `#005B4B` and `card` `#4BB8A5 → #187656`.
 - **Composition is app-owned.** `packages/app/src/modules/theme/index.tsx` builds
   a custom light+dark theme that spreads `guildhallPageThemes` over the default
   `pageTheme` map, and registers them under the names `light`/`dark` — which
@@ -90,13 +134,46 @@ and the Ownership card **tiles**), keyed off `spec.type` via Backstage's
   `App.tsx`'s `features`. Both `packages/app` and `plugins/gildi` declare
   `@backstage/theme` explicitly.
 - **How an entity picks up its theme.** `EntityLayout` sets the page
-  `themeId = entity.spec.type`, so a `spec.type: practice` entity gets the
-  `practice` theme automatically. Custom (non-entity) pages set it themselves —
-  the Guild Hall page uses `<Page themeId="guild">`.
+  `themeId = entity?.spec?.type?.toString() ?? 'home'`, so a `spec.type: practice`
+  entity gets the `practice` theme automatically. Custom (non-entity) pages set
+  it themselves — the Guild Hall page uses `<Page themeId="guild">`.
+
+  > **A theme key is a `spec.type`, never a kind.** That expression reads
+  > `spec.type` and nothing else, so registering a theme called `system` or
+  > `domain` does *nothing* — it can never be matched. An entity with no
+  > `spec.type` falls through to the literal `home` theme (teal `#005B4B`),
+  > which is why untyped Systems and Domains all render the same green. To
+  > theme one, give it a `spec.type`: `Domain` and `System` both accept an
+  > optional one, which is why `siliconsaga` is `type: community` and
+  > `leidangr` is `type: instance`.
+
+### Seeing what's already taken
+
+Don't pick a colour blind — the palette is bigger than it looks, and most of it
+is already spoken for:
+
+```bash
+make theme-swatches
+```
+
+That writes `.tmp/theme-swatches.html`: every stock Backstage theme, every one of
+ours, the `spec.type` values actually present in the catalog, and — usually the
+most useful part — which types are currently falling through to the teal
+fallback. Open it in a browser. To weigh proposals side by side with what exists:
+
+```bash
+make theme-swatches ARGS='--candidate plum:#4A1942,#7A2E63:past guild, darker than pink'
+```
+
+It reads the stock map straight out of `@backstage/theme`, so the defaults cannot
+drift from what the app renders, and parses our own themes from source so it
+works on a cold checkout with nothing built.
 
 ### Adding a new type colour
 
-1. Add an entry to `guildhallPageThemes` keyed by the `spec.type`:
+1. Run `make theme-swatches` first (above) to see the hue bands still free.
+
+2. Add an entry to `guildhallPageThemes` keyed by the `spec.type`:
 
    ```ts
    myType: genPageTheme({ colors: ['#hexDark', '#hexLight'], shape: shapes.wave }),
@@ -105,7 +182,7 @@ and the Ownership card **tiles**), keyed off `spec.type` via Backstage's
    (`shapes` = `wave` | `wave2` | `round` | `square`.) Vary lightness from the
    neighbours and keep the default white `fontColor`.
 
-2. That's all for entity pages — the app composition picks it up. For a custom
+3. That's all for entity pages — the app composition picks it up. For a custom
    page, also set `<Page themeId="myType">`.
 
 An unregistered `themeId` silently falls back to the `home` gradient (Backstage's

@@ -6,7 +6,11 @@ import { mergedPageTheme } from './index';
 // merge them over the default map for the custom light/dark themes. Assert the
 // merge actually happened without dropping the built-ins.
 describe('app theme page-theme composition', () => {
-  it.each(['guild', 'practice', 'aspect'] as const)(
+  it.each([
+    'guild', 'practice', 'aspect',
+    'community', 'instance', 'plugin',
+    'release', 'drive', 'season',
+  ] as const)(
     'includes the %s guildhall page theme',
     key => {
       expect(mergedPageTheme[key]).toEqual(guildhallPageThemes[key]);

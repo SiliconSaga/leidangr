@@ -283,10 +283,13 @@ Per the realm plan→ADR convention, distill these into MADR-v3 ADRs in
 
 ## 16. References
 
-- Umbrella design: [`2026-06-09-leidangr-design.md`](2026-06-09-leidangr-design.md) (§3, §6)
-- Backstage devex reference: [`2026-06-09-backstage-devex-workspace-design.md`](2026-06-09-backstage-devex-workspace-design.md)
+These three live in the **realm** repo, not this one — the relative links they
+carried could never resolve, and TechDocs flagged them as broken on every build.
+
+- Umbrella design: [`2026-06-09-leidangr-design.md`](https://github.com/SiliconSaga/realm-siliconsaga/blob/main/docs/plans/2026-06-09-leidangr-design.md) (§3, §6)
+- Backstage devex reference: [`2026-06-09-backstage-devex-workspace-design.md`](https://github.com/SiliconSaga/realm-siliconsaga/blob/main/docs/plans/2026-06-09-backstage-devex-workspace-design.md)
   (facility/org modeling, entity-kind table, event-templates, calendaring)
-- Phase 2 skeleton: [`2026-06-21-leidangr-phase2-backstage-skeleton-design.md`](2026-06-21-leidangr-phase2-backstage-skeleton-design.md)
+- Phase 2 skeleton: [`2026-06-21-leidangr-phase2-backstage-skeleton-design.md`](https://github.com/SiliconSaga/realm-siliconsaga/blob/main/docs/plans/2026-06-21-leidangr-phase2-backstage-skeleton-design.md)
 - Parked *Saga* note: Loki Thalamus, 2026-06-25 (narrative-records / Skald)
 - Backstage custom kinds & processors: https://backstage.io/docs/features/software-catalog/extending-the-model
 - Backstage entity providers: https://backstage.io/docs/features/software-catalog/external-integrations

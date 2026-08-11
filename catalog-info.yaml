@@ -1,14 +1,37 @@
-# The Guild Hall hub — the one NON-fiction entity in the Ravenline seed.
-# Lives at the repo root so backstage.io/techdocs-ref: dir:. resolves to the
-# root mkdocs.yml (TechDocs dir: refs cannot traverse up from their catalog
-# entity file, hence the split from examples/mock-org/software.yaml).
-# spec.type:hub anticipates the hub-page design: singleton overview pages
-# for installed plugin feature groups, of which the Guild Hall is one.
+# The real software behind this instance, cataloged alongside the Ravenline
+# fiction rather than mixed into it. Ravenline is the teaching seed; these three
+# entities are the thing you are actually standing in.
+#
+# Lives at the repo root so backstage.io/techdocs-ref: dir:. on the System
+# resolves to the root mkdocs.yml — TechDocs dir: refs cannot traverse up past
+# their own entity file. (The Docs tab is kind-agnostic: @backstage/plugin-techdocs
+# registers its entity content with no kind filter, so a System anchors docs
+# exactly as a Component would.)
+#
+# History: this file once held `guild-hall`, spec.type: hub — a rendered surface
+# pretending to be a domain noun. The hub type retired; the Guild Hall is a page
+# the gildi plugin contributes and needs no entity of its own. What deserved an
+# entity was the instance, and the honest shape for it is a System of parts.
 apiVersion: backstage.io/v1alpha1
-kind: Component
+kind: Domain
 metadata:
-  name: guild-hall
-  description: 'The Guild Hall — practice layer hub for this Backstage instance'
+  name: siliconsaga
+  title: SiliconSaga
+  description: 'Volunteer-community and hobby-software tooling — the umbrella these systems belong to'
+spec:
+  # Domain and System both accept an optional spec.type, and here it is
+  # load-bearing rather than decorative: EntityLayout picks a page theme with
+  # `entity?.spec?.type ?? 'home'` and never looks at the kind, so an untyped
+  # Domain or System is stuck on the default teal no matter what themes exist.
+  type: community
+  owner: group:default/team-devex
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: leidangr
+  title: Leiðangr
+  description: 'This Backstage instance — the Guildhall model, its Ravenline seed, and the cornerstones that render them'
   annotations:
     siliconsaga.org/visir: 'docs/demo-visir.md'
     backstage.io/techdocs-ref: dir:.
@@ -16,7 +39,9 @@ metadata:
     - url: https://github.com/SiliconSaga/leidangr/blob/main/docs/plans/2026-07-10-guilds-skills-standards-design.md
       title: Guildhall design doc
 spec:
-  type: hub
-  lifecycle: production
+  # `instance` reads as the reusable noun it is: any Backstage instance adopting
+  # this model is a System of cornerstones, and repeats the hierarchy with its
+  # own. (Also what makes the System themeable — see the Domain note above.)
+  type: instance
   owner: group:default/team-devex
-  system: rl-platform
+  domain: siliconsaga

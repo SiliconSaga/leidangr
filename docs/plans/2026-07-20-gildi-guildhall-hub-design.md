@@ -13,7 +13,7 @@ The Guildhall model shipped as catalog data and docs; nothing yet *renders* it a
 
 Two framing decisions set by this design:
 
-- The Guild Hall is **presentation, not a domain noun**. It is a plugin-contributed page, not a catalog entity. The seeded `guild-hall` `type: hub` Component **retires** (it was a placeholder for exactly this). This resolves the long-standing "a hub isn't a Kind" tension: custom Kinds stay reserved for domain nouns (`Cycle`/`Saga`); a hub is a rendered surface.
+- The Guild Hall is **presentation, not a domain noun**. It is a plugin-contributed page, not a catalog entity. The seeded `guild-hall` `type: hub` Component **retires** (it was a placeholder for exactly this). This resolves the long-standing "a hub isn't a Kind" tension: custom Kinds stay reserved for domain nouns (`Cycle`/`Saga`); a hub is a rendered surface. *(Shipped 2026-08-09: the `hub` **type** retired, but the root entity stayed — remodelled as Domain `siliconsaga` → System `leidangr` → Component `gildi` (`spec.type: plugin`), the §12 shape brought forward. The System anchors the root TechDocs, which needs a catalog entity and can never point at a plugin page. See the Decision resolution in the companion plan.)*
 - The plugin is `gildi`; the page's display name is **"Guild Hall"**; in ordinary prose we say **"guild"**. (Old Norse flavour can skin terms later via the kennings layer.)
 
 ## 2. Architecture and housing
