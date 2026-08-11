@@ -1,8 +1,6 @@
 # OpenBao → Gitea live setup (the `@live` checkpoint)
 
-This is the one-time setup behind `make secrets` → `make dev-gitea`: the real
-OpenBao → Gitea catalog loop. Everything here is human-gated (cluster access, an
-unseal, a browser OIDC login), so it lives as a runbook rather than automation.
+This is the one-time setup behind `make secrets` → `make dev-gitea`: the real OpenBao → Gitea catalog loop. Everything here is human-gated (cluster access, an unseal, a browser OIDC login), so it lives as a runbook rather than automation.
 
 > **Shell note:** the `kubectl … | base64 -d` snippets use GNU `base64` (Linux / Git Bash / macOS ≥ 13, which aliases `-d`). On older macOS `base64`, decode with `-D`.
 

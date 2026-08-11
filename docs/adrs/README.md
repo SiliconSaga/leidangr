@@ -2,12 +2,7 @@
 
 Decisions for the Leiðangr Backstage component, in [MADR v3](https://adr.github.io/madr/) format.
 
-These are written as files from the first decision. The Backstage ADR plugin
-(`@backstage-community/plugin-adr`) is **deferred**: as of mid-2026 it reads ADRs
-only through the GitHub integration (GitLab is an open RFC; Gitea is unsupported),
-and this skeleton's catalog source is Gitea. Once the component has a GitHub-readable
-source, the plugin can surface these on the entity page via a `backstage.io/adr-location`
-annotation. Until then they live here as plain Markdown.
+These are written as files from the first decision. The Backstage ADR plugin (`@backstage-community/plugin-adr`) is **deferred**: as of mid-2026 it reads ADRs only through the GitHub integration (GitLab is an open RFC; Gitea is unsupported), and this skeleton's catalog source is Gitea. Once the component has a GitHub-readable source, the plugin can surface these on the entity page via a `backstage.io/adr-location` annotation. Until then they live here as plain Markdown.
 
 | ADR | Decision |
 |-----|----------|
