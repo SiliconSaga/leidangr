@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { act, screen } from '@testing-library/react';
 import { renderInTestApp, TestApiProvider } from '@backstage/frontend-test-utils';
 import { catalogApiRef, entityRouteRef, EntityProvider } from '@backstage/plugin-catalog-react';
 import { AdoptersCard } from './AdoptersCard';
@@ -58,14 +58,25 @@ describe('AdoptersCard', () => {
       metadata: { name: 'unconfigured-practice', annotations: {} },
       spec: { type: 'practice' },
     } as any;
-    await renderInTestApp(
-      <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
-        <EntityProvider entity={noAspect}>
-          <AdoptersCard />
-        </EntityProvider>
-      </TestApiProvider>,
-      { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
-    );
+    // Wrapped because this is the one case whose assertion does not itself wait
+    // for useAdopters to settle. The no-aspect branch is checked before loading,
+    // so the text is on screen from the first paint and findByText returns
+    // immediately — while the hook has still started a useAsync cycle (returning
+    // [] without touching the catalog) whose resolution sets state a microtask
+    // later. That lands inside renderInTestApp's own await, after its internal
+    // act has closed, which is why flushing afterwards does not help and holding
+    // act open across the render does. The other three tests assert on content
+    // that only exists post-settle, so they wait for it implicitly.
+    await act(async () => {
+      await renderInTestApp(
+        <TestApiProvider apis={[[catalogApiRef, catalogApi]]}>
+          <EntityProvider entity={noAspect}>
+            <AdoptersCard />
+          </EntityProvider>
+        </TestApiProvider>,
+        { mountedRoutes: { '/catalog/:namespace/:kind/:name': entityRouteRef } },
+      );
+    });
     expect(
       await screen.findByText('This practice does not declare a maintained aspect.'),
     ).toBeInTheDocument();
