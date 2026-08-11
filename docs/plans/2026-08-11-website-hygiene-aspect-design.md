@@ -29,7 +29,9 @@ Sub-project 3 carries the real unknowns (facts read live from the API, published
 
 The module is a thin `aspect/` directory **inside volundr**, beside the workflows it describes.
 
-The alternative — its own `website-hygiene-aspect` repo — matches ADR 0010's "an aspect is a versioned repo" more literally, and was rejected for one reason: two repos means two release clocks, and the standard would be free to describe a workflow volundr does not have. Co-located, a volundr tag *is* the `module-release`, and that class of drift is unrepresentable. The cost is Guildhall vocabulary living in a CI repo, which is a small and honest price.
+The alternative — its own `website-hygiene-aspect` repo — matches ADR 0010's "an aspect is a versioned repo" more literally, and was rejected for one reason: two repos means two release clocks, and the standard would be free to describe a workflow volundr does not have. Co-located, a change to a workflow and the change to the trial describing it land in **the same pull request**, reviewed together. That is what makes the drift unrepresentable.
+
+Being precise about what `module-release` is, because it is easy to overclaim: it is a **hand-maintained compatibility marker, not a git tag**. Nothing creates a `1.0` tag, the catalog locations read `@main`, and the caller stubs follow `@main` under volundr's trust model — so the marker does not identify an immutable state of the repo and is not enforced by anything. What it does is let an adopter record *which contract they adopted against*, so that bumping it makes every older adopter read `behind`. Co-location is what keeps it honest: the marker sits three lines from the workflows, in the same review.
 
 Seeding it under `examples/mock-org/` was rejected outright: a mock that references real workflows is the most confusing of both worlds.
 
@@ -112,9 +114,11 @@ Both doors reach the same end state. The Create-page door writes four files:
     siliconsaga.org/aspect-versions: website-hygiene@<module-release>
 ```
 
-The template gathers the target repo and, when creating a `catalog-info.yaml`, the owner and system; it writes via `fetch:template` and opens the pull request with the stock `publish:github:pull-request` action. No custom scaffolder actions.
+The template gathers the target repo and, when creating a `catalog-info.yaml`, its owner; it writes via `fetch:template` and opens the pull request with the stock `publish:github:pull-request` action. No custom scaffolder actions.
 
-**The fourth file is what closes the loop.** Without the enrollment annotations nothing reaches the catalog; with them, adopt → pull request → merge → ingest → `ComponentAspectsCard` renders the enrollment in the card that already ships. The `gh-pages` component template carries no `catalog-info.yaml`, so for tutorial sites this step creates one.
+**The fourth file is what makes the adoption legible**, but on its own it is not enough to close the loop, and the gap is worth stating plainly because it is invisible until you look for it. **This instance has no catalog discovery provider.** Every entity it knows about comes from an explicit `catalog.locations` entry in `app-config.yaml`. Merging a `catalog-info.yaml` into a site repo therefore ingests nothing — the file is correct and unread.
+
+So adoption has a fifth step, once per site rather than once per adoption: **register the repository**, either through the `/catalog-import` page (the `catalog-import` plugin is installed) or by adding a static location. After that the annotations do their work and `ComponentAspectsCard` renders the enrollment in the card that already ships. The `gh-pages` component template carries no `catalog-info.yaml`, so for tutorial sites the template creates one.
 
 Flipping the Pages source from `main` to `gh-pages` remains a manual step, documented in `docs/pages-source.md` and reported by `pages-source-is-gh-pages`.
 
@@ -124,7 +128,7 @@ The agent door in `SKILL.md` reaches the same end state without Backstage: pre-f
 
 `module-release` on the practice and `siliconsaga.org/aspect-versions` on the adopter already model currency, and `adoptionStatus` already renders `current` against `behind`. Nothing exercises them, because nothing has ever shipped a second release.
 
-This aspect will. Adding a fifth trial in a later volundr tag bumps `module-release`, and every component still recording the older version reads as `behind` in the card — without any component changing. That makes the drift story testable end to end, and it is the strongest reason to prefer a small standard now over a complete one: **the second release is worth more than a bigger first one.**
+This aspect will. Adding a fifth trial bumps `module-release`, and every component still recording the older value reads as `behind` in the card — without any component changing. That makes the drift story testable end to end, and it is the strongest reason to prefer a small standard now over a complete one: **the second release is worth more than a bigger first one.**
 
 Comparison stays equality-only. `behind` never claims how far, because release tags are opaque and no ordering scheme is committed.
 

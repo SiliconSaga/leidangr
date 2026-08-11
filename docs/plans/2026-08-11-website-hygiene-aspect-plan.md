@@ -183,7 +183,7 @@ The website-hygiene aspect forced the question, because it offers four checks an
 
 ## Considered Options
 
-- **Keep assigned tiers.** Familiar, already shipped. Rejected: the unreachable-gold problem is structural, not a authoring mistake.
+- **Keep assigned tiers.** Familiar, already shipped. Rejected: the unreachable-gold problem is structural, not an authoring mistake.
 - **Assigned tiers with a completeness escape hatch.** Two rules to implement and explain. Rejected as the worst of both.
 - **Derive medals from the count of passing applicable trials.** Chosen.
 
@@ -191,7 +191,9 @@ The website-hygiene aspect forced the question, because it offers four checks an
 
 Chosen: **the top medal always means "every applicable trial passes"**, with the rest derived.
 
-Let A be the applicable trials after facet filtering and P the passing ones: gold when `P == A`, silver when `P == A - 1`, bronze when `1 <= P < A - 1`, none when `P == 0`.
+Let A be the applicable trials after facet filtering and P the passing ones: gold when `A > 0 and P >= A`, silver when `P == A - 1`, bronze when `1 <= P < A - 1`, none when `P == 0` or `A == 0`.
+
+Two edges are stated rather than left to the reader. `A == 0` — nothing applies to this component — is `none`, not a vacuous gold: an aspect that asked nothing of you has not awarded you anything. And `P > A` clamps to gold rather than falling through, because a miscounting caller producing *silver* out of more passes than trials would read as a real verdict.
 
 An aspect offering two checks awards silver for one and gold for both. An aspect offering one check awards gold for passing it. A standard therefore declares only its blocks and trials; the ladder falls out of them, and `tiers:` disappears from the schema entirely.
 
@@ -416,6 +418,19 @@ describe('validateStandard', () => {
     ]);
   });
 
+  it('reports a block that declares no trials', () => {
+    const body = `
+standard:
+  id: demo
+  blocks:
+    - id: hollow
+      appliesTo: ['*']
+`;
+    expect(validateStandard(fixture(body))).toEqual([
+      { trial: 'hollow', problem: 'no trials' },
+    ]);
+  });
+
   it('rejects a remediation that escapes the module directory', () => {
     // A vísir is part of the aspect. One outside it will not travel when the
     // module is extracted or read over a URL.
@@ -476,6 +491,13 @@ export function validateStandard(path: string): StandardIssue[] {
 
   for (const block of blocks) {
     const trials: RawTrial[] = Array.isArray(block?.trials) ? block.trials : [];
+    // A block with no trials defines no checks, so a standard made entirely of
+    // them would validate clean while asking nothing of anybody. Coercing the
+    // missing array to [] is what would hide it.
+    if (trials.length === 0) {
+      issues.push({ trial: `${block?.id ?? '?'}`, problem: 'no trials' });
+      continue;
+    }
     trials.forEach((trial, i) => {
       // Every field is checked for being a non-empty STRING, not merely
       // present. YAML happily produces a number for `id: 1.4`, and calling
@@ -734,11 +756,13 @@ siliconsaga.org/aspect-versions: website-hygiene@1.0
 
 The first enrolls the component; the second records which release of this module it adopted. When this module gains a trial and its release bumps, a component still recording the older value reads as *behind* — that is the drift signal, and it is why the version is worth recording even though nothing enforces it yet.
 
-If your repo has no `catalog-info.yaml`, adoption creates one. If it already has one, add the two annotations to it by hand — the Create-page door will not overwrite an existing descriptor.
+If your repo has no `catalog-info.yaml`, adoption creates one. If it already has one, add the two annotations to it by hand — the Create-page door creates files and cannot merge them, so it will not touch an existing descriptor.
 
-## Then one manual step
+## Then two steps adoption cannot do for you
 
-See [Pages source](pages-source.md). Until it is done, the site still builds and previews, but the deploy has nowhere to publish.
+**Switch the Pages source.** See [Pages source](pages-source.md). Until it is done the site still builds and previews, but the deploy has nowhere to publish.
+
+**Register the repository with the catalog, once.** The descriptor being merged does not by itself put your site in Backstage: the instance reads an explicit list of locations and has no discovery provider watching the org. Use the **Register an existing component** flow on the Create page, pointing at your `catalog-info.yaml`. Skip it and everything is correct while nothing appears — the most confusing failure of the three.
 ````
 
 `components/volundr/aspect/docs/pages-source.md`:
@@ -842,13 +866,15 @@ Run: `ws commit volundr .commits/aspect-module.md`
 - Consumes: `siliconsaga.org/module-release: '1.0'` from Task 4's catalog face.
 - Produces: `template:default/apply-website-hygiene-aspect` with `spec.type: aspect` — the exact ref Task 7's smoke assertions check.
 
-**Why three skeleton directories:** `fetch:template` renders a whole directory and will happily overwrite whatever it renders onto. Splitting by *what it would destroy* is the only way to make "create when absent, never clobber" expressible, because a single skeleton can only be all-or-nothing.
+**Why three skeleton directories, each behind its own flag:** `fetch:template` renders a whole directory and overwrites whatever it renders onto. It cannot read the target first — `publish:github:pull-request` builds a pull request from a workspace, never a merge — so **the Create-page door is create-only by construction**, and the only way to express that is to split the skeleton by file and gate each one.
 
-- **`skeleton-workflows/`** renders unconditionally. A repo that already has these two files at these two paths is already adopted, and re-rendering them is idempotent — identical content produces an empty diff, and different content is a drift the pull request should show a human.
-- **`skeleton-gemfile/`** is behind a flag. A site may well have a Gemfile already, pinning gems deliberately — the `gh-pages` template README even talks a reader through adding one. Overwriting that destroys real user content, and it is the case an implementer would most easily miss, because the naive reading is "no Gemfile means not adopted".
-- **`skeleton-catalog/`** is behind a flag. A real descriptor carries ownership, links and annotations this template knows nothing about.
+- **`skeleton-workflows/`** — the two caller stubs.
+- **`skeleton-gemfile/`** — a site may pin gems deliberately; the `gh-pages` README even talks a reader through adding a Gemfile.
+- **`skeleton-catalog/`** — a real descriptor carries ownership, links and annotations this template knows nothing about.
 
-For both flagged files, the honest path when one already exists is a hand edit or the agent door, which reads before it writes. The template says so in its own parameter descriptions rather than leaving it to be discovered from a bad diff.
+My first draft rendered the workflows unconditionally, reasoning that a repo already holding files at those paths must already be adopted. **That is wrong**, and it is wrong in exactly the way the Gemfile case is: a site can perfectly well have its own hand-rolled `.github/workflows/deploy.yml` and never have heard of volundr. Publishing over it would drop its CI inside a pull request titled "adopt an aspect". Every file gets a flag.
+
+When a file already exists, the honest paths are a hand edit or the agent door, which reads before it writes and can merge a gem into an existing Gemfile. The template says so in each parameter's description rather than leaving it to be discovered from a bad diff.
 
 - [ ] **Step 1: Write the skeleton files**
 
@@ -961,6 +987,11 @@ spec:
           ui:options:
             catalogFilter:
               kind: Group
+        createWorkflows:
+          title: This repo has no deploy.yml or pr-preview.yml yet
+          type: boolean
+          default: true
+          description: Uncheck if either workflow file already exists at those paths. This door creates files, it cannot merge them — a site with its own hand-rolled deploy workflow would have it replaced.
         createGemfile:
           title: This repo has no Gemfile yet
           type: boolean
@@ -974,6 +1005,7 @@ spec:
   steps:
     - id: stubs
       name: Render the caller stubs
+      if: ${{ parameters.createWorkflows }}
       action: fetch:template
       input:
         url: ./skeleton-workflows
@@ -1088,7 +1120,7 @@ You are adopting this aspect for a target site repository. This is the other fro
 4. **Add both caller stubs**, copying them verbatim from `skeleton/.github/workflows/`. Do not pin a SHA in place of `@main`: per-caller pinning reinstates the copy drift this shared repo exists to remove, and volundr's `main` is branch-protected in exchange.
 5. **Record the enrollment.** In the target's `catalog-info.yaml`, add `website-hygiene` to `siliconsaga.org/aspects` and `website-hygiene@<module-release>` to `siliconsaga.org/aspect-versions`, reading the release from this module's `catalog-info.yaml`. Create the descriptor if there is none. Unlike the Create-page door, you can edit an existing one safely — do that rather than replacing it.
 6. **Pre-flight the trials.** Three of the four are checkable from the working tree: is the Gemfile there with the right gem, does each stub's `uses:` resolve to the volundr workflow at `@main`. Check them before opening anything. The fourth reads a repository setting you cannot see from a checkout.
-7. **Open the pull request**, and say plainly in the body that the Pages source must move to `gh-pages` after merge, linking `docs/pages-source.md`. A site that merges this and stops will keep serving its old content and look like the workflows did nothing.
+7. **Open the pull request**, and say plainly in the body what still has to happen after merge: the Pages source must move to `gh-pages` (link `docs/pages-source.md`), and if the site is not already in the catalog someone must register it, because this instance reads an explicit location list and has no discovery provider. A site that merges and stops will keep serving its old content and look like the workflows did nothing.
 
 Tell the human which medal the site should reach once the Pages source is flipped, and which trial is holding it short if one is. Never weaken a trial to make it pass — if a trial is wrong for this target, that is a conversation with the steward, recorded in this module, not a silent skip.
 ```
@@ -1258,7 +1290,14 @@ Then run: `ws push yggdrasil`
 - [ ] `ws lint leidangr` — clean.
 - [ ] `make smoke-catalog` — 35 checks pass.
 - [ ] `bash scripts/with-mkdocs.sh mkdocs build --strict --site-dir .tmp/site-check` in leidangr — passes; delete `.tmp/site-check` afterwards.
-- [ ] **Human acceptance, and the real proof:** run the adoption template from the Create page in `ws run leidangr` against a throwaway GitHub Pages repo. Confirm a pull request opens with the Gemfile and both stubs, merge it, flip the Pages source, and confirm the next pull request against that repo gets a preview comment with a visual diff. Nothing short of this establishes that adoption works.
+- [ ] **Human acceptance, and the real proof.** Run the adoption template from the Create page in `ws run leidangr` against a throwaway GitHub Pages repo, in this order:
+  1. Confirm a pull request opens carrying the Gemfile, both caller stubs and a `catalog-info.yaml`. Merge it.
+  2. Flip the Pages source to `gh-pages` (see the vísir) and confirm the next push deploys.
+  3. **Register the repo** at `/catalog-import`. This instance has no discovery provider, so the merged descriptor is inert until something points at it — skipping this step is what would make adoption look broken when it is not.
+  4. Open the site's entity page and confirm `ComponentAspectsCard` shows the enrollment at release 1.0.
+  5. Open a pull request against that repo and confirm it gets a preview comment with a visual diff.
+
+  Nothing short of running all five establishes that adoption works. Step 3 in particular is the one most likely to be assumed rather than done.
 
 ---
 
