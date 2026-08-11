@@ -129,7 +129,7 @@ export function medalFor(applicable: number, passing: number): Medal {
 - [ ] **Step 4: Run the test and watch it pass**
 
 Run: `ws test leidangr`
-Expected: PASS, suite count up by 5 files' worth of cases (17 new assertions).
+Expected: PASS, with 16 new tests — the 12 parameterised rows plus the 4 named cases.
 
 - [ ] **Step 5: Commit**
 
@@ -217,7 +217,7 @@ In `docs/adrs/README.md`, append a row to the table:
 
 - [ ] **Step 3: Update the security standard**
 
-In `examples/mock-org/repos/security-aspect/standard.yaml`, delete the whole `tiers:` block (the final seven lines, from `  tiers: # the maturity ladder` to `      trials: [threat-model-current]`).
+In `examples/mock-org/repos/security-aspect/standard.yaml`, delete the whole `tiers:` block — the final seven lines of the file, beginning with the line whose content is `tiers:` followed by the comment `# the maturity ladder — orthogonal to blocks, references trial ids`, and ending with the line whose content is `trials: [threat-model-current]`.
 
 Then add an `artifact:` line to each of the six trials, naming what a fact source would inspect. Insert each immediately after that trial's `rule:` line:
 
@@ -391,6 +391,39 @@ describe('validateStandard', () => {
       { trial: '(standard)', problem: 'no blocks' },
     ]);
   });
+
+  it('treats a non-string id as missing instead of throwing on it', () => {
+    // YAML gives a number for `id: 1.4`, and .trim() on that throws — killing
+    // the run that was supposed to explain the file.
+    const body = WELL_FORMED.replace('        - id: a-trial\n', '        - id: 1.4\n');
+    expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
+      { trial: 'only[0]', problem: 'missing id' },
+    ]);
+  });
+
+  it('treats a non-string remediation as missing', () => {
+    const body = WELL_FORMED.replace('          remediation: ./docs/fix.md\n', '          remediation: 7\n');
+    expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
+      { trial: 'a-trial', problem: 'missing remediation' },
+    ]);
+  });
+
+  it('rejects a remediation that points at a directory', () => {
+    // A directory satisfies "exists" and renders as a broken link.
+    const body = WELL_FORMED.replace('          remediation: ./docs/fix.md\n', '          remediation: ./docs\n');
+    expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
+      { trial: 'a-trial', problem: 'remediation ./docs does not resolve' },
+    ]);
+  });
+
+  it('rejects a remediation that escapes the module directory', () => {
+    // A vísir is part of the aspect. One outside it will not travel when the
+    // module is extracted or read over a URL.
+    const body = WELL_FORMED.replace('          remediation: ./docs/fix.md\n', '          remediation: ../elsewhere.md\n');
+    expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
+      { trial: 'a-trial', problem: 'remediation ../elsewhere.md escapes the module' },
+    ]);
+  });
 });
 ```
 
@@ -404,8 +437,8 @@ Expected: FAIL — `Cannot find module './standard-shape'`.
 `scripts/lib/standard-shape.ts`:
 
 ```ts
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { readFileSync, statSync } from 'node:fs';
+import { dirname, resolve, sep } from 'node:path';
 import { parse } from 'yaml';
 
 export interface StandardIssue {
@@ -444,25 +477,39 @@ export function validateStandard(path: string): StandardIssue[] {
   for (const block of blocks) {
     const trials: RawTrial[] = Array.isArray(block?.trials) ? block.trials : [];
     trials.forEach((trial, i) => {
-      // Fall back to a positional name so a malformed trial is still reportable
-      // rather than crashing the run that was meant to diagnose it.
-      const name = trial?.id?.trim() || `${block?.id ?? '?'}[${i}]`;
+      // Every field is checked for being a non-empty STRING, not merely
+      // present. YAML happily produces a number for `id: 1.4`, and calling
+      // .trim() on it throws — crashing the run that exists to diagnose the
+      // file. Fall back to a positional name so a malformed trial is still
+      // reportable.
+      const text = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+      const name = text(trial?.id) || `${block?.id ?? '?'}[${i}]`;
       const require = (field: keyof RawTrial) => {
-        if (!trial?.[field]?.toString().trim()) {
+        if (!text(trial?.[field])) {
           issues.push({ trial: name, problem: `missing ${field}` });
           return false;
         }
         return true;
       };
 
-      if (!trial?.id?.trim()) issues.push({ trial: name, problem: 'missing id' });
+      if (!text(trial?.id)) issues.push({ trial: name, problem: 'missing id' });
       require('rule');
       require('artifact');
       require('factSource');
       if (require('remediation')) {
-        const target = resolve(base, trial.remediation!);
-        if (!existsSync(target)) {
-          issues.push({ trial: name, problem: `remediation ${trial.remediation} does not resolve` });
+        const rel = text(trial.remediation);
+        const target = resolve(base, rel);
+        // Must stay inside the module: a vísir is part of the aspect, and a
+        // remediation escaping its directory points at something that will not
+        // travel with the module when it is extracted or read over a URL.
+        const contained = target === base || target.startsWith(base + sep);
+        if (!contained) {
+          issues.push({ trial: name, problem: `remediation ${rel} escapes the module` });
+        } else if (!statSync(target, { throwIfNoEntry: false })?.isFile()) {
+          // isFile rather than existsSync: a directory satisfies "exists" and
+          // renders as a broken link, which is the failure this check exists
+          // to prevent.
+          issues.push({ trial: name, problem: `remediation ${rel} does not resolve` });
         }
       }
     });
@@ -538,8 +585,17 @@ metadata:
   description: 'The Website hygiene practice: its aspect module — standard, paved-road workflows, adoption doors, and remediation vísar'
   annotations:
     siliconsaga.org/aspect: 'website-hygiene'
-    # Bump this when a trial is added or a workflow contract changes. Adopters
-    # recording an older value read as `behind` until they re-adopt.
+    # THE release number for this module. Bump it when a trial is added or a
+    # workflow contract changes; adopters recording an older value then read as
+    # `behind` until they re-adopt, which is the whole point of recording it.
+    #
+    # Two other places repeat it and must move together — there is no way to
+    # make a scaffolder template read this file, so the coupling is managed by
+    # saying so rather than by hoping:
+    #   1. aspect/template.yaml       → steps.descriptor.input.values.moduleRelease
+    #   2. leidangr scripts/smoke-catalog.sh → the module-release assertion
+    # The smoke assertion is deliberately exact rather than a presence check:
+    # it is the thing that fails loudly when only one of the three was bumped.
     siliconsaga.org/module-release: '1.0'
     siliconsaga.org/visir: './docs/pages-source.md'
     backstage.io/techdocs-ref: dir:.
@@ -659,7 +715,13 @@ gem "github-pages", group: :jekyll_plugins
 
 Each is a thin file whose only real content is the `uses:` line. The workflows take no inputs — they derive the repository and its URL from `GITHUB_REPOSITORY` — so there is nothing to configure and nothing to keep in sync.
 
-`.github/workflows/deploy.yml` calls `jekyll-deploy.yml`; `.github/workflows/pr-preview.yml` calls `pr-preview.yml`. Both reference `@main` rather than a pinned SHA, deliberately: pinning per caller would reinstate exactly the copy drift this shared repo exists to remove, and volundr's `main` is branch-protected in exchange.
+`.github/workflows/deploy.yml` calls `jekyll-deploy.yml`; `.github/workflows/pr-preview.yml` calls `pr-preview.yml`.
+
+Two things about those stubs are worth understanding before you merge them, because both are choices rather than accidents.
+
+**They follow `@main`, not a pinned SHA.** You are granting `contents: write` to a workflow that tracks a branch in another repository, which is a real trust relationship and not a small one. Pinning per caller would reinstate exactly the copy drift this shared repo exists to remove, so the trade is made the other way: volundr's `main` is branch-protected, and a human merge there is the gate. If your site cannot accept that, do not adopt — the [trust model](https://github.com/SiliconSaga/volundr#trust-model) is the place to argue with it, not your stub.
+
+**The deploy stub triggers on `main`.** GitHub Actions does not allow expressions in an `on:` trigger, so the branch is named literally and cannot be derived. A repository whose default branch is something else must edit that line.
 
 ## catalog-info.yaml
 
@@ -772,25 +834,32 @@ Run: `ws commit volundr .commits/aspect-module.md`
 
 **Files (in the volundr repo):**
 - Create: `aspect/template.yaml`
-- Create: `aspect/skeleton/Gemfile`, `aspect/skeleton/.github/workflows/deploy.yml`, `aspect/skeleton/.github/workflows/pr-preview.yml`
+- Create: `aspect/skeleton-workflows/.github/workflows/deploy.yml`, `aspect/skeleton-workflows/.github/workflows/pr-preview.yml`
+- Create: `aspect/skeleton-gemfile/Gemfile`
 - Create: `aspect/skeleton-catalog/catalog-info.yaml`
 
 **Interfaces:**
 - Consumes: `siliconsaga.org/module-release: '1.0'` from Task 4's catalog face.
 - Produces: `template:default/apply-website-hygiene-aspect` with `spec.type: aspect` — the exact ref Task 7's smoke assertions check.
 
-**Why two skeleton directories:** `fetch:template` renders a whole directory and will happily overwrite. The caller stubs and Gemfile are safe to write unconditionally because a repo that already has them is already adopted. A `catalog-info.yaml` is not safe to overwrite — a real site's descriptor carries ownership, links and annotations this template knows nothing about. Keeping it in a second directory behind an `if:` is what makes "create when absent, never clobber" expressible.
+**Why three skeleton directories:** `fetch:template` renders a whole directory and will happily overwrite whatever it renders onto. Splitting by *what it would destroy* is the only way to make "create when absent, never clobber" expressible, because a single skeleton can only be all-or-nothing.
+
+- **`skeleton-workflows/`** renders unconditionally. A repo that already has these two files at these two paths is already adopted, and re-rendering them is idempotent — identical content produces an empty diff, and different content is a drift the pull request should show a human.
+- **`skeleton-gemfile/`** is behind a flag. A site may well have a Gemfile already, pinning gems deliberately — the `gh-pages` template README even talks a reader through adding one. Overwriting that destroys real user content, and it is the case an implementer would most easily miss, because the naive reading is "no Gemfile means not adopted".
+- **`skeleton-catalog/`** is behind a flag. A real descriptor carries ownership, links and annotations this template knows nothing about.
+
+For both flagged files, the honest path when one already exists is a hand edit or the agent door, which reads before it writes. The template says so in its own parameter descriptions rather than leaving it to be discovered from a bad diff.
 
 - [ ] **Step 1: Write the skeleton files**
 
-`components/volundr/aspect/skeleton/Gemfile`:
+`components/volundr/aspect/skeleton-gemfile/Gemfile`:
 
 ```ruby
 source "https://rubygems.org"
 gem "github-pages", group: :jekyll_plugins
 ```
 
-`components/volundr/aspect/skeleton/.github/workflows/deploy.yml`:
+`components/volundr/aspect/skeleton-workflows/.github/workflows/deploy.yml`. Note `branches: [main]`: GitHub Actions does not allow expressions in an `on:` trigger, so the branch cannot be derived and every caller stub in the org names it literally. A site whose default branch is not `main` must edit this line — the agent door checks the default branch for exactly this reason, and the template's description says so.
 
 ```yaml
 name: Deploy site
@@ -812,7 +881,7 @@ jobs:
     uses: SiliconSaga/volundr/.github/workflows/jekyll-deploy.yml@main
 ```
 
-`components/volundr/aspect/skeleton/.github/workflows/pr-preview.yml`:
+`components/volundr/aspect/skeleton-workflows/.github/workflows/pr-preview.yml`:
 
 ```yaml
 name: PR preview
@@ -892,6 +961,11 @@ spec:
           ui:options:
             catalogFilter:
               kind: Group
+        createGemfile:
+          title: This repo has no Gemfile yet
+          type: boolean
+          default: true
+          description: Uncheck if the site already has one. An existing Gemfile is never overwritten — it may pin gems deliberately — so instead add `gem "github-pages", group: :jekyll_plugins` to it by hand, or let the agent door do it.
         createCatalogInfo:
           title: This repo has no catalog-info.yaml yet
           type: boolean
@@ -899,10 +973,18 @@ spec:
           description: Leave unchecked if the site is already in the catalog — an existing descriptor is never overwritten, and you add the two annotations by hand instead.
   steps:
     - id: stubs
-      name: Render the Gemfile and caller stubs
+      name: Render the caller stubs
       action: fetch:template
       input:
-        url: ./skeleton
+        url: ./skeleton-workflows
+        values: {}
+
+    - id: gemfile
+      name: Render the Gemfile
+      if: ${{ parameters.createGemfile }}
+      action: fetch:template
+      input:
+        url: ./skeleton-gemfile
         values: {}
 
     - id: descriptor
@@ -914,6 +996,9 @@ spec:
         values:
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
           owner: ${{ parameters.owner }}
+          # Must equal siliconsaga.org/module-release in this module's
+          # catalog-info.yaml. Bumping one without the other makes every new
+          # adopter record a release that does not exist.
           moduleRelease: '1.0'
 
     - id: pr
@@ -931,6 +1016,8 @@ spec:
           - `.github/workflows/pr-preview.yml` — per-PR preview site, sticky comment, visual diff against main
 
           **One step remains after merging, and no pull request can do it:** switch this repository's Pages source to the `gh-pages` branch. See [pages-source](https://github.com/SiliconSaga/volundr/blob/main/aspect/docs/pages-source.md).
+
+          Two assumptions worth checking before merging: the deploy stub triggers on pushes to `main`, so edit that line if this repo's default branch differs; and the stubs follow volundr's `main` rather than a pinned SHA, which is [volundr's recorded trust trade-off](https://github.com/SiliconSaga/volundr#trust-model) — branch protection there in exchange for no per-caller drift.
 
   output:
     links:
@@ -956,14 +1043,15 @@ Write `.commits/aspect-create-door.md`:
 message: "feat(aspect): the Create-page adoption door"
 add:
   - aspect/template.yaml
-  - aspect/skeleton/Gemfile
-  - aspect/skeleton/.github/workflows/deploy.yml
-  - aspect/skeleton/.github/workflows/pr-preview.yml
+  - aspect/skeleton-workflows/.github/workflows/deploy.yml
+  - aspect/skeleton-workflows/.github/workflows/pr-preview.yml
+  - aspect/skeleton-gemfile/Gemfile
   - aspect/skeleton-catalog/catalog-info.yaml
 ---
 
 Running this template is the adoption: it renders the Gemfile and both caller stubs and opens a real pull request, rather than logging a plan the way the seeded security template does.
-The catalog descriptor sits in a second skeleton behind a flag. fetch:template overwrites what it renders, and a real site's catalog-info.yaml carries ownership, links and annotations this template knows nothing about — so it creates one when absent and never clobbers one that exists. Adding the two annotations to an existing descriptor stays a hand edit, or the agent door's job.
+Three skeletons rather than one, split by what fetch:template would destroy. It renders whole directories and overwrites, so the only way to express create-when-absent is to keep the destructible files apart and gate them. The Gemfile and the catalog descriptor both carry content this template cannot reconstruct — a site may pin gems deliberately, and a real descriptor holds ownership and links — so each sits behind a flag and neither is ever clobbered. The caller stubs render unconditionally, because identical content is an empty diff and differing content is drift a reviewer should see.
+Editing either existing file stays a hand edit or the agent door's job, since that door reads before it writes.
 The pull request body carries the Pages-source step, because that is the part no pull request can perform and the part that decides whether the deploy has anywhere to publish.
 ```
 
@@ -994,7 +1082,7 @@ description: Agent-side adoption for the Website hygiene aspect — add the Gemf
 
 You are adopting this aspect for a target site repository. This is the other front door — same module, same end state as the scaffolder template, no Backstage required.
 
-1. **Check the target is actually a Jekyll site.** Look for `_config.yml` at the repo root. If there is none, stop and say so: these workflows build Jekyll, and pointing them at anything else produces a confusing CI failure rather than a useful one.
+1. **Check the target is actually a Jekyll site**, and check its default branch. Look for `_config.yml` at the repo root; if there is none, stop and say so, because these workflows build Jekyll and pointing them at anything else produces a confusing CI failure rather than a useful one. Then read the default branch (`gh repo view <owner>/<repo> --json defaultBranchRef`): the deploy stub triggers on pushes to `main`, and GitHub Actions forbids expressions in an `on:` trigger, so a repo on any other default branch needs that line edited by hand. The Create-page door cannot make this check, which is one reason to prefer this door for unfamiliar repos.
 2. **Read the standard.** `standard.yaml` in this module is the source of truth for what adoption means. Its trials are what you are working toward, and each names the artifact it inspects.
 3. **Add the Gemfile** if absent, declaring `gem "github-pages", group: :jekyll_plugins`. If one exists without that gem, add the gem rather than replacing the file — the site may pin other things deliberately.
 4. **Add both caller stubs**, copying them verbatim from `skeleton/.github/workflows/`. Do not pin a SHA in place of `@main`: per-caller pinning reinstates the copy drift this shared repo exists to remove, and volundr's `main` is branch-protected in exchange.
@@ -1083,6 +1171,8 @@ Then with the other aspect checks:
 
 ```bash
 check     "Website practice ingested (type practice)" "$WEBPRACTICE" '"type":"practice"'                    || pass=0
+# Exact, not a presence check: this is the assertion that fails loudly when the
+# release was bumped in the module but not in template.yaml, or vice versa.
 check     "Website practice module release 1.0"       "$WEBPRACTICE" '"siliconsaga.org/module-release":"1.0"' || pass=0
 check     "Website adoption Template (type aspect)"   "$WEBADOPT"    '"type":"aspect"'                       || pass=0
 ```
@@ -1174,4 +1264,6 @@ Then run: `ws push yggdrasil`
 
 ## Deviation from the design, for the record
 
-The design says the adoption pull request writes `catalog-info.yaml` "created or updated". Task 5 creates it when absent and declines to touch an existing one, because `fetch:template` overwrites and a real site's descriptor holds ownership, links and annotations this template cannot reconstruct. Updating an existing descriptor is a hand edit or the agent door's job, and the template's own parameter says so. If in-place update through the Create-page door is wanted later, it needs a custom scaffolder action that reads the file first — worth its own decision rather than being smuggled in here.
+The design says the adoption pull request writes `catalog-info.yaml` "created or updated". Task 5 creates it when absent and declines to touch an existing one, because `fetch:template` overwrites and a real site's descriptor holds ownership, links and annotations this template cannot reconstruct. **The same reasoning extends to the `Gemfile`**, which the design did not call out and which is the more dangerous of the two: a site may pin gems deliberately, and the naive reading — "no Gemfile means not adopted" — is what makes clobbering one easy to ship. Both sit behind flags; the caller stubs do not, because re-rendering identical files is a no-op and a differing one is drift a reviewer should see.
+
+Updating either existing file is a hand edit or the agent door's job, since that door reads before it writes. If in-place update through the Create-page door is wanted later, it needs a custom scaffolder action that reads the file first — worth its own decision rather than being smuggled in here.

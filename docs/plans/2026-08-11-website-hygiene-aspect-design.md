@@ -54,7 +54,9 @@ volundr/
       local-preview.md
 ```
 
-`catalog-info.yaml` is a `Component` with `spec.type: practice`, owned by `group:default/team-devex`, carrying `siliconsaga.org/aspect: website-hygiene`, `siliconsaga.org/module-release`, `siliconsaga.org/visir`, and `backstage.io/techdocs-ref: dir:.`. It mirrors `security-practice` field for field, so the practice page renders it with no new frontend work.
+`catalog-info.yaml` is a `Component` with `spec.type: practice`, owned by `group:default/team-devex`, carrying `siliconsaga.org/aspect: website-hygiene`, `siliconsaga.org/module-release`, `siliconsaga.org/visir`, and `backstage.io/techdocs-ref: dir:.`. Those are the fields the practice page reads, so it renders with no new frontend work.
+
+It differs from `security-practice` in one field, deliberately: **no `spec.system`.** The seeded practice sits in the fictional `rl-platform` system, but a practice is a living institution rather than a part of any software system — `leidangr` is a System of *cornerstones*, and a practice is not one. The adopting component's descriptor likewise carries no system, because adoption should not silently claim one on a repo's behalf.
 
 **Owner note.** Guilds steward practices and teams own software, but every guild in the catalog today is Ravenline mock data. `team-devex` is the only real group, so it stewards this until a real guild exists. Worth revisiting when one does.
 
@@ -79,10 +81,12 @@ Let A be the applicable trials after facet filtering, and P the passing ones:
 
 | Medal | Condition |
 |---|---|
-| gold | `P == A` |
+| gold | `P >= A` |
 | silver | `P == A - 1` |
 | bronze | `1 <= P < A - 1` |
-| none | `P == 0` |
+| none | `P == 0`, or `A == 0` |
+
+`P > A` is a caller error rather than a state the model allows, and it clamps to gold instead of falling through to a lower medal or throwing. A miscounted caller should not be able to produce *silver* out of more passes than there are trials — that reads as a real verdict and is the worse failure. `A == 0` is `none`: an aspect with nothing applicable to a component has awarded it nothing.
 
 An aspect offering two checks awards silver for one and gold for both; an aspect offering one check awards gold for passing it. The top medal always means "everything applicable passes", so an aspect is complete at any size.
 
