@@ -1,7 +1,35 @@
-import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
 import { validateStandard } from './standard-shape';
+
+// Replaced in the module registry rather than spied on the fs object: swc
+// binds a named import directly, so jest.spyOn(fs, 'realpathSync') never
+// reaches the call inside standard-shape. Must be `mock`-prefixed for jest to
+// allow the reference from inside a hoisted factory.
+let mockRealpath: ((p: string) => string) | null = null;
+jest.mock('node:fs', () => {
+  const actual = jest.requireActual('node:fs');
+  return {
+    ...actual,
+    realpathSync: (p: unknown, ...rest: unknown[]) =>
+      (mockRealpath ? mockRealpath(String(p)) : actual.realpathSync(p, ...rest)),
+  };
+});
+
+// Windows refuses file symlinks without Developer Mode or elevation, so the
+// symlink-escape case is gated rather than left to fail for an unrelated
+// reason. Probed once at load so the skip is visible in the report.
+const symlinksWork = (() => {
+  try {
+    const dir = mkdtempSync(join(tmpdir(), 'symprobe-'));
+    writeFileSync(join(dir, 'real.md'), 'x', 'utf8');
+    symlinkSync(join(dir, 'real.md'), join(dir, 'link.md'));
+    return true;
+  } catch {
+    return false;
+  }
+})();
 
 const SECURITY = join(
   __dirname, '..', '..', 'examples', 'mock-org', 'repos', 'security-aspect', 'standard.yaml',
@@ -143,6 +171,50 @@ standard:
     const body = WELL_FORMED.replace('          remediation: ./docs/fix.md\n', '          remediation: ../elsewhere.md\n');
     expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
       { trial: 'a-trial', problem: 'remediation ../elsewhere.md escapes the module' },
+    ]);
+  });
+
+  it('rejects a remediation whose REAL path leaves the module', () => {
+    // The symlink case, tested without needing to create one — Windows refuses
+    // file symlinks without Developer Mode, and this branch is too easy to get
+    // wrong to leave covered only on Linux. The vísir exists and is textually
+    // contained; only canonicalising reveals it resolves elsewhere.
+    const outside = mkdtempSync(join(tmpdir(), 'outside-'));
+    const realFile = join(outside, 'real.md');
+    writeFileSync(realFile, '# elsewhere\n', 'utf8');
+    const standard = fixture(WELL_FORMED, ['docs/fix.md']);
+
+    mockRealpath = p => (p.endsWith('fix.md') ? realFile : p);
+    try {
+      expect(validateStandard(standard)).toEqual([
+        { trial: 'a-trial', problem: 'remediation ./docs/fix.md escapes the module' },
+      ]);
+    } finally {
+      mockRealpath = null;
+    }
+  });
+
+  (symlinksWork ? it : it.skip)('rejects a remediation symlinked out of the module', () => {
+    // Textually contained, actually elsewhere. The `../` case above cannot
+    // cover this: that one never exists, while this one resolves to a real
+    // file that simply will not travel with the module.
+    const outside = mkdtempSync(join(tmpdir(), 'outside-'));
+    writeFileSync(join(outside, 'real.md'), '# elsewhere\n', 'utf8');
+    const standard = fixture(WELL_FORMED);
+    const moduleDir = join(standard, '..');
+    mkdirSync(join(moduleDir, 'docs'), { recursive: true });
+    symlinkSync(join(outside, 'real.md'), join(moduleDir, 'docs', 'fix.md'));
+
+    expect(validateStandard(standard)).toEqual([
+      { trial: 'a-trial', problem: 'remediation ./docs/fix.md escapes the module' },
+    ]);
+  });
+
+  it('reports malformed YAML instead of throwing out of the validator', () => {
+    // The run exists to say what is wrong with the file. A stack trace does
+    // not, and it fails hardest on the input that most needed explaining.
+    expect(validateStandard(fixture('standard:\n  id: broken\n  blocks: [oops\n'))).toEqual([
+      { trial: '(standard)', problem: 'invalid YAML' },
     ]);
   });
 });

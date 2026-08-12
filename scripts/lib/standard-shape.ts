@@ -1,4 +1,4 @@
-import { readFileSync, statSync } from 'node:fs';
+import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { parse } from 'yaml';
 
@@ -26,7 +26,16 @@ interface RawTrial {
  * breaks the promise that a failing trial is one click from its fix.
  */
 export function validateStandard(path: string): StandardIssue[] {
-  const root = parse(readFileSync(path, 'utf8'))?.standard;
+  // Malformed YAML is a finding, not a crash. A validator that throws on the
+  // worst input is useless exactly when it is needed most — the caller wanted
+  // to know what is wrong with the file, and a stack trace does not say.
+  let root;
+  try {
+    root = parse(readFileSync(path, 'utf8'))?.standard;
+  } catch {
+    return [{ trial: '(standard)', problem: 'invalid YAML' }];
+  }
+
   const blocks = root?.blocks;
   if (!Array.isArray(blocks) || blocks.length === 0) {
     return [{ trial: '(standard)', problem: 'no blocks' }];
@@ -34,11 +43,22 @@ export function validateStandard(path: string): StandardIssue[] {
 
   // Resolved to absolute before anything compares against it. dirname() of a
   // relative path stays relative, while resolve() below always returns
-  // absolute — so leaving it relative makes the containment check below reject
-  // every remediation in the file. Unit tests cannot catch this on their own:
-  // mkdtempSync hands out absolute paths, so the bug only appears when a real
-  // caller passes something like ../volundr/aspect/standard.yaml.
+  // absolute — so leaving it relative made the containment check reject every
+  // remediation in the file. Found by the first real cross-repo call rather
+  // than by the tests, which all used mkdtempSync and were therefore absolute;
+  // a relative-path case now covers it.
   const base = resolve(dirname(path));
+  // Canonical form too, so a symlink cannot smuggle a vísir out of the module
+  // past a purely textual containment check.
+  const canonical = (p: string) => {
+    try {
+      return realpathSync(p);
+    } catch {
+      return null;
+    }
+  };
+  const realBase = canonical(base) ?? base;
+  const within = (root: string, p: string) => p === root || p.startsWith(root + sep);
   const issues: StandardIssue[] = [];
 
   for (const block of blocks) {
@@ -77,14 +97,24 @@ export function validateStandard(path: string): StandardIssue[] {
         // Must stay inside the module: a vísir is part of the aspect, and a
         // remediation escaping its directory points at something that will not
         // travel with the module when it is extracted or read over a URL.
-        const contained = target === base || target.startsWith(base + sep);
-        if (!contained) {
+        //
+        // Checked twice, for two different escapes. The textual check catches
+        // a `../` that does not exist, which canonicalising cannot — realpath
+        // on a missing file just fails. The canonical check then catches the
+        // one textual comparison misses: a symlink inside the module pointing
+        // out of it, which reads as contained and resolves elsewhere.
+        if (!within(base, target)) {
           issues.push({ trial: name, problem: `remediation ${rel} escapes the module` });
-        } else if (!statSync(target, { throwIfNoEntry: false })?.isFile()) {
+        } else {
+          const real = canonical(target);
           // isFile rather than existsSync: a directory satisfies "exists" and
           // renders as a broken link, which is the failure this check exists
           // to prevent.
-          issues.push({ trial: name, problem: `remediation ${rel} does not resolve` });
+          if (!real || !statSync(real, { throwIfNoEntry: false })?.isFile()) {
+            issues.push({ trial: name, problem: `remediation ${rel} does not resolve` });
+          } else if (!within(realBase, real)) {
+            issues.push({ trial: name, problem: `remediation ${rel} escapes the module` });
+          }
         }
       }
     });
