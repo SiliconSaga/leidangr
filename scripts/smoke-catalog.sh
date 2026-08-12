@@ -7,7 +7,11 @@
 # .dev/backend.log; tears the backend down on exit.
 #
 # Run: `make smoke-catalog`. Unlike smoke-gitea (@live, needs OpenBao+Gitea), this
-# needs nothing external, so it is safe to run anywhere — including CI.
+# needs no cluster and no secrets — but it DOES need network, since the volundr
+# aspect module is registered over `type: url`. Offline runs fail those three
+# assertions and pass the rest. GITHUB_TOKEN is used when present; volundr is
+# public, so an unauthenticated read works but shares the low anonymous rate
+# limit. Splitting offline and online variants is on the backlog.
 set -euo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -67,7 +71,7 @@ byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localh
 # (~65s) — acceptable slack for a smoke.
 CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'
 GILDI='{}'; UMBRELLA='{}'; INSTANCE='{}'; CORNERSTONE='{}'; TRACKAPI='{}'; PRACTICE='{}'; ADOPTION='{}'
-FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'
+FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'; WEBPRACTICE='{}'; WEBADOPT='{}'
 deadline=$((SECONDS + 300))
 for _ in $(seq 1 120); do
   if (( SECONDS >= deadline )); then break; fi
@@ -86,6 +90,10 @@ for _ in $(seq 1 120); do
   FOXDEPT="$(byname group/default/foxholm)"
   FOXSCAN="$(byname component/default/intake-scanner)"
   DRVSAGA="$(byname saga/default/saga-dependency-scanning-drive)"
+  # The volundr aspect module, read over the network — the only two entities
+  # here that are not local files, and so the slowest to appear.
+  WEBPRACTICE="$(byname component/default/website-hygiene-practice)"
+  WEBADOPT="$(byname template/default/apply-website-hygiene-aspect)"
   if printf '%s' "$CYCLE" | grep -q 'soccer-2026-spring' \
      && printf '%s' "$SAGA" | grep -q 'saga-soccer-2026-spring' \
      && printf '%s' "$GROUP" | grep -q '"name":"mtl"' \
@@ -100,7 +108,9 @@ for _ in $(seq 1 120); do
      && printf '%s' "$ADOPTION" | grep -q 'apply-security-aspect' \
      && printf '%s' "$FOXDEPT" | grep -q '"name":"foxholm"' \
      && printf '%s' "$FOXSCAN" | grep -q 'intake-scanner' \
-     && printf '%s' "$DRVSAGA" | grep -q 'saga-dependency-scanning-drive'; then break; fi
+     && printf '%s' "$DRVSAGA" | grep -q 'saga-dependency-scanning-drive' \
+     && printf '%s' "$WEBPRACTICE" | grep -q 'website-hygiene-practice' \
+     && printf '%s' "$WEBADOPT" | grep -q 'apply-website-hygiene-aspect'; then break; fi
   sleep 1
 done
 
@@ -148,6 +158,13 @@ check     "tracking-api facets override (api, batch)" "$TRACKAPI" '"siliconsaga.
 check     "Practice Component (type practice)"       "$PRACTICE" '"type":"practice"'                        || pass=0
 check     "Adoption Template ingested (type aspect)" "$ADOPTION" '"type":"aspect"'                          || pass=0
 check_rel "Adoption Template ownedBy security-gildi" "$ADOPTION" ownedBy   group:default/security-gildi     || pass=0
+# The first REAL aspect: read from volundr over the network rather than from a
+# seed file. The release assertion is deliberately exact rather than a presence
+# check — it is what fails loudly when the module's release is bumped in one of
+# its three places and not the others (see the annotation's own comment).
+check     "Website practice ingested (type practice)" "$WEBPRACTICE" '"type":"practice"'                   || pass=0
+check     "Website practice module release 1.0"      "$WEBPRACTICE" '"siliconsaga.org/module-release":"1.0"' || pass=0
+check     "Website adoption Template (type aspect)"  "$WEBADOPT" '"type":"aspect"'                         || pass=0
 check     "Ravenline Saga ingested"                  "$RLSAGA"  '"kind":"Saga"'                             || pass=0
 check_rel "Ravenline Saga ownedBy skald (runa)"      "$RLSAGA"  ownedBy   user:default/runa                 || pass=0
 check_rel "Ravenline Saga dependsOn its Cycle"       "$RLSAGA"  dependsOn cycle:default/tracking-2026-2     || pass=0

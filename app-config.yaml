@@ -168,6 +168,18 @@ catalog:
       target: ../../examples/mock-org/repos/security-aspect/template.yaml
       rules:
         - allow: [Template]
+    # The first REAL aspect module: it lives in volundr beside the reusable
+    # workflows it describes, so its standard and those workflows change in one
+    # reviewed pull request. Unlike every location above, these read over the
+    # NETWORK — see the note at the top of scripts/smoke-catalog.sh.
+    - type: url
+      target: https://github.com/SiliconSaga/volundr/blob/main/aspect/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: url
+      target: https://github.com/SiliconSaga/volundr/blob/main/aspect/template.yaml
+      rules:
+        - allow: [Template]
     - type: file
       target: ../../examples/mock-org/cycles.yaml
       rules:
