@@ -49,6 +49,14 @@ By default `app-config.yaml` sets `techdocs.generator.runIn: docker`. On Rancher
 
 Restart `make dev` after changing config or `PATH` (both are read at startup, not hot-reloaded).
 
+## GitHub credentials — what needs one, and what doesn't
+
+`app-config.yaml` reads `${GH_TOKEN}`, which is the name the workspace `.env` already uses; `ws run leidangr` exports that file into the backend, so the normal path needs no extra setup. `make dev` does not, so export it yourself if you start the server that way and intend to write to GitHub.
+
+Reading is unauthenticated-capable and writing is not, which is why the failure shows up late. Catalog locations of `type: url` against public repos — the volundr aspect module, for one — resolve without a token, sharing the low anonymous rate limit. The scaffolder opening an adoption pull request cannot, and reports `No token available for host: github.com, with owner <org>, and repo <name>` at the final step, after every render step has already gone green.
+
+**Guest sign-in is not the cause of that error, though it looks like it.** The scaffolder's GitHub actions authenticate through the *integration* credential above, not through whoever is signed in. Backstage can be configured to act as the signed-in user instead — a per-user GitHub identity, which is the better model for a shared deployment because actions are attributed to the person who took them rather than to one shared token. That is not wired up here, and is tracked as future work rather than a gap in this setup.
+
 ### Rendering rewrites `mkdocs.yml` — do not put comments in one
 
 Generating docs **modifies the `mkdocs.yml` it just rendered**, in place, in your working tree. `@backstage/plugin-techdocs-node` patches the file (injecting `techdocs-core`, `edit_uri`, and friends) and writes it back with `js-yaml`'s `dump()` — see `stages/generate/mkdocsPatchers.cjs.js`. `js-yaml` cannot preserve comments and defaults to an 80-column line width, so every render:

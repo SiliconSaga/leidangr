@@ -52,7 +52,13 @@ integrations:
     - host: github.com
       # This is a Personal Access Token or PAT from GitHub. You can find out how to generate this token, and more information
       # about setting up the GitHub integration here: https://backstage.io/docs/integrations/github/locations#configuration
-      token: ${GITHUB_TOKEN}
+      # GH_TOKEN, not GITHUB_TOKEN: this is the name the workspace .env already
+      # uses for the same credential, and `ws run leidangr` exports that file
+      # into the backend. Asking for a second name meant the integration
+      # resolved to an empty token, which surfaces only later and obscurely —
+      # as "No token available for host: github.com" when the scaffolder tries
+      # to open a pull request. One credential, one name.
+      token: ${GH_TOKEN}
     ### Example for how to add your GitHub Enterprise instance using the API:
     # - host: ghe.example.net
     #   apiBaseUrl: https://ghe.example.net/api/v3
