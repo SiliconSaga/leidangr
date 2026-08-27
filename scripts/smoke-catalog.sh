@@ -9,7 +9,7 @@
 # Run: `make smoke-catalog`. Unlike smoke-gitea (@live, needs OpenBao+Gitea), this
 # needs no cluster and no secrets — but it DOES need network, since the volundr
 # aspect module is registered over `type: url`. Offline runs fail those three
-# assertions and pass the rest. GITHUB_TOKEN is used when present; volundr is
+# assertions and pass the rest. GH_TOKEN is used when present; volundr is
 # public, so an unauthenticated read works but shares the low anonymous rate
 # limit. Splitting offline and online variants is on the backlog.
 set -euo pipefail
@@ -61,6 +61,17 @@ fi
 
 hdr=(-H "Authorization: Bearer ${TOKEN}")
 byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localhost:7007/api/catalog/entities/by-name/$1" 2>/dev/null || echo '{}'; }
+
+# Must stay in step with the two `type: url` locations in app-config.yaml — this is
+# the source the network-read entities are asserted against, not a second opinion
+# about where they live.
+#
+# ⚠ `tree`, though app-config declares `blob`. GithubIntegration.resolveUrl runs
+# every GitHub URL through replaceGithubUrlType(..., "tree"), so the target stored
+# on the location — and therefore the annotation — is always the tree form. Copying
+# the URL out of app-config gives you `blob` and a failing check. Confirmed by
+# running this smoke, not by reading app-config.
+VOLUNDR_ASPECT='url:https://github.com/SiliconSaga/volundr/tree/main/aspect'
 
 # Backend readiness != catalog-ingestion readiness. Poll until the custom entities
 # appear (or the timeout expires) rather than sleeping once and querying once.
@@ -123,6 +134,19 @@ check_rel() {
        '(.relations // []) | any(.type == $t and .targetRef == $r)' >/dev/null 2>&1; then
     echo "  PASS $1"; else echo "  FAIL $1"; return 1; fi
 }
+# Source binding — a by-name lookup proves an entity of that name exists, not that
+# it came from where app-config points. That gap matters only for the volundr
+# entities, which are the sole ones read over the network: a same-named local seed
+# would shadow them and the network assertions would keep passing while testing
+# nothing. Location refs stringify as `<type>:<target>` (catalog-model
+# location/helpers), so the expected value carries the `url:` prefix. Prints the
+# observed annotation on failure — a mismatch here is worth seeing, not guessing.
+check_src() {
+  local got
+  got="$(printf '%s' "$2" | jq -r '.metadata.annotations["backstage.io/managed-by-location"] // "<none>"' 2>/dev/null)" || got='<unparseable>'
+  if [[ "$got" == "$3" ]]; then
+    echo "  PASS $1"; else echo "  FAIL $1 (managed-by-location: $got)"; return 1; fi
+}
 
 # Run every check unconditionally (each prints its own PASS/FAIL) and track the
 # overall result — chaining with && would hide all checks after the first failure.
@@ -165,6 +189,8 @@ check_rel "Adoption Template ownedBy security-gildi" "$ADOPTION" ownedBy   group
 check     "Website practice ingested (type practice)" "$WEBPRACTICE" '"type":"practice"'                   || pass=0
 check     "Website practice module release 1.0"      "$WEBPRACTICE" '"siliconsaga.org/module-release":"1.0"' || pass=0
 check     "Website adoption Template (type aspect)"  "$WEBADOPT" '"type":"aspect"'                         || pass=0
+check_src "Website practice read from volundr"       "$WEBPRACTICE" "$VOLUNDR_ASPECT/catalog-info.yaml"    || pass=0
+check_src "Website adoption Template read from volundr" "$WEBADOPT" "$VOLUNDR_ASPECT/template.yaml"        || pass=0
 check     "Ravenline Saga ingested"                  "$RLSAGA"  '"kind":"Saga"'                             || pass=0
 check_rel "Ravenline Saga ownedBy skald (runa)"      "$RLSAGA"  ownedBy   user:default/runa                 || pass=0
 check_rel "Ravenline Saga dependsOn its Cycle"       "$RLSAGA"  dependsOn cycle:default/tracking-2026-2     || pass=0
