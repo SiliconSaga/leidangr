@@ -7,7 +7,11 @@
 # .dev/backend.log; tears the backend down on exit.
 #
 # Run: `make smoke-catalog`. Unlike smoke-gitea (@live, needs OpenBao+Gitea), this
-# needs nothing external, so it is safe to run anywhere — including CI.
+# needs no cluster and no secrets — but it DOES need network, since the volundr
+# aspect module is registered over `type: url`. Offline runs fail those three
+# assertions and pass the rest. GH_TOKEN is used when present; volundr is
+# public, so an unauthenticated read works but shares the low anonymous rate
+# limit. Splitting offline and online variants is on the backlog.
 set -euo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
@@ -56,7 +60,23 @@ if [[ -z "$up" ]]; then
 fi
 
 hdr=(-H "Authorization: Bearer ${TOKEN}")
+# One entity by `<kind>/<namespace>/<name>`, as JSON. Answers `{}` rather than
+# failing when the lookup does — the poll loop below calls this before the
+# catalog has ingested anything, and under `set -e` a bare curl failure would
+# abort the run instead of retrying. Every caller therefore gets valid JSON and
+# an absent entity reads as an empty object, not an error.
 byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localhost:7007/api/catalog/entities/by-name/$1" 2>/dev/null || echo '{}'; }
+
+# Must stay in step with the two `type: url` locations in app-config.yaml — this is
+# the source the network-read entities are asserted against, not a second opinion
+# about where they live.
+#
+# ⚠ `tree`, though app-config declares `blob`. GithubIntegration.resolveUrl runs
+# every GitHub URL through replaceGithubUrlType(..., "tree"), so the target stored
+# on the location — and therefore the annotation — is always the tree form. Copying
+# the URL out of app-config gives you `blob` and a failing check. Confirmed by
+# running this smoke, not by reading app-config.
+VOLUNDR_ASPECT='url:https://github.com/SiliconSaga/volundr/tree/main/aspect'
 
 # Backend readiness != catalog-ingestion readiness. Poll until the custom entities
 # appear (or the timeout expires) rather than sleeping once and querying once.
@@ -67,7 +87,7 @@ byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localh
 # (~65s) — acceptable slack for a smoke.
 CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'
 GILDI='{}'; UMBRELLA='{}'; INSTANCE='{}'; CORNERSTONE='{}'; TRACKAPI='{}'; PRACTICE='{}'; ADOPTION='{}'
-FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'
+FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'; WEBPRACTICE='{}'; WEBADOPT='{}'
 deadline=$((SECONDS + 300))
 for _ in $(seq 1 120); do
   if (( SECONDS >= deadline )); then break; fi
@@ -86,6 +106,10 @@ for _ in $(seq 1 120); do
   FOXDEPT="$(byname group/default/foxholm)"
   FOXSCAN="$(byname component/default/intake-scanner)"
   DRVSAGA="$(byname saga/default/saga-dependency-scanning-drive)"
+  # The volundr aspect module, read over the network — the only two entities
+  # here that are not local files, and so the slowest to appear.
+  WEBPRACTICE="$(byname component/default/website-hygiene-practice)"
+  WEBADOPT="$(byname template/default/apply-website-hygiene-aspect)"
   if printf '%s' "$CYCLE" | grep -q 'soccer-2026-spring' \
      && printf '%s' "$SAGA" | grep -q 'saga-soccer-2026-spring' \
      && printf '%s' "$GROUP" | grep -q '"name":"mtl"' \
@@ -100,7 +124,9 @@ for _ in $(seq 1 120); do
      && printf '%s' "$ADOPTION" | grep -q 'apply-security-aspect' \
      && printf '%s' "$FOXDEPT" | grep -q '"name":"foxholm"' \
      && printf '%s' "$FOXSCAN" | grep -q 'intake-scanner' \
-     && printf '%s' "$DRVSAGA" | grep -q 'saga-dependency-scanning-drive'; then break; fi
+     && printf '%s' "$DRVSAGA" | grep -q 'saga-dependency-scanning-drive' \
+     && printf '%s' "$WEBPRACTICE" | grep -q 'website-hygiene-practice' \
+     && printf '%s' "$WEBADOPT" | grep -q 'apply-website-hygiene-aspect'; then break; fi
   sleep 1
 done
 
@@ -112,6 +138,19 @@ check_rel() {
   if printf '%s' "$2" | jq -e --arg t "$3" --arg r "$4" \
        '(.relations // []) | any(.type == $t and .targetRef == $r)' >/dev/null 2>&1; then
     echo "  PASS $1"; else echo "  FAIL $1"; return 1; fi
+}
+# Source binding — a by-name lookup proves an entity of that name exists, not that
+# it came from where app-config points. That gap matters only for the volundr
+# entities, which are the sole ones read over the network: a same-named local seed
+# would shadow them and the network assertions would keep passing while testing
+# nothing. Location refs stringify as `<type>:<target>` (catalog-model
+# location/helpers), so the expected value carries the `url:` prefix. Prints the
+# observed annotation on failure — a mismatch here is worth seeing, not guessing.
+check_src() {
+  local got
+  got="$(printf '%s' "$2" | jq -r '.metadata.annotations["backstage.io/managed-by-location"] // "<none>"' 2>/dev/null)" || got='<unparseable>'
+  if [[ "$got" == "$3" ]]; then
+    echo "  PASS $1"; else echo "  FAIL $1 (managed-by-location: $got)"; return 1; fi
 }
 
 # Run every check unconditionally (each prints its own PASS/FAIL) and track the
@@ -148,6 +187,15 @@ check     "tracking-api facets override (api, batch)" "$TRACKAPI" '"siliconsaga.
 check     "Practice Component (type practice)"       "$PRACTICE" '"type":"practice"'                        || pass=0
 check     "Adoption Template ingested (type aspect)" "$ADOPTION" '"type":"aspect"'                          || pass=0
 check_rel "Adoption Template ownedBy security-gildi" "$ADOPTION" ownedBy   group:default/security-gildi     || pass=0
+# The first REAL aspect: read from volundr over the network rather than from a
+# seed file. The release assertion is deliberately exact rather than a presence
+# check — it is what fails loudly when the module's release is bumped in one of
+# its three places and not the others (see the annotation's own comment).
+check     "Website practice ingested (type practice)" "$WEBPRACTICE" '"type":"practice"'                   || pass=0
+check     "Website practice module release 1.0"      "$WEBPRACTICE" '"siliconsaga.org/module-release":"1.0"' || pass=0
+check     "Website adoption Template (type aspect)"  "$WEBADOPT" '"type":"aspect"'                         || pass=0
+check_src "Website practice read from volundr"       "$WEBPRACTICE" "$VOLUNDR_ASPECT/catalog-info.yaml"    || pass=0
+check_src "Website adoption Template read from volundr" "$WEBADOPT" "$VOLUNDR_ASPECT/template.yaml"        || pass=0
 check     "Ravenline Saga ingested"                  "$RLSAGA"  '"kind":"Saga"'                             || pass=0
 check_rel "Ravenline Saga ownedBy skald (runa)"      "$RLSAGA"  ownedBy   user:default/runa                 || pass=0
 check_rel "Ravenline Saga dependsOn its Cycle"       "$RLSAGA"  dependsOn cycle:default/tracking-2026-2     || pass=0

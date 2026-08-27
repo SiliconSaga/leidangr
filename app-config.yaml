@@ -52,7 +52,13 @@ integrations:
     - host: github.com
       # This is a Personal Access Token or PAT from GitHub. You can find out how to generate this token, and more information
       # about setting up the GitHub integration here: https://backstage.io/docs/integrations/github/locations#configuration
-      token: ${GITHUB_TOKEN}
+      # GH_TOKEN, not GITHUB_TOKEN: this is the name the workspace .env already
+      # uses for the same credential, and `ws run leidangr` exports that file
+      # into the backend. Asking for a second name meant the integration
+      # resolved to an empty token, which surfaces only later and obscurely —
+      # as "No token available for host: github.com" when the scaffolder tries
+      # to open a pull request. One credential, one name.
+      token: ${GH_TOKEN}
     ### Example for how to add your GitHub Enterprise instance using the API:
     # - host: ghe.example.net
     #   apiBaseUrl: https://ghe.example.net/api/v3
@@ -166,6 +172,18 @@ catalog:
         - allow: [Component]
     - type: file
       target: ../../examples/mock-org/repos/security-aspect/template.yaml
+      rules:
+        - allow: [Template]
+    # The first REAL aspect module: it lives in volundr beside the reusable
+    # workflows it describes, so its standard and those workflows change in one
+    # reviewed pull request. Unlike every location above, these read over the
+    # NETWORK — see the note at the top of scripts/smoke-catalog.sh.
+    - type: url
+      target: https://github.com/SiliconSaga/volundr/blob/main/aspect/catalog-info.yaml
+      rules:
+        - allow: [Component]
+    - type: url
+      target: https://github.com/SiliconSaga/volundr/blob/main/aspect/template.yaml
       rules:
         - allow: [Template]
     - type: file
