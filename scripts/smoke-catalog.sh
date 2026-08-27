@@ -60,6 +60,11 @@ if [[ -z "$up" ]]; then
 fi
 
 hdr=(-H "Authorization: Bearer ${TOKEN}")
+# One entity by `<kind>/<namespace>/<name>`, as JSON. Answers `{}` rather than
+# failing when the lookup does — the poll loop below calls this before the
+# catalog has ingested anything, and under `set -e` a bare curl failure would
+# abort the run instead of retrying. Every caller therefore gets valid JSON and
+# an absent entity reads as an empty object, not an error.
 byname() { curl -fsS --connect-timeout 3 --max-time 5 "${hdr[@]}" "http://localhost:7007/api/catalog/entities/by-name/$1" 2>/dev/null || echo '{}'; }
 
 # Must stay in step with the two `type: url` locations in app-config.yaml — this is
