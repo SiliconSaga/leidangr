@@ -140,7 +140,9 @@ Roughly fifteen lines reusing the existing `parseList`, and already exercised �
 
 `medals.ts` moves into `gildi-common`. It has no caller today, so this is the cheapest moment it will ever be moved — after sub-project 4 renders it, the move costs a refactor of the render path too.
 
-`scripts/lib/standard-shape.ts` imports its shape types from `gildi-common` rather than restating them. A validator whose idea of the shape can drift from the code that consumes it reports green while checking the wrong thing — the same class of fault as the hand-copied palette fixture.
+`scripts/lib/standard-shape.ts` shares `gildi-common`'s **vocabulary** rather than its types. The distinction matters: a validator's input is by definition unvalidated, so it cannot take `Standard` as a parameter type — its local raw shape, where every field is optional and untrusted, is correct and stays. What it must not do is keep a *second copy of the rules*, so `CHECK_TYPES` is imported rather than restated. A validator whose idea of the vocabulary can drift from the code that consumes it reports green while checking the wrong thing — the same class of fault as the hand-copied palette fixture.
+
+The types in `gildi-common` are the **post-validation** contract: what a consumer may assume once `validateStandard` returns no issues. That makes the two halves complementary rather than duplicated, and it is why the validator also has to check the standard-level fields those types declare non-optional.
 
 A backend **plugin**, not a catalog module: `modules/cycle` and `modules/saga` extend the catalog with entity kinds, whereas this owns its own storage and HTTP surface.
 
@@ -155,7 +157,18 @@ A backend **plugin**, not a catalog module: `modules/cycle` and `modules/saga` e
 
 Two resolvers ship. `repo-files` reads artifacts through `UrlReaderService`, so integration credentials and caching are handled for us. `github-pages-api` reads the repository's Pages configuration. Any other `factSource` — `ci-pipeline-results`, `catalog-annotations`, `aspect-repo`, all of which exist only in `examples/mock-org/` — resolves to `unmeasured{no-resolver}`. Writing resolvers against fictional artifacts would be inventing evidence.
 
-**Failure is isolated per resolver.** A throwing resolver marks only its own trials `unmeasured{error}`. An unreadable `standard.yaml` marks everything unmeasured, which correctly suppresses rather than fabricating a verdict.
+**Failure is isolated per resolver.** A throwing resolver marks only its own trials `unmeasured{error}`, so one broken resolver never blanks the others.
+
+**A standard that will not load is a run-level failure, not an empty trial set.** This distinction is load-bearing and easy to get backwards. If `standard.yaml` cannot be read we do not know what the trials *are*, so there is nothing to mark unmeasured — the applicable set is **unknown**, not zero. Conflating the two is a real hazard, because an empty applicable set is a legitimate state that derives medal `none` per ADR 0013, and `none` means "measured, and nothing passed". A run that never got as far as reading the standard would otherwise publish a verdict about a component on the strength of our own failure.
+
+So a run takes one of two shapes:
+
+```
+Run = { kind: 'evaluated';   outcomes: Outcome[] }   // applicable set known, possibly empty
+    | { kind: 'unevaluated'; reason: 'no-standard'; detail?: string }
+```
+
+An `unevaluated` run stores `medal: null` with `applicable` and `passing` **null rather than zero**, so a chart shows a gap where the ladder could not be computed instead of a drop to the bottom.
 
 **Bounded from day one:** a concurrency limit across entities and a per-run timeout. Cheap now, and it is exactly what keeps the in-process runner viable up to the scale where §10 becomes interesting.
 
@@ -168,9 +181,9 @@ One row **per run**, not per entity. The upsert design was considered and droppe
 | `entity_ref`, `aspect_id` | Subject |
 | `run_at` | Ordering |
 | `module_release` | The standard's release at evaluation time |
-| `outcomes` | JSON, one entry per applicable trial |
-| `applicable`, `passing` | Denormalised for cheap charting |
-| `medal`, `suppressed_reason` | Derived at write time, `medal` null when suppressed |
+| `outcomes` | JSON, one entry per applicable trial. Null on an `unevaluated` run |
+| `applicable`, `passing` | Denormalised for cheap charting. **Null, not zero, on an `unevaluated` run** |
+| `medal`, `suppressed_reasons` | Derived at write time. `medal` is null when suppressed or unevaluated |
 
 A JSON blob for outcomes rather than a row per trial: we never query by trial, and a blob avoids schema churn while the union is young.
 
@@ -191,14 +204,17 @@ Sub-project 4 renders this. Events are derived **server-side** so every client a
 ```
 GET /api/gildi/trials/:entityRef/history?aspect=<id>&from=&to=
 
-runs:   [{ runAt, moduleRelease, medal | null, suppressedReason?,
-           applicable, passing,
-           outcomes: [{ trialId, state, reason?, detail? }] }]
+runs:   [{ runAt, moduleRelease, kind: 'evaluated' | 'unevaluated',
+           medal | null, suppressedReasons?,
+           applicable | null, passing | null,
+           outcomes: [{ trialId, state, reason?, detail? }] | null }]
 events: [{ type: 'release-changed', at, from, to },
          { type: 'medal-earned',    at, medal, first: boolean }]
 ```
 
-`medal: null` means suppressed. Keeping that distinct from `'none'` is the whole reason the union exists, and flattening it here would make it invisible exactly where it matters most — a suppressed run should read as a gap in the line, not a drop to zero.
+`suppressedReasons` is **plural**: several trials can be unmeasured for different reasons in the same run, and collapsing them loses the one thing the field exists to say. It is the distinct set, sorted, so the value is stable across runs and can be compared to decide whether anything actually changed.
+
+`medal: null` covers both suppression and an `unevaluated` run, which `kind` distinguishes. Keeping either distinct from `'none'` is the whole reason the union exists, and flattening them here would make it invisible exactly where it matters most — neither should read as a drop to zero when both are really a gap in the line.
 
 Reads: `GET /api/gildi/trials/:entityRef` for the latest run, and `POST /api/gildi/trials/:entityRef/refresh` for the manual re-check, which evaluates one entity synchronously and returns the fresh run.
 
@@ -231,6 +247,7 @@ The descriptor's own comment warns that three places repeat this value and must 
 ## 12. Testing
 
 - **`gildi-common`** — table-driven aggregation tests mirroring `medals.test.ts`: suppression when any applicable trial is unmeasured, `none` versus suppressed, and the `A == 0` case.
+- **Negative control: an unevaluated run must not look like `none`.** A standard that failed to load has no trials, so the tempting call is `verdictFor([])` — which returns a confident `none` meaning "measured, and nothing passed". The test pins that the two are distinguishable, because the mistake produces a plausible verdict rather than an error.
 - **`gildi-backend`** — resolvers against a fake `UrlReaderService`, registry dispatch, facet filtering, and per-resolver error isolation.
 - **Negative control: a missing resolver must yield `no-resolver`, never a pass.** This is the failure that would silently inflate every medal in the catalog, and it is invisible without a test that asserts it.
 - **Negative control: a near-miss `uses:` must fail.** `@v1` instead of `@main`, or a different repo. Without it a lazy substring match passes everything, and the trial looks green while checking nothing.

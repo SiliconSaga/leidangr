@@ -211,6 +211,17 @@ describe('outcome constructors', () => {
     });
   });
 
+  it('treats an empty detail as no detail, deliberately', () => {
+    // A truthiness check rather than `!== undefined`, and on purpose. The
+    // realistic source of an empty string here is `fail(err.message)` where the
+    // message is blank — a detail that carries nothing. Storing `detail: ''`
+    // would put a field on the run row that renders as an empty explanation,
+    // which is worse than no explanation. Pinned so a later "fix" toward
+    // `!== undefined` has to argue with this test first.
+    expect(fail('')).toEqual({ state: 'fail' });
+    expect(unmeasured('error', '')).toEqual({ state: 'unmeasured', reason: 'error' });
+  });
+
   it('requires a reason for unmeasured', () => {
     expect(unmeasured('no-resolver')).toEqual({
       state: 'unmeasured',
@@ -320,9 +331,9 @@ This is where design §3's amendment to ADR 0013 becomes executable. Suppression
 
 **Interfaces:**
 - Consumes: `Outcome`, `UnmeasuredReason` from Task 2; `Medal`, `medalFor` from Task 1.
-- Produces: `Verdict`, `verdictFor(outcomes: Outcome[]): Verdict`.
+- Produces: `Verdict`, `verdictFor(outcomes: Outcome[]): Verdict`, `unevaluatedVerdict(reason, detail?): Verdict`.
 
-**Spec refinement to carry forward:** design §9 sketches a singular `suppressedReason`. Several trials can be unmeasured for different reasons at once, so this returns `reasons: UnmeasuredReason[]` (distinct, sorted). Stage 3's stored column and the §9 contract should be `suppressedReasons` accordingly — update the design doc when stage 3 lands.
+**Why `unevaluatedVerdict` ships now, with no caller until stage 3.** A standard that will not load is a *run-level* failure, and there is no way to express it as outcomes — you cannot enumerate trials from a file you failed to read. Passing `[]` instead would be actively wrong: an empty applicable set is legitimate and derives medal `none`, which means "measured, and nothing passed". A failed standard read would then publish a verdict about a component on the strength of our own failure. Providing the constructor now means stage 3 cannot reach for `verdictFor([])` and get a plausible-looking answer.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -330,7 +341,7 @@ Create `components/leidangr/plugins/gildi-common/src/verdict.test.ts`:
 
 ```ts
 import { fail, pass, unmeasured } from './outcome';
-import { verdictFor } from './verdict';
+import { unevaluatedVerdict, verdictFor } from './verdict';
 
 describe('verdictFor', () => {
   it('awards gold when every applicable trial passes', () => {
@@ -360,12 +371,15 @@ describe('verdictFor', () => {
     expect(verdict).not.toMatchObject({ medal: 'gold' });
   });
 
-  it('reports how many were unmeasured and why', () => {
+  it('reports how many were unmeasured and why, and still counts the passes', () => {
+    // `passing` is carried even when suppressed: the stored run denormalises it
+    // for charting, and without it the persistence path would invent a number.
     expect(verdictFor([pass(), unmeasured('error'), unmeasured('error')])).toEqual({
       kind: 'suppressed',
       reasons: ['error'],
       unmeasured: 2,
       applicable: 3,
+      passing: 1,
     });
   });
 
@@ -403,6 +417,38 @@ describe('verdictFor', () => {
     });
   });
 });
+
+describe('unevaluatedVerdict', () => {
+  it('is a distinct kind, not a medal and not a suppression', () => {
+    expect(unevaluatedVerdict('no-standard')).toEqual({
+      kind: 'unevaluated',
+      reason: 'no-standard',
+    });
+  });
+
+  it('carries detail when given', () => {
+    expect(unevaluatedVerdict('no-standard', 'HTTP 404')).toEqual({
+      kind: 'unevaluated',
+      reason: 'no-standard',
+      detail: 'HTTP 404',
+    });
+  });
+
+  it('reports no applicable count, because the trial set is unknown', () => {
+    // Not `applicable: 0`. Zero is a real, different claim — the standard
+    // loaded and nothing applied — and reporting it here would let the stored
+    // run and the chart present our failure as a fact about the component.
+    expect(unevaluatedVerdict('no-standard')).not.toHaveProperty('applicable');
+  });
+
+  // THE DISTINCTION THIS FUNCTION EXISTS FOR. Reaching for verdictFor([]) when
+  // the standard could not be read yields a confident `none`, which reads as
+  // "measured, and nothing passed". Same input shape, opposite meaning.
+  it('differs from an empty applicable set, which is a real none', () => {
+    expect(verdictFor([])).toMatchObject({ kind: 'medal', medal: 'none' });
+    expect(unevaluatedVerdict('no-standard').kind).toBe('unevaluated');
+  });
+});
 ```
 
 - [ ] **Step 2: Run it to verify it fails**
@@ -423,6 +469,17 @@ import type { Outcome, UnmeasuredReason } from './outcome';
 // say", which is a statement about us. Rendering them identically would be the
 // same failure ADR 0013 set out to end: a medal that does not mean what it
 // says. See design §3 and proposed ADR 0014.
+export type UnevaluatedReason = 'no-standard';
+
+// Suppression is NOT a medal value. `none` means "measured, and nothing
+// passed" — a real verdict about a component. Suppression means "we cannot
+// say", which is a statement about us. Rendering them identically would be the
+// same failure ADR 0013 set out to end: a medal that does not mean what it
+// says. See design §3 and proposed ADR 0014.
+//
+// `unevaluated` is a THIRD thing again, and the one most easily got wrong: we
+// never learned what the trials are. `applicable` is unknown rather than zero,
+// which is why it is absent here instead of being reported as 0.
 export type Verdict =
   | { kind: 'medal'; medal: Medal; applicable: number; passing: number }
   | {
@@ -430,7 +487,12 @@ export type Verdict =
       reasons: UnmeasuredReason[];
       unmeasured: number;
       applicable: number;
-    };
+      // Carried even when suppressed, because the stored run denormalises both
+      // applicable and passing for charting (design §8). Omitting it would
+      // leave the persistence path inventing a number.
+      passing: number;
+    }
+  | { kind: 'unevaluated'; reason: UnevaluatedReason; detail?: string };
 
 /**
  * Derive a verdict from the outcomes of the APPLICABLE trials.
@@ -439,11 +501,16 @@ export type Verdict =
  * outcome, so a skipped trial is simply absent here rather than present with a
  * third state. That is what lets `medalFor` keep its existing shape.
  *
+ * An EMPTY array means the standard resolved and nothing applied to this
+ * component — a real verdict of `none` per ADR 0013. It does NOT mean the
+ * standard could not be read. For that, use `unevaluatedVerdict`.
+ *
  * Consumes outcomes, never resolvers — which is what allows attestation to
  * arrive later as a new outcome producer rather than a change to this rule.
  */
 export function verdictFor(outcomes: Outcome[]): Verdict {
   const applicable = outcomes.length;
+  const passing = outcomes.filter(o => o.state === 'pass').length;
   const unmeasuredOutcomes = outcomes.filter(o => o.state === 'unmeasured');
 
   if (unmeasuredOutcomes.length > 0) {
@@ -457,12 +524,26 @@ export function verdictFor(outcomes: Outcome[]): Verdict {
       reasons,
       unmeasured: unmeasuredOutcomes.length,
       applicable,
+      passing,
     };
   }
 
-  const passing = outcomes.filter(o => o.state === 'pass').length;
   return { kind: 'medal', medal: medalFor(applicable, passing), applicable, passing };
 }
+
+/**
+ * The verdict for a run that never got as far as evaluating anything — the
+ * standard could not be read, so the trial set is unknown.
+ *
+ * Deliberately NOT expressible through verdictFor: passing it `[]` would derive
+ * medal `none`, publishing "measured, and nothing passed" about a component on
+ * the strength of our own failure.
+ */
+export const unevaluatedVerdict = (
+  reason: UnevaluatedReason,
+  detail?: string,
+): Verdict =>
+  detail ? { kind: 'unevaluated', reason, detail } : { kind: 'unevaluated', reason };
 ```
 
 - [ ] **Step 4: Run the test to verify it passes**
@@ -482,8 +563,8 @@ Expected: FAIL on "suppresses rather than awarding gold when a trial is unmeasur
 Add to `components/leidangr/plugins/gildi-common/src/index.ts`:
 
 ```ts
-export { verdictFor } from './verdict';
-export type { Verdict } from './verdict';
+export { unevaluatedVerdict, verdictFor } from './verdict';
+export type { UnevaluatedReason, Verdict } from './verdict';
 ```
 
 - [ ] **Step 7: Commit**
@@ -502,6 +583,8 @@ add:
 ADR 0013 defines gold as every applicable trial passing, which an unmeasured trial makes unprovable. Suppression is deliberately not a medal value: `none` means measured and nothing passed, suppression means we cannot say, and rendering them alike would be the same broken promise the ADR set out to end.
 
 The negative control is the load-bearing test. Without it an unmeasured trial dropping silently out of the applicable set reads as gold, which would inflate every medal in the catalog and look entirely correct while doing it. Verified to fail by disabling the guard.
+
+`unevaluatedVerdict` ships with no caller on purpose. A standard that will not load has no trials to mark unmeasured, so the tempting move is `verdictFor([])` — which returns a confident `none`, publishing "measured, and nothing passed" about a component on the strength of our own failure. Providing the constructor now means stage 3 cannot reach for the wrong one.
 ```
 
 Run: `bash scripts/ws commit leidangr .commits/verdict-suppression.md`
@@ -592,12 +675,15 @@ export type { Block, Check, CheckType, Standard, Trial } from './standard';
 
 - [ ] **Step 3: Write the failing validator test**
 
-Add to `components/leidangr/scripts/lib/standard-shape.test.ts`, inside the existing top-level `describe`:
+**⚠ Existing fixtures break first, and that is expected.** The standard-level checks added in step 6 (`id`, `aspect`, `appliesTo`) make every pre-existing fixture in this file report new issues, because none of them declare those fields. Before adding anything, **run `make -C components/leidangr test` and note which tests currently pass**, then add `id: s`, `aspect: a` under `standard:` and `appliesTo: ['*']` to each block in every existing fixture. That is a mechanical edit to fixtures, not a change to what they assert — if a fixture's expected issue list changes by more than the new problems, stop and re-read it.
+
+A shared helper keeps the new cases readable. Add to `components/leidangr/scripts/lib/standard-shape.test.ts`:
 
 ```ts
-  it('rejects a check type outside the closed vocabulary', () => {
-    // The whole point of a closed enum is that a typo is caught here rather
-    // than becoming unmeasured{no-resolver} silently at evaluation time.
+  // Minimal well-formed standard, with one trial body spliced in. Every field
+  // the shared Standard type declares non-optional is present, so a fixture
+  // only exercises the thing it is about.
+  const standardWith = (trialLines: string[]) => {
     const dir = mkdtempSync(join(tmpdir(), 'standard-'));
     writeFileSync(join(dir, 'fix.md'), 'fix');
     const path = join(dir, 'standard.yaml');
@@ -605,17 +691,29 @@ Add to `components/leidangr/scripts/lib/standard-shape.test.ts`, inside the exis
       path,
       [
         'standard:',
+        '  id: s',
+        '  aspect: a',
         '  blocks:',
         '    - id: b',
+        "      appliesTo: ['*']",
         '      trials:',
-        '        - id: t',
-        '          rule: r',
-        '          artifact: a',
-        '          factSource: repo-files',
-        '          check: { type: file-contins, value: x }',
-        '          remediation: ./fix.md',
+        ...trialLines,
       ].join('\n'),
     );
+    return path;
+  };
+
+  it('rejects a check type outside the closed vocabulary', () => {
+    // The whole point of a closed enum is that a typo is caught here rather
+    // than becoming unmeasured{no-resolver} silently at evaluation time.
+    const path = standardWith([
+      '        - id: t',
+      '          rule: r',
+      '          artifact: a',
+      '          factSource: repo-files',
+      '          check: { type: file-contins, value: x }',
+      '          remediation: ./fix.md',
+    ]);
     expect(validateStandard(path)).toEqual([
       { trial: 't', problem: 'unknown check type file-contins' },
     ]);
@@ -624,6 +722,62 @@ Add to `components/leidangr/scripts/lib/standard-shape.test.ts`, inside the exis
   it('accepts a trial with no check at all', () => {
     // The mock security standard has none. Those trials become
     // unmeasured{no-resolver} at evaluation, which is not a shape error.
+    const path = standardWith([
+      '        - id: t',
+      '          rule: r',
+      '          artifact: a',
+      '          factSource: ci-pipeline-results',
+      '          remediation: ./fix.md',
+    ]);
+    expect(validateStandard(path)).toEqual([]);
+  });
+
+  it('rejects an empty check, which is not the same as no check', () => {
+    // `check:` with nothing after it parses as null. That is a half-written
+    // declaration, and treating it as absent lets an unfinished trial validate
+    // clean and go unmeasured at runtime — the exact failure this catches.
+    const path = standardWith([
+      '        - id: t',
+      '          rule: r',
+      '          artifact: a',
+      '          factSource: repo-files',
+      '          check:',
+      '          remediation: ./fix.md',
+    ]);
+    expect(validateStandard(path)).toEqual([
+      { trial: 't', problem: 'check is not a mapping' },
+    ]);
+  });
+
+  it('rejects a block with no appliesTo', () => {
+    // A block without it applies to nothing, so its trials never run — which
+    // looks exactly like a component with nothing to answer for.
+    const dir = mkdtempSync(join(tmpdir(), 'standard-'));
+    writeFileSync(join(dir, 'fix.md'), 'fix');
+    const path = join(dir, 'standard.yaml');
+    writeFileSync(
+      path,
+      [
+        'standard:',
+        '  id: s',
+        '  aspect: a',
+        '  blocks:',
+        '    - id: b',
+        '      trials:',
+        '        - id: t',
+        '          rule: r',
+        '          artifact: a',
+        '          factSource: repo-files',
+        '          check: { type: file-contains, value: x }',
+        '          remediation: ./fix.md',
+      ].join('\n'),
+    );
+    expect(validateStandard(path)).toEqual([
+      { trial: 'b', problem: 'missing appliesTo' },
+    ]);
+  });
+
+  it('rejects a standard with no id or aspect', () => {
     const dir = mkdtempSync(join(tmpdir(), 'standard-'));
     writeFileSync(join(dir, 'fix.md'), 'fix');
     const path = join(dir, 'standard.yaml');
@@ -633,15 +787,20 @@ Add to `components/leidangr/scripts/lib/standard-shape.test.ts`, inside the exis
         'standard:',
         '  blocks:',
         '    - id: b',
+        "      appliesTo: ['*']",
         '      trials:',
         '        - id: t',
         '          rule: r',
         '          artifact: a',
-        '          factSource: ci-pipeline-results',
+        '          factSource: repo-files',
+        '          check: { type: file-contains, value: x }',
         '          remediation: ./fix.md',
       ].join('\n'),
     );
-    expect(validateStandard(path)).toEqual([]);
+    expect(validateStandard(path)).toEqual([
+      { trial: '(standard)', problem: 'missing id' },
+      { trial: '(standard)', problem: 'missing aspect' },
+    ]);
   });
 ```
 
@@ -666,7 +825,9 @@ Add to `components/leidangr/jest.envelope.config.cjs`, inside the exported objec
 - [ ] **Step 5: Run it to verify it fails**
 
 Run: `make -C components/leidangr test`
-Expected: FAIL on "rejects a check type outside the closed vocabulary" — the unknown check type produces `[]` because nothing validates it yet. If it instead fails on module resolution, step 4 did not take.
+Expected: FAIL on four of the five new cases — unknown check type, empty check, missing `appliesTo`, and missing `id`/`aspect` all produce `[]` because nothing validates them yet. "accepts a trial with no check at all" should already PASS, and if it does not, the shared fixture helper is wrong rather than the validator.
+
+If it instead fails on module resolution, step 4 did not take.
 
 - [ ] **Step 6: Implement the check-type validation**
 
@@ -691,24 +852,63 @@ Then, inside the `trials.forEach` callback, after the `required('factSource')` l
       // those trials resolve to unmeasured rather than being a shape error.
       // But a check that IS present must name a type from the closed
       // vocabulary, or a typo becomes a silent unmeasured at evaluation time.
+      //
+      // ABSENT and NULL are different. `check:` with nothing after it parses as
+      // null, and that is a half-written declaration, not a decision to omit
+      // one — treating it as absent lets an unfinished trial validate clean and
+      // then go unmeasured at runtime, which is the exact failure this
+      // validator exists to catch. Only `undefined` means "no check".
       const check = trial?.check;
-      if (check !== undefined && check !== null) {
-        const type = text(check.type as unknown);
-        if (!type) {
-          issues.push({ trial: name, problem: 'check missing type' });
-        } else if (!(CHECK_TYPES as readonly string[]).includes(type)) {
-          issues.push({ trial: name, problem: `unknown check type ${type}` });
-        }
-        if (!text(check.value as unknown)) {
-          issues.push({ trial: name, problem: 'check missing value' });
+      if (check !== undefined) {
+        if (check === null || typeof check !== 'object' || Array.isArray(check)) {
+          issues.push({ trial: name, problem: 'check is not a mapping' });
+        } else {
+          const type = text(check.type as unknown);
+          if (!type) {
+            issues.push({ trial: name, problem: 'check missing type' });
+          } else if (!(CHECK_TYPES as readonly string[]).includes(type)) {
+            issues.push({ trial: name, problem: `unknown check type ${type}` });
+          }
+          if (!text(check.value as unknown)) {
+            issues.push({ trial: name, problem: 'check missing value' });
+          }
         }
       }
 ```
 
+Also validate the standard-level fields that `gildi-common`'s types declare non-optional, since this validator is the only guard on a file fetched over the network and a consumer is entitled to assume them once it returns clean.
+
+First **move the existing `const issues: StandardIssue[] = [];` declaration up**, to sit immediately after the `const within = ...` line and before the `for (const block of blocks)` loop begins. It is currently declared just above that loop, so this is a small move that puts it ahead of the two checks below.
+
+Then add, immediately after that declaration:
+
+```ts
+  // Non-optional in the shared Standard type, so a clean return is a promise
+  // these are present.
+  const field = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  if (!field(root?.id)) issues.push({ trial: '(standard)', problem: 'missing id' });
+  if (!field(root?.aspect)) {
+    issues.push({ trial: '(standard)', problem: 'missing aspect' });
+  }
+```
+
+And inside the per-block loop, beside the existing `trials.length === 0` check:
+
+```ts
+    // appliesTo drives facet filtering. A block without it applies to nothing,
+    // so its trials silently never run — which looks exactly like a component
+    // with nothing to answer for unless the shape is checked here.
+    if (!Array.isArray(block?.appliesTo) || block.appliesTo.length === 0) {
+      issues.push({ trial: `${block?.id ?? '?'}`, problem: 'missing appliesTo' });
+    }
+```
+
+Note the existing early return for `no blocks` happens before this declaration, so it keeps returning its own single-issue array unchanged.
+
 - [ ] **Step 7: Run the tests to verify they pass**
 
 Run: `make -C components/leidangr test`
-Expected: PASS, including the two new cases and every pre-existing validator test.
+Expected: PASS, including all five new cases and every pre-existing validator test with its fixture updated per step 3.
 
 Note that `scripts/` is outside `tsconfig.json`'s `include`, so this import is stripped by `@swc/jest` at test time and never type-checked. The runtime behaviour is what the tests above prove — do not expect `tsc` to catch a mistake here.
 
@@ -793,13 +993,7 @@ In `components/volundr/aspect/catalog-info.yaml`, add beneath the existing `sili
 
 Change `siliconsaga.org/module-release: '1.0'` to `'1.1'`.
 
-Update that annotation's existing comment, which lists two other places, to list three — adding the leidangr smoke assertion is not new but the count in the prose must match reality:
-
-```yaml
-    #   1. aspect/template.yaml  → steps.descriptor.input.values.moduleRelease
-    #   2. leidangr scripts/smoke-catalog.sh → the module-release assertion
-    #   3. leidangr docs/plans/2026-08-29-aspect-fact-source-design.md §11
-```
+**Leave that annotation's existing comment as it stands.** It already names the two other places correctly — `aspect/template.yaml` and leidangr's smoke assertion — and those, with the annotation the comment sits on, are the three actual copies of the release value. Do not add the design doc to the list: it *describes* the coordination rather than holding a copy that has to move, and listing it there would invite someone to "bump" a document and think they were done.
 
 - [ ] **Step 4: Bump the template's copy**
 
@@ -924,10 +1118,12 @@ Then open a CR with `bash scripts/ws cr leidangr "test(smoke): follow the module
 
 ## Done when
 
-- `@siliconsaga/plugin-gildi-common` exists, builds, and exports `medalFor`, the `Outcome` union, `verdictFor`, and the standard shape types.
+- `@siliconsaga/plugin-gildi-common` exists, builds, and exports `medalFor`, the `Outcome` union, `verdictFor`, `unevaluatedVerdict`, and the standard shape types.
 - `bash scripts/ws test leidangr` passes.
 - The verdict negative control has been **proven to fail** when its guard is disabled.
-- `scripts/lib/standard-shape.ts` imports its shape from the shared package and rejects an unknown `check.type`.
+- A suppressed verdict carries `passing` as well as `applicable`, so the stage 3 persistence path never has to invent one.
+- `unevaluatedVerdict('no-standard')` is distinguishable from `verdictFor([])`, and a test asserts it.
+- `scripts/lib/standard-shape.ts` shares the shared package's `CHECK_TYPES` and rejects an unknown `check.type`, an empty `check:`, a block with no `appliesTo`, and a standard with no `id` or `aspect`.
 - All four trials in volundr's `standard.yaml` declare a `check:`.
 - Module release reads 1.1 in volundr's `catalog-info.yaml` and `template.yaml`, and in leidangr's smoke assertion.
 - `make -C components/leidangr smoke-catalog` passes end to end.
