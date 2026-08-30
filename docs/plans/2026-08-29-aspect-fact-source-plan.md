@@ -130,7 +130,7 @@ First `mkdir -p components/leidangr/plugins/gildi-common/src`.
 
 Then move — **plain `mv`, never `git mv`.** A workspace hook rejects `git mv` because pre-staging the rename breaks `ws commit`'s bodyfile staging. Plain `mv` plus listing both the old and new paths under `add:` still records a clean rename.
 
-```
+```sh
 mv components/leidangr/plugins/gildi/src/entity/medals.ts components/leidangr/plugins/gildi-common/src/medals.ts
 ```
 
@@ -138,7 +138,7 @@ mv components/leidangr/plugins/gildi/src/entity/medals.ts components/leidangr/pl
 
 - [ ] **Step 3: Move the test verbatim**
 
-```
+```sh
 mv components/leidangr/plugins/gildi/src/entity/medals.test.ts components/leidangr/plugins/gildi-common/src/medals.test.ts
 ```
 
@@ -825,6 +825,36 @@ A shared helper keeps the new cases readable. Add to `components/leidangr/script
     ]);
   });
 
+  it('rejects an appliesTo entry that is not a usable facet name', () => {
+    // A populated array is not a valid one. Facets are compared as strings, so
+    // a number or a blank silences the block exactly as a missing appliesTo
+    // would — while looking, in the file, entirely filled in.
+    const dir = mkdtempSync(join(tmpdir(), 'standard-'));
+    writeFileSync(join(dir, 'fix.md'), 'fix');
+    const path = join(dir, 'standard.yaml');
+    writeFileSync(
+      path,
+      [
+        'standard:',
+        '  id: s',
+        '  aspect: a',
+        '  blocks:',
+        '    - id: b',
+        "      appliesTo: ['web-ui', '', 3]",
+        '      trials:',
+        '        - id: t',
+        '          rule: r',
+        '          artifact: a',
+        '          factSource: repo-files',
+        '          check: { type: file-contains, value: x }',
+        '          remediation: ./fix.md',
+      ].join('\n'),
+    );
+    expect(validateStandard(path)).toEqual([
+      { trial: 'b', problem: 'appliesTo has a non-string entry' },
+    ]);
+  });
+
   it('rejects a standard with no id or aspect', () => {
     const dir = mkdtempSync(join(tmpdir(), 'standard-'));
     writeFileSync(join(dir, 'fix.md'), 'fix');
@@ -873,7 +903,7 @@ Add to `components/leidangr/jest.envelope.config.cjs`, inside the exported objec
 - [ ] **Step 5: Run it to verify it fails**
 
 Run: `make -C components/leidangr test`
-Expected: FAIL on four of the five new cases — unknown check type, empty check, missing `appliesTo`, and missing `id`/`aspect` all produce `[]` because nothing validates them yet. "accepts a trial with no check at all" should already PASS, and if it does not, the shared fixture helper is wrong rather than the validator.
+Expected: FAIL on five of the six new cases — unknown check type, empty check, missing `appliesTo`, a non-string `appliesTo` entry, and missing `id`/`aspect` all produce `[]` because nothing validates them yet. "accepts a trial with no check at all" should already PASS, and if it does not, the shared fixture helper is wrong rather than the validator.
 
 If it instead fails on module resolution, step 4 did not take.
 
@@ -946,8 +976,19 @@ And inside the per-block loop, beside the existing `trials.length === 0` check:
     // appliesTo drives facet filtering. A block without it applies to nothing,
     // so its trials silently never run — which looks exactly like a component
     // with nothing to answer for unless the shape is checked here.
-    if (!Array.isArray(block?.appliesTo) || block.appliesTo.length === 0) {
+    const appliesTo = block?.appliesTo;
+    if (!Array.isArray(appliesTo) || appliesTo.length === 0) {
       issues.push({ trial: `${block?.id ?? '?'}`, problem: 'missing appliesTo' });
+    } else if (appliesTo.some(f => typeof f !== 'string' || !f.trim())) {
+      // Array-ness alone is not enough. Entries are compared against a
+      // component's resolved facets, which are strings, so `[1]`, `[null]` and
+      // `['']` match nothing and take the block quiet in precisely the way a
+      // missing appliesTo would — the failure this check exists to prevent,
+      // arrived at through a shape that looks populated.
+      issues.push({
+        trial: `${block?.id ?? '?'}`,
+        problem: 'appliesTo has a non-string entry',
+      });
     }
 ```
 
@@ -956,7 +997,7 @@ Note the existing early return for `no blocks` happens before this declaration, 
 - [ ] **Step 7: Run the tests to verify they pass**
 
 Run: `make -C components/leidangr test`
-Expected: PASS, including all five new cases and every pre-existing validator test with its fixture updated per step 3.
+Expected: PASS, including all six new cases and every pre-existing validator test with its fixture updated per step 3.
 
 Note that `scripts/` is outside `tsconfig.json`'s `include`, so this import is stripped by `@swc/jest` at test time and never type-checked. The runtime behaviour is what the tests above prove — do not expect `tsc` to catch a mistake here.
 
@@ -1171,7 +1212,7 @@ Then open a CR with `bash scripts/ws cr leidangr "test(smoke): follow the module
 - The verdict negative control has been **proven to fail** when its guard is disabled.
 - A suppressed verdict carries `passing` as well as `applicable`, so the stage 3 persistence path never has to invent one.
 - `unevaluatedVerdict('no-standard')` is distinguishable from `verdictFor([])`, and a test asserts it.
-- `scripts/lib/standard-shape.ts` shares the shared package's `CHECK_TYPES` and rejects an unknown `check.type`, an empty `check:`, a block with no `appliesTo`, and a standard with no `id` or `aspect`.
+- `scripts/lib/standard-shape.ts` shares the shared package's `CHECK_TYPES` and rejects an unknown `check.type`, an empty `check:`, a block with no `appliesTo` or a non-string entry in one, and a standard with no `id` or `aspect`.
 - All four trials in volundr's `standard.yaml` declare a `check:`.
 - Module release reads 1.1 in volundr's `catalog-info.yaml` and `template.yaml`, and in leidangr's smoke assertion.
 - `make -C components/leidangr smoke-catalog` passes end to end.

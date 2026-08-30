@@ -163,7 +163,7 @@ Two resolvers ship. `repo-files` reads artifacts through `UrlReaderService`, so 
 
 So a run takes one of two shapes:
 
-```
+```ts
 Run = { kind: 'evaluated';   outcomes: Outcome[] }   // applicable set known, possibly empty
     | { kind: 'unevaluated'; reason: 'no-standard'; detail?: string }
 ```
@@ -181,11 +181,15 @@ One row **per run**, not per entity. The upsert design was considered and droppe
 | `entity_ref`, `aspect_id` | Subject |
 | `run_at` | Ordering |
 | `module_release` | The standard's release at evaluation time |
+| `kind` | `evaluated` or `unevaluated` — which shape the rest of the row takes |
 | `outcomes` | JSON, one entry per applicable trial. Null on an `unevaluated` run |
 | `applicable`, `passing` | Denormalised for cheap charting. **Null, not zero, on an `unevaluated` run** |
 | `medal`, `suppressed_reasons` | Derived at write time. `medal` is null when suppressed or unevaluated |
+| `unevaluated_reason`, `unevaluated_detail` | Why the run never evaluated. Null on an `evaluated` run |
 
 A JSON blob for outcomes rather than a row per trial: we never query by trial, and a blob avoids schema churn while the union is young.
+
+**The unevaluated cause is stored, not just the fact of it.** Without `unevaluated_reason` and `unevaluated_detail` the row records that we could not say, and then cannot say why either — which is the same silence the state was introduced to break. The detail is where a `404` on the standard URL is distinguishable from a parse error, and that distinction is the whole value of the row to whoever is debugging a component whose medal vanished.
 
 **Medals are frozen per run.** Deriving at write time means a later change to the medal rules does not retro-apply to stored history. That is the right default for an audit trail — a chart should show what the ladder said at the time, not what it would say now — but it does mean an ADR 0014 amendment needs a deliberate backfill rather than taking effect silently.
 
@@ -207,7 +211,8 @@ GET /api/gildi/trials/:entityRef/history?aspect=<id>&from=&to=
 runs:   [{ runAt, moduleRelease, kind: 'evaluated' | 'unevaluated',
            medal | null, suppressedReasons?,
            applicable | null, passing | null,
-           outcomes: [{ trialId, state, reason?, detail? }] | null }]
+           outcomes: [{ trialId, state, reason?, detail? }] | null,
+           unevaluatedReason?, unevaluatedDetail? }]
 events: [{ type: 'release-changed', at, from, to },
          { type: 'medal-earned',    at, medal, first: boolean }]
 ```
