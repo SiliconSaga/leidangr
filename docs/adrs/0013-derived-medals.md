@@ -28,7 +28,7 @@ An aspect offering two checks awards silver for one and gold for both. An aspect
 
 Two edges are stated rather than left to a future evaluator. `A == 0` — nothing applies to this component — is `none`, not a vacuous gold: an aspect that asked nothing of you has not awarded you anything. And `P > A` clamps to gold rather than falling through, because a miscounting caller producing *silver* out of more passes than there are trials would read as a real verdict.
 
-The rule lives in `plugins/gildi/src/entity/medals.ts` rather than in prose here, because two standards now depend on it.
+The rule lives in `plugins/gildi-common/src/medals.ts` rather than in prose here, because two standards now depend on it. It moved out of the `gildi` frontend plugin when the fact source arrived, since the backend that computes trial outcomes and the card that renders the medal both need it and neither should import the other.
 
 ### Consequences
 

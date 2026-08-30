@@ -9193,6 +9193,14 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@siliconsaga/plugin-gildi-common@workspace:plugins/gildi-common":
+  version: 0.0.0-use.local
+  resolution: "@siliconsaga/plugin-gildi-common@workspace:plugins/gildi-common"
+  dependencies:
+    "@backstage/cli": "npm:^0.36.3"
+  languageName: unknown
+  linkType: soft
+
 "@siliconsaga/plugin-gildi@npm:^0.1.0, @siliconsaga/plugin-gildi@workspace:plugins/gildi":
   version: 0.0.0-use.local
   resolution: "@siliconsaga/plugin-gildi@workspace:plugins/gildi"
