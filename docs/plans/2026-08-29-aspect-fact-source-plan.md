@@ -49,11 +49,17 @@ Moving `medals.ts` now is the point of this task — it has no caller today, so 
 
 **Files:**
 - Create: `plugins/gildi-common/package.json`
+- Create: `plugins/gildi-common/.eslintrc.js`
+- Create: `plugins/gildi-common/tsconfig.json`
+- Create: `plugins/gildi-common/README.md`
 - Create: `plugins/gildi-common/src/index.ts`
 - Create: `plugins/gildi-common/src/medals.ts`
 - Create: `plugins/gildi-common/src/medals.test.ts`
 - Delete: `plugins/gildi/src/entity/medals.ts`, `plugins/gildi/src/entity/medals.test.ts`
-- Modify: `plugins/gildi/package.json` (add the dependency)
+- Modify: `docs/adrs/0013-derived-medals.md` (its pointer names the old path)
+- Modify: `yarn.lock` (a new workspace changes it)
+
+**Not modified:** `plugins/gildi/package.json`. Adding a dependency on the new package would be an unused one — nothing in `gildi` imports `medalFor` until the badge exists in stage 4 — and `backstage-cli repo lint` does not require it.
 
 **Interfaces:**
 - Consumes: nothing.
@@ -102,13 +108,41 @@ Create `components/leidangr/plugins/gildi-common/package.json`:
 
 The root `package.json` already globs `plugins/*` as a workspace, so no change is needed there.
 
+Then create `components/leidangr/plugins/gildi-common/.eslintrc.js`, matching `gildi`'s exactly:
+
+```js
+module.exports = require('@backstage/cli/config/eslint-factory')(__dirname);
+```
+
+and `components/leidangr/plugins/gildi-common/tsconfig.json` (same as `gildi`'s, minus the frontend-only `dev` and `migrations` roots):
+
+```json
+{ "extends": "@backstage/cli/config/tsconfig.json", "include": ["src"], "exclude": ["node_modules"], "compilerOptions": { "outDir": "dist", "rootDir": "." } }
+```
+
+**Both are load-bearing, not boilerplate.** Without `.eslintrc.js`, `backstage-cli repo lint` parses the package's TypeScript as plain JavaScript and fails with `Parsing error: The keyword 'export' is reserved` — an error that points at valid code and says nothing about the missing config.
+
+Finally add a short `plugins/gildi-common/README.md` stating the package's one rule: pure functions and types only, no React, no backend services, nothing touching the network or a database. It is the constraint that keeps the package importable from both sides, and it is worth writing down before there is anything tempting to put here.
+
 - [ ] **Step 2: Move `medals.ts` verbatim**
 
-Copy `components/leidangr/plugins/gildi/src/entity/medals.ts` to `components/leidangr/plugins/gildi-common/src/medals.ts` with **no content changes** — its comment block explaining ADR 0013 is the reason the rule is legible, and rewriting it here would lose that.
+First `mkdir -p components/leidangr/plugins/gildi-common/src`.
+
+Then move — **plain `mv`, never `git mv`.** A workspace hook rejects `git mv` because pre-staging the rename breaks `ws commit`'s bodyfile staging. Plain `mv` plus listing both the old and new paths under `add:` still records a clean rename.
+
+```
+mv components/leidangr/plugins/gildi/src/entity/medals.ts components/leidangr/plugins/gildi-common/src/medals.ts
+```
+
+**No content changes.** Its comment block explaining ADR 0013 is the reason the rule is legible, and rewriting it here would lose that.
 
 - [ ] **Step 3: Move the test verbatim**
 
-Copy `components/leidangr/plugins/gildi/src/entity/medals.test.ts` to `components/leidangr/plugins/gildi-common/src/medals.test.ts`. The import path is already `'./medals'` and stays correct.
+```
+mv components/leidangr/plugins/gildi/src/entity/medals.test.ts components/leidangr/plugins/gildi-common/src/medals.test.ts
+```
+
+The import path is already `'./medals'` and stays correct.
 
 - [ ] **Step 4: Create the public surface**
 
@@ -124,28 +158,35 @@ export type { Medal } from './medals';
 
 - [ ] **Step 5: Install so the workspace link resolves**
 
-Run: `make -C components/leidangr deps`
-Expected: completes without error, and `components/leidangr/node_modules/@siliconsaga/plugin-gildi-common` exists as a symlink.
+**Not `make deps`.** That target runs `yarn install --immutable`, and adding a workspace necessarily changes `yarn.lock`, so it fails with *"The lockfile would have been modified by this install, which is explicitly forbidden"*. This is the one install in the plan that has to be mutable.
+
+Run: `bash scripts/ws exec leidangr corepack yarn install`
+Expected: `Done with warnings`. The peer-dependency warnings about `@testing-library/react`, `react`, and `jest` are pre-existing and also name `gildi`, `app`, and `backend` — the only new line should be the `@siliconsaga/plugin-gildi-common@workspace:plugins/gildi-common` resolution.
+
+Then confirm the link: `ls -la components/leidangr/node_modules/@siliconsaga/`
+Expected: `plugin-gildi-common` present as a symlink beside `plugin-gildi`.
+
+`yarn.lock` is now modified and must be committed with this task.
 
 - [ ] **Step 6: Run the moved test to verify it passes in its new home**
 
 Run: `make -C components/leidangr test-app`
 Expected: PASS, including the `medalFor` describe block.
 
-- [ ] **Step 7: Delete the originals and point gildi at the package**
+- [ ] **Step 7: Correct ADR 0013's pointer**
 
-Delete `components/leidangr/plugins/gildi/src/entity/medals.ts` and `components/leidangr/plugins/gildi/src/entity/medals.test.ts`.
+`docs/adrs/0013-derived-medals.md` says *"The rule lives in `plugins/gildi/src/entity/medals.ts`"*. That path no longer exists, and a canonical decision record naming a missing file is worse than no pointer at all. Change it to `plugins/gildi-common/src/medals.ts` and say why it moved, so the ADR explains the split rather than just recording a new path.
 
-Add to `components/leidangr/plugins/gildi/package.json` under `dependencies`, keeping the block alphabetical:
+**Do not** add `@siliconsaga/plugin-gildi-common` to `gildi`'s dependencies. Nothing in `gildi` imports it until the badge lands in stage 4, `backstage-cli repo lint` does not require it, and an unused dependency is a claim about coupling that is not yet true.
 
-```json
-"@siliconsaga/plugin-gildi-common": "0.1.0",
-```
+- [ ] **Step 8: Verify nothing still imports the moved module**
 
-- [ ] **Step 8: Verify nothing still imports the deleted module**
+Use the Grep tool (or `rg`) rather than `grep -r` — `node_modules` here is large enough that an unfiltered recursive grep takes minutes.
 
-Run: `grep -rn "from './medals'\|entity/medals" components/leidangr/plugins components/leidangr/packages`
-Expected: no matches. `medalFor` has no caller today, so this should be clean — if anything appears, repoint it at `@siliconsaga/plugin-gildi-common`.
+Search for `from './medals'`, `entity/medals`, and `medalFor` across `components/leidangr`, excluding `node_modules`.
+Expected: hits only inside `plugins/gildi-common/`, plus prose references in `docs/`. `medalFor` has no caller today, so any hit under `plugins/gildi/` or `packages/` means something needs repointing at `@siliconsaga/plugin-gildi-common`.
+
+Historical references in `docs/plans/2026-08-11-website-hygiene-aspect-plan.md` stay as they are — that plan is a record of what was done at the time, and editing it would rewrite history rather than fix a pointer.
 
 - [ ] **Step 9: Run the full gate**
 
@@ -161,15 +202,22 @@ Create `.commits/gildi-common-package.md`:
 message: "refactor(gildi): move medal derivation into a shared package"
 add:
   - plugins/gildi-common/
-  - plugins/gildi/package.json
   - plugins/gildi/src/entity/medals.ts
   - plugins/gildi/src/entity/medals.test.ts
+  - docs/adrs/0013-derived-medals.md
+  - yarn.lock
 ---
 
 The fact source needs the medal rule on the backend and the card needs it on the frontend, so it belongs to neither. `medalFor` has no caller yet, which makes this the cheapest moment the move will ever be — once the badge renders, the same move drags the render path with it.
+
+Moved verbatim, including the comment block explaining ADR 0013, because that comment is why the rule is legible at all. The ADR's own pointer at the old path is updated, since a canonical doc naming a file that no longer exists is worse than no pointer.
 ```
 
+The old paths are listed under `add:` alongside the new directory — that is how `ws commit` stages a plain `mv` as a rename.
+
 Run: `bash scripts/ws commit leidangr .commits/gildi-common-package.md`
+
+Expected in the output: `rename plugins/{gildi/src/entity => gildi-common/src}/medals.ts (100%)` for both files. A 100% rename confirms the move was verbatim.
 
 ---
 
