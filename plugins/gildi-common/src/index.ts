@@ -3,3 +3,6 @@
 // them agree on what a trial result means without either importing the other.
 export { medalFor } from './medals';
 export type { Medal } from './medals';
+
+export { fail, pass, unmeasured } from './outcome';
+export type { Outcome, UnmeasuredReason } from './outcome';
