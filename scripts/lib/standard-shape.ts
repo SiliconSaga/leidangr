@@ -1,17 +1,24 @@
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, resolve, sep } from 'node:path';
 import { parse } from 'yaml';
+import { CHECK_TYPES } from '@siliconsaga/plugin-gildi-common';
 
 export interface StandardIssue {
   trial: string;
   problem: string;
 }
 
+// The RAW shape: every field optional and untrusted, because a validator's
+// input is by definition unvalidated. The shared package's `Trial`/`Standard`
+// types are the post-validation contract — what a consumer may assume once
+// this returns clean. What is NOT duplicated is the vocabulary: CHECK_TYPES is
+// imported, so a second copy of the rules cannot drift from the first.
 interface RawTrial {
   id?: string;
   rule?: string;
   artifact?: string;
   factSource?: string;
+  check?: { type?: unknown; value?: unknown };
   remediation?: string;
 }
 
@@ -61,8 +68,37 @@ export function validateStandard(path: string): StandardIssue[] {
   const within = (root: string, p: string) => p === root || p.startsWith(root + sep);
   const issues: StandardIssue[] = [];
 
+  // Non-optional in the shared Standard type, so a clean return is a promise
+  // these are present. The `no blocks` early return above fires first and keeps
+  // its own single-issue array, which is the right answer for a file with
+  // nothing in it at all.
+  const field = (v: unknown) => (typeof v === 'string' ? v.trim() : '');
+  if (!field(root?.id)) issues.push({ trial: '(standard)', problem: 'missing id' });
+  if (!field(root?.aspect)) {
+    issues.push({ trial: '(standard)', problem: 'missing aspect' });
+  }
+
   for (const block of blocks) {
     const trials: RawTrial[] = Array.isArray(block?.trials) ? block.trials : [];
+
+    // appliesTo drives facet filtering. A block without it applies to nothing,
+    // so its trials silently never run — which looks exactly like a component
+    // with nothing to answer for unless the shape is checked here.
+    const appliesTo = block?.appliesTo;
+    if (!Array.isArray(appliesTo) || appliesTo.length === 0) {
+      issues.push({ trial: `${block?.id ?? '?'}`, problem: 'missing appliesTo' });
+    } else if (appliesTo.some((f: unknown) => typeof f !== 'string' || !f.trim())) {
+      // Array-ness alone is not enough. Entries are compared against a
+      // component's resolved facets, which are strings, so `[1]`, `[null]` and
+      // `['']` match nothing and take the block quiet in precisely the way a
+      // missing appliesTo would — the failure this check exists to prevent,
+      // arrived at through a shape that looks populated.
+      issues.push({
+        trial: `${block?.id ?? '?'}`,
+        problem: 'appliesTo has a non-string entry',
+      });
+    }
+
     // A block with no trials defines no checks, so a standard made entirely of
     // them would validate clean while asking nothing of anybody. Coercing the
     // missing array to [] is what would hide it.
@@ -91,6 +127,33 @@ export function validateStandard(path: string): StandardIssue[] {
       required('rule');
       required('artifact');
       required('factSource');
+
+      // A check is optional — the mock security standard declares none, and
+      // those trials resolve to unmeasured rather than being a shape error.
+      // But a check that IS present must name a type from the closed
+      // vocabulary, or a typo becomes a silent unmeasured at evaluation time.
+      //
+      // ABSENT and NULL are different. `check:` with nothing after it parses as
+      // null, and that is a half-written declaration, not a decision to omit
+      // one — treating it as absent lets an unfinished trial validate clean and
+      // then go unmeasured at runtime, which is the exact failure this
+      // validator exists to catch. Only `undefined` means "no check".
+      const check = trial?.check;
+      if (check !== undefined) {
+        if (check === null || typeof check !== 'object' || Array.isArray(check)) {
+          issues.push({ trial: name, problem: 'check is not a mapping' });
+        } else {
+          const checkType = text(check.type);
+          if (!checkType) {
+            issues.push({ trial: name, problem: 'check missing type' });
+          } else if (!(CHECK_TYPES as readonly string[]).includes(checkType)) {
+            issues.push({ trial: name, problem: `unknown check type ${checkType}` });
+          }
+          if (!text(check.value)) {
+            issues.push({ trial: name, problem: 'check missing value' });
+          }
+        }
+      }
       if (required('remediation')) {
         const rel = text(trial.remediation);
         const target = resolve(base, rel);
