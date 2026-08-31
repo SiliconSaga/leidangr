@@ -11,6 +11,13 @@ module.exports = {
   testMatch: ['**/*.test.ts', '**/*.steps.ts'],
   // The config:check acceptance scenario spawns the Backstage CLI, which is slow to boot.
   testTimeout: 60000,
+  // The shared package ships TypeScript source rather than a build, and Jest
+  // will not transform through the node_modules symlink yarn creates for a
+  // workspace. Resolving the name to the source keeps it inside rootDir, where
+  // the transform below already applies.
+  moduleNameMapper: {
+    '^@siliconsaga/plugin-gildi-common$': '<rootDir>/plugins/gildi-common/src/index.ts',
+  },
   transform: {
     '^.+\\.(t|j)s$': [
       '@swc/jest',
