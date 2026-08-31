@@ -92,6 +92,17 @@ describe('unevaluatedVerdict', () => {
     });
   });
 
+  it('treats an empty detail as no detail, matching the outcome constructors', () => {
+    // Same rule as fail() and unmeasured(), and deliberately so: three
+    // constructors that normalise differently would be worse than any one of
+    // the two behaviours. An empty detail renders as an empty explanation on
+    // the run row, which is worse than no explanation at all.
+    expect(unevaluatedVerdict('no-standard', '')).toEqual({
+      kind: 'unevaluated',
+      reason: 'no-standard',
+    });
+  });
+
   it('reports no applicable count, because the trial set is unknown', () => {
     // Not `applicable: 0`. Zero is a real, different claim — the standard
     // loaded and nothing applied — and reporting it here would let the stored

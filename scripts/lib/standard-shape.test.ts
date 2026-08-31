@@ -135,6 +135,41 @@ describe('validateStandard', () => {
     ]);
   });
 
+  it('rejects a block with no id, naming it by position', () => {
+    // Non-optional in the shared Block type. Without the check a block with
+    // valid trials returns clean, which is a promise the type does not keep.
+    const body = WELL_FORMED.replace('    - id: only\n', '    - \n');
+    expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
+      { trial: 'block[0]', problem: 'missing id' },
+    ]);
+  });
+
+  it('rejects a padded appliesTo entry, which trims to something valid', () => {
+    // The dangerous shape: it looks correct and trims to a real facet, so a
+    // validator inspecting only the trimmed copy calls the file clean while
+    // the raw value matches nothing downstream.
+    const body = WELL_FORMED.replace(
+      "      appliesTo: ['*']\n",
+      "      appliesTo: [' web-ui ']\n",
+    );
+    expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
+      { trial: 'only', problem: 'appliesTo has a padded entry' },
+    ]);
+  });
+
+  it('rejects a padded check type, before testing the vocabulary', () => {
+    // Order matters. ' file-contains ' trims to a real member, so a membership
+    // test on the trimmed copy passes and the file reads as clean — then the
+    // same test downstream, where nothing trims it, resolves to unmeasured.
+    const body = WELL_FORMED.replace(
+      '          factSource: repo-files\n',
+      "          factSource: repo-files\n          check: { type: ' file-contains ', value: x }\n",
+    );
+    expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
+      { trial: 'a-trial', problem: 'padded check type file-contains' },
+    ]);
+  });
+
   it('rejects a standard with no aspect', () => {
     // Non-optional in the shared Standard type, so a clean return is a promise
     // it is present.
