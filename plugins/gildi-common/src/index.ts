@@ -6,3 +6,6 @@ export type { Medal } from './medals';
 
 export { fail, pass, unmeasured } from './outcome';
 export type { Outcome, UnmeasuredReason } from './outcome';
+
+export { unevaluatedVerdict, verdictFor } from './verdict';
+export type { UnevaluatedReason, Verdict } from './verdict';
