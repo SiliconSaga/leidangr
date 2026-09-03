@@ -192,7 +192,7 @@ check_rel "Adoption Template ownedBy security-gildi" "$ADOPTION" ownedBy   group
 # check — it is what fails loudly when the module's release is bumped in one of
 # its three places and not the others (see the annotation's own comment).
 check     "Website practice ingested (type practice)" "$WEBPRACTICE" '"type":"practice"'                   || pass=0
-check     "Website practice module release 1.0"      "$WEBPRACTICE" '"siliconsaga.org/module-release":"1.0"' || pass=0
+check     "Website practice module release 1.1"      "$WEBPRACTICE" '"siliconsaga.org/module-release":"1.1"' || pass=0
 check     "Website adoption Template (type aspect)"  "$WEBADOPT" '"type":"aspect"'                         || pass=0
 check_src "Website practice read from volundr"       "$WEBPRACTICE" "$VOLUNDR_ASPECT/catalog-info.yaml"    || pass=0
 check_src "Website adoption Template read from volundr" "$WEBADOPT" "$VOLUNDR_ASPECT/template.yaml"        || pass=0
