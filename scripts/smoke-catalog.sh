@@ -58,14 +58,17 @@ trap cleanup EXIT INT TERM
 # curl is already a prerequisite, so no new dependency: a refused connection
 # means the port is free. Any HTTP response at all, 404 included, means
 # something is still holding it.
-wait_for_port_release() {
-  for _ in $(seq 1 30); do
-    if ! curl -s -o /dev/null --connect-timeout 1 "http://localhost:7007/" 2>/dev/null; then
-      return 0
-    fi
-    sleep 1
-  done
-  return 1
+# Did the boot fail because something still holds port 7007?
+#
+# Asks the LOG rather than probing the port, which is both portable and a test
+# of the actual condition — whether we could bind — instead of an inference from
+# outside. A curl probe was written first and measured: on this Windows host a
+# closed local port silently drops the connection instead of refusing it, so
+# curl answers 28 for "nothing listening" AND for "bound but stalled", which is
+# precisely the distinction the probe existed to draw. Exit code 7 never
+# arrives. Node's own EADDRINUSE has no such ambiguity.
+port_still_held() {
+  grep -qiE "EADDRINUSE|address already in use" "$LOG" 2>/dev/null
 }
 
 # Boot and wait for the port. Returns non-zero if it never listened at all,
@@ -144,9 +147,15 @@ CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'
 GILDI='{}'; UMBRELLA='{}'; INSTANCE='{}'; CORNERSTONE='{}'; TRACKAPI='{}'; PRACTICE='{}'; ADOPTION='{}'
 FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'; WEBPRACTICE='{}'; WEBADOPT='{}'
 
-# Returns 0 once every entity has appeared, non-zero if the deadline passes
-# first. The assertions below run either way — a partial ingest should report
-# which parts are missing rather than just that something is.
+# Returns 0 once every entity has appeared, non-zero when it gives up. TWO
+# bounds decide that, and which one governs depends on how fast the lookups
+# answer: the 300s deadline wins when the catalog is wedged and each curl burns
+# its timeout, while the 120-iteration cap wins when lookups fail fast — roughly
+# 180s, and that is the case during a lost startup race, when everything 404s
+# immediately. Neither bound is redundant, which is why both are here.
+#
+# The assertions below run either way — a partial ingest should report which
+# parts are missing rather than just that something is.
 poll_for_entities() {
 deadline=$((SECONDS + 300))
 for _ in $(seq 1 120); do
@@ -198,7 +207,17 @@ return 1
 # what earns the second attempt.
 for attempt in 1 2; do
   if ! start_backend; then
-    echo "smoke-catalog FAIL: backend never logged 'Listening on'. Recent log:" >&2
+    if port_still_held; then
+      # Separated from the generic message because the cause and the fix are
+      # different: a backend from an earlier run outlived the process we killed
+      # — the listener is a grandchild, corepack spawns backstage-cli which
+      # spawns node, and killing a parent does not always take it down.
+      echo "smoke-catalog FAIL: port 7007 is still held by another process." >&2
+      echo "  A backend outlived the process this script killed. Kill the stray" >&2
+      echo "  node process and re-run. This is a leak, not the startup race." >&2
+    else
+      echo "smoke-catalog FAIL: backend never logged 'Listening on'. Recent log:" >&2
+    fi
     tail -n 40 "$LOG" >&2 || true
     exit 1
   fi
@@ -214,13 +233,10 @@ for attempt in 1 2; do
   echo "smoke-catalog: backend lost the DevDataStore IPC race on boot, retrying once."
   echo "  (a startup timing race, not a catalog problem — see startup_race_lost)"
   cleanup
-  if ! wait_for_port_release; then
-    echo "smoke-catalog FAIL: port 7007 is still bound 30s after cleanup." >&2
-    echo "  A backend from the first attempt outlived the process we killed, so" >&2
-    echo "  the retry could not bind. Kill the stray node process and re-run —" >&2
-    echo "  reported separately because it is a leak, not the startup race." >&2
-    exit 1
-  fi
+  # A moment for the OS to release the socket before the retry tries to bind.
+  # If it does not, the retry's own boot failure reports it via port_still_held
+  # rather than as a mysterious "never logged Listening on".
+  sleep 2
 done
 
 # Field presence — a single-field substring is order-independent, so grep is fine.

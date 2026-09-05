@@ -29,23 +29,23 @@ const bashWorks = (() => {
   }
 })();
 
-function extractFunction(): string {
+function extractFunction(name: string): string {
   const src = readFileSync(SCRIPT, 'utf8');
-  const match = src.match(/^startup_race_lost\(\) \{[\s\S]*?^\}/m);
+  const match = src.match(new RegExp(`^${name}\\(\\) \\{[\\s\\S]*?^\\}`, 'm'));
   // Fails loudly rather than silently testing an empty string, which is the
   // standing hazard with pulling source out of another file by pattern.
   if (!match) {
-    throw new Error('startup_race_lost() not found in smoke-catalog.sh');
+    throw new Error(`${name}() not found in smoke-catalog.sh`);
   }
   return match[0];
 }
 
-function detects(logBody: string): boolean {
+function runDetector(name: string, logBody: string): boolean {
   const dir = mkdtempSync(join(tmpdir(), 'smoke-race-'));
   try {
     const log = join(dir, 'backend.log').replace(/\\/g, '/');
     writeFileSync(log, logBody, 'utf8');
-    const program = `${extractFunction()}\nLOG="${log}"\nstartup_race_lost`;
+    const program = `${extractFunction(name)}\nLOG="${log}"\n${name}`;
     try {
       execFileSync('bash', ['-c', program], { stdio: 'ignore' });
       return true;
@@ -53,12 +53,13 @@ function detects(logBody: string): boolean {
       return false;
     }
   } finally {
-    // Every case here writes a directory, and there are eight of them per run.
-    // Cleaning up in finally rather than after the call so a thrown assertion
-    // does not leave one behind.
+    // Every case here writes a directory. Cleaning up in finally rather than
+    // after the call so a thrown assertion does not leave one behind.
     rmSync(dir, { recursive: true, force: true });
   }
 }
+
+const detects = (logBody: string) => runDetector('startup_race_lost', logBody);
 
 const maybe = bashWorks ? describe : describe.skip;
 
@@ -128,6 +129,40 @@ Backend startup failed due to the following errors:
     expect(
       detects(`Backend startup failed due to the following errors:
   Error: IPC request 'DevDataStore.load' with ID 8 was rejected`),
+    ).toBe(false);
+  });
+});
+
+const heldPort = (logBody: string) => runDetector('port_still_held', logBody);
+
+// Separates "a process leaked and still holds 7007" from the generic
+// "never logged Listening on", so a leak is not reported as a mystery.
+//
+// ⚠ ONLY the log grep is covered here. Triggering the real conflict was
+// attempted and could not be constructed on this host: the backend binds the
+// IPv6 wildcard (its log says "Listening on :7007" with no address), and on
+// Windows an IPv4 0.0.0.0 holder coexists with `[::]` rather than blocking it,
+// because IPv6 sockets default to IPV6_V6ONLY. A genuinely leaked backend binds
+// `[::]` too and would conflict — but that is reasoning, not a run, and it is
+// recorded as such rather than claimed as verified.
+maybe('port_still_held', () => {
+  it.each([
+    ['the Node error code', 'Error: listen EADDRINUSE: address already in use :::7007'],
+    ['the prose form', 'failed to start: address already in use'],
+    ['mixed case', 'Error: listen eaddrinuse :::7007'],
+  ])('detects %s', (_label, body) => {
+    expect(heldPort(body)).toBe(true);
+  });
+
+  it('ignores a healthy log', () => {
+    expect(heldPort('rootHttpRouter info Listening on :7007')).toBe(false);
+  });
+
+  it('ignores the startup race, which is a different failure', () => {
+    // The two are reported separately and must not both claim the same log.
+    expect(
+      heldPort(`Backend startup failed due to the following errors:
+  Error: IPC request 'DevDataStore.load' with ID 8 timed out`),
     ).toBe(false);
   });
 });
