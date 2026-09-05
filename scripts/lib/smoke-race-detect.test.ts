@@ -1,0 +1,168 @@
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+// Guards `startup_race_lost` in scripts/smoke-catalog.sh — the three lines that
+// decide whether a failed smoke run gets retried.
+//
+// Worth a test because both failure directions are SILENT. Too eager and a real
+// catalog regression is retried and reported as a flake; too shy and a 50%
+// startup race reads as 37 assertion failures, which is what it did for weeks
+// before anyone named it. The first version of this function was also wrong —
+// it matched only the error NAME, which reaches the log through a logger field
+// rather than the thrown message.
+//
+// The function is extracted from the real script rather than restated here, so
+// editing the script changes what this asserts.
+const SCRIPT = join(__dirname, '..', 'smoke-catalog.sh');
+
+// bash is present on every machine that can run the smoke at all, but the unit
+// suite should not fail for its absence — same reasoning as the symlink probe
+// in standard-shape.test.ts.
+const bashWorks = (() => {
+  try {
+    execFileSync('bash', ['-c', 'exit 0'], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+function extractFunction(name: string): string {
+  const src = readFileSync(SCRIPT, 'utf8');
+  const match = src.match(new RegExp(`^${name}\\(\\) \\{[\\s\\S]*?^\\}`, 'm'));
+  // Fails loudly rather than silently testing an empty string, which is the
+  // standing hazard with pulling source out of another file by pattern.
+  if (!match) {
+    throw new Error(`${name}() not found in smoke-catalog.sh`);
+  }
+  return match[0];
+}
+
+function runDetector(name: string, logBody: string): boolean {
+  const dir = mkdtempSync(join(tmpdir(), 'smoke-race-'));
+  try {
+    const log = join(dir, 'backend.log').replace(/\\/g, '/');
+    writeFileSync(log, logBody, 'utf8');
+    const program = `${extractFunction(name)}\nLOG="${log}"\n${name}`;
+    try {
+      execFileSync('bash', ['-c', program], { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  } finally {
+    // Every case here writes a directory. Cleaning up in finally rather than
+    // after the call so a thrown assertion does not leave one behind.
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+const detects = (logBody: string) => runDetector('startup_race_lost', logBody);
+
+const maybe = bashWorks ? describe : describe.skip;
+
+maybe('startup_race_lost', () => {
+  it('detects the signature this actually produced', () => {
+    // Faithful excerpt of a run on 2026-08-27: the thrown message and the
+    // logger's name field both appear, which is what the real thing looks like.
+    expect(
+      detects(
+        `backstage error Unhandled rejection Backend startup failed due to the following errors:
+  Plugin 'kubernetes' startup failed; caused by Error: IPC request 'DevDataStore.load' with ID 8 timed out
+ type="unhandledRejection" name="BackendStartupError"`,
+      ),
+    ).toBe(true);
+  });
+
+  it.each([
+    [
+      'the message alone',
+      `Backend startup failed due to the following errors:
+  Error: IPC request 'DevDataStore.load' with ID 9 timed out`,
+    ],
+    [
+      'the error name alone',
+      `name="BackendStartupError"
+Error: IPC request 'DevDataStore.load' with ID 9 timed out`,
+    ],
+  ])('detects it from %s, so neither spelling is load-bearing', (_label, body) => {
+    expect(detects(body)).toBe(true);
+  });
+
+  it('ignores a healthy log', () => {
+    expect(
+      detects(`rootHttpRouter info Listening on :7007
+catalog info Full refresh of the catalog completed`),
+    ).toBe(false);
+  });
+
+  // THE ONE THAT MATTERS. A startup failure that is not this race must not be
+  // retried: a retry would hide a real regression behind a second attempt and a
+  // reassuring message about timing.
+  it('declines a startup failure that is not this race', () => {
+    expect(
+      detects(`Backend startup failed due to the following errors:
+  Plugin 'catalog' startup failed; caused by Error: connect ECONNREFUSED 127.0.0.1:5432`),
+    ).toBe(false);
+  });
+
+  it('declines a DevDataStore mention with no startup failure', () => {
+    // The store is used on healthy boots too, so its name alone proves nothing.
+    expect(detects('debug DevDataStore.load loaded=true key=auth-keys')).toBe(false);
+  });
+
+  // The pair that the first version got wrong: BOTH halves present, but the
+  // DevDataStore line is ordinary activity rather than the timeout. Matching the
+  // store's name alone retried this and then blamed the environment for it,
+  // which is the exact misdiagnosis the function is supposed to prevent.
+  it('declines a startup failure that merely coincides with store activity', () => {
+    expect(
+      detects(`debug DevDataStore.load loaded=true key=auth-keys
+Backend startup failed due to the following errors:
+  Plugin 'catalog' startup failed; caused by Error: connect ECONNREFUSED 127.0.0.1:5432`),
+    ).toBe(false);
+  });
+
+  it('declines a DevDataStore failure that is not a timeout', () => {
+    expect(
+      detects(`Backend startup failed due to the following errors:
+  Error: IPC request 'DevDataStore.load' with ID 8 was rejected`),
+    ).toBe(false);
+  });
+});
+
+const heldPort = (logBody: string) => runDetector('port_still_held', logBody);
+
+// Separates "a process leaked and still holds 7007" from the generic
+// "never logged Listening on", so a leak is not reported as a mystery.
+//
+// ⚠ ONLY the log grep is covered here. Triggering the real conflict was
+// attempted and could not be constructed on this host: the backend binds the
+// IPv6 wildcard (its log says "Listening on :7007" with no address), and on
+// Windows an IPv4 0.0.0.0 holder coexists with `[::]` rather than blocking it,
+// because IPv6 sockets default to IPV6_V6ONLY. A genuinely leaked backend binds
+// `[::]` too and would conflict — but that is reasoning, not a run, and it is
+// recorded as such rather than claimed as verified.
+maybe('port_still_held', () => {
+  it.each([
+    ['the Node error code', 'Error: listen EADDRINUSE: address already in use :::7007'],
+    ['the prose form', 'failed to start: address already in use'],
+    ['mixed case', 'Error: listen eaddrinuse :::7007'],
+  ])('detects %s', (_label, body) => {
+    expect(heldPort(body)).toBe(true);
+  });
+
+  it('ignores a healthy log', () => {
+    expect(heldPort('rootHttpRouter info Listening on :7007')).toBe(false);
+  });
+
+  it('ignores the startup race, which is a different failure', () => {
+    // The two are reported separately and must not both claim the same log.
+    expect(
+      heldPort(`Backend startup failed due to the following errors:
+  Error: IPC request 'DevDataStore.load' with ID 8 timed out`),
+    ).toBe(false);
+  });
+});

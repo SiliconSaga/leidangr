@@ -37,27 +37,85 @@ backend:
           subject: leidangr-smoke
 EOF
 
-: > "$LOG"
-corepack yarn workspace backend start \
-  --config "$ROOT/app-config.yaml" \
-  --config "$ROOT/.dev/app-config.smoke.yaml" >"$LOG" 2>&1 &
-PID=$!
 # Always reap the backend, even on interrupt, so a stray process can't keep port
 # 7007 occupied and poison later make smoke-catalog / make dev runs.
-cleanup() { kill "$PID" 2>/dev/null || true; wait "$PID" 2>/dev/null || true; }
+PID=""
+cleanup() {
+  [[ -n "$PID" ]] || return 0
+  kill "$PID" 2>/dev/null || true
+  wait "$PID" 2>/dev/null || true
+  PID=""
+}
 trap cleanup EXIT INT TERM
 
-up=""
-for _ in $(seq 1 150); do
-  if grep -q "Listening on" "$LOG" 2>/dev/null; then up=1; break; fi
-  if ! kill -0 "$PID" 2>/dev/null; then break; fi
-  sleep 1
-done
-if [[ -z "$up" ]]; then
-  echo "smoke-catalog FAIL: backend never logged 'Listening on'. Recent log:" >&2
-  tail -n 40 "$LOG" >&2 || true
-  exit 1
-fi
+# cleanup kills the process this script started, but the listener is a
+# GRANDCHILD — corepack spawns backstage-cli, which spawns the node backend —
+# and killing a parent does not guarantee the grandchild goes with it,
+# particularly on Windows. If the old listener survives, the retry cannot bind
+# and reports "never logged 'Listening on'", which is a misleading error of
+# exactly the kind this script exists to stop producing.
+#
+# curl is already a prerequisite, so no new dependency: a refused connection
+# means the port is free. Any HTTP response at all, 404 included, means
+# something is still holding it.
+# Did the boot fail because something still holds port 7007?
+#
+# Asks the LOG rather than probing the port, which is both portable and a test
+# of the actual condition — whether we could bind — instead of an inference from
+# outside. A curl probe was written first and measured: on this Windows host a
+# closed local port silently drops the connection instead of refusing it, so
+# curl answers 28 for "nothing listening" AND for "bound but stalled", which is
+# precisely the distinction the probe existed to draw. Exit code 7 never
+# arrives. Node's own EADDRINUSE has no such ambiguity.
+port_still_held() {
+  grep -qiE "EADDRINUSE|address already in use" "$LOG" 2>/dev/null
+}
+
+# Boot and wait for the port. Returns non-zero if it never listened at all,
+# which is a different failure from listening and then not ingesting.
+start_backend() {
+  : > "$LOG"
+  corepack yarn workspace backend start \
+    --config "$ROOT/app-config.yaml" \
+    --config "$ROOT/.dev/app-config.smoke.yaml" >"$LOG" 2>&1 &
+  PID=$!
+  for _ in $(seq 1 150); do
+    if grep -q "Listening on" "$LOG" 2>/dev/null; then return 0; fi
+    if ! kill -0 "$PID" 2>/dev/null; then return 1; fi
+    sleep 1
+  done
+  return 1
+}
+
+# A KNOWN STARTUP RACE, and the reason this script retries at all.
+#
+# `backstage-cli package start` runs the backend in dev mode: the child is
+# spawned with a --require hook that transpiles every workspace .ts file through
+# swc SYNCHRONOUSLY, with no cache, on every boot. Meanwhile `core.auth` asks the
+# parent for its dev signing key over IPC, and that request carries a hard-coded
+# 5s timeout (IPC_TIMEOUT_MS in @backstage/backend-dev-utils, not configurable).
+# The parent answers instantly — it is a Map lookup — but the child cannot
+# process the reply while it is still blocked transpiling, so on a cold file
+# cache or a busy disk the timer wins. Every plugin waiting on core.auth then
+# fails at once, which is why the four failures always arrive together.
+#
+# WHAT IT LOOKS LIKE IS THE PROBLEM: the backend still logs "Listening on" and
+# still serves the API, so the run proceeds and every entity 404s. That is
+# indistinguishable at a glance from a real catalog regression, and has been
+# mistaken for one. Naming it here is most of the value of this function.
+# Matches the thrown MESSAGE as well as the error name. The name only reaches
+# the log through the logger's own `name=`/`stack=` fields, which is a format
+# detail that could change; "Backend startup failed" is the error's own text and
+# is the more durable half. Both are accepted so neither alone is load-bearing.
+startup_race_lost() {
+  grep -qE "BackendStartupError|Backend startup failed" "$LOG" 2>/dev/null || return 1
+  # The TIMEOUT, not merely the store's name. A healthy boot mentions
+  # DevDataStore too, so matching the name alone would retry any startup failure
+  # that happened to occur in a log where the store was also busy — and then
+  # report it as an environment problem on the second attempt, which is the
+  # precise misdiagnosis this function exists to prevent.
+  grep -qE "IPC request 'DevDataStore\.load'.* timed out" "$LOG" 2>/dev/null
+}
 
 hdr=(-H "Authorization: Bearer ${TOKEN}")
 # One entity by `<kind>/<namespace>/<name>`, as JSON. Answers `{}` rather than
@@ -88,9 +146,20 @@ VOLUNDR_ASPECT='url:https://github.com/SiliconSaga/volundr/tree/main/aspect'
 CYCLE='{}'; SAGA='{}'; GROUP='{}'; RLCYCLE='{}'; RLSAGA='{}'
 GILDI='{}'; UMBRELLA='{}'; INSTANCE='{}'; CORNERSTONE='{}'; TRACKAPI='{}'; PRACTICE='{}'; ADOPTION='{}'
 FOXDEPT='{}'; FOXSCAN='{}'; DRVSAGA='{}'; WEBPRACTICE='{}'; WEBADOPT='{}'
+
+# Returns 0 once every entity has appeared, non-zero when it gives up. TWO
+# bounds decide that, and which one governs depends on how fast the lookups
+# answer: the 300s deadline wins when the catalog is wedged and each curl burns
+# its timeout, while the 120-iteration cap wins when lookups fail fast — roughly
+# 180s, and that is the case during a lost startup race, when everything 404s
+# immediately. Neither bound is redundant, which is why both are here.
+#
+# The assertions below run either way — a partial ingest should report which
+# parts are missing rather than just that something is.
+poll_for_entities() {
 deadline=$((SECONDS + 300))
 for _ in $(seq 1 120); do
-  if (( SECONDS >= deadline )); then break; fi
+  if (( SECONDS >= deadline )); then return 1; fi
   CYCLE="$(byname cycle/default/soccer-2026-spring)"
   SAGA="$(byname saga/default/saga-soccer-2026-spring)"
   GROUP="$(byname group/default/mtl)"
@@ -126,8 +195,48 @@ for _ in $(seq 1 120); do
      && printf '%s' "$FOXSCAN" | grep -q 'intake-scanner' \
      && printf '%s' "$DRVSAGA" | grep -q 'saga-dependency-scanning-drive' \
      && printf '%s' "$WEBPRACTICE" | grep -q 'website-hygiene-practice' \
-     && printf '%s' "$WEBADOPT" | grep -q 'apply-website-hygiene-aspect'; then break; fi
+     && printf '%s' "$WEBADOPT" | grep -q 'apply-website-hygiene-aspect'; then return 0; fi
   sleep 1
+done
+return 1
+}
+
+# One retry, and only for the race named above. A backend that listened and then
+# ingested nothing for any OTHER reason is a real finding and must not be
+# retried into looking flaky — so the log signature, not the failure itself, is
+# what earns the second attempt.
+for attempt in 1 2; do
+  if ! start_backend; then
+    if port_still_held; then
+      # Separated from the generic message because the cause and the fix are
+      # different: a backend from an earlier run outlived the process we killed
+      # — the listener is a grandchild, corepack spawns backstage-cli which
+      # spawns node, and killing a parent does not always take it down.
+      echo "smoke-catalog FAIL: port 7007 is still held by another process." >&2
+      echo "  A backend outlived the process this script killed. Kill the stray" >&2
+      echo "  node process and re-run. This is a leak, not the startup race." >&2
+    else
+      echo "smoke-catalog FAIL: backend never logged 'Listening on'. Recent log:" >&2
+    fi
+    tail -n 40 "$LOG" >&2 || true
+    exit 1
+  fi
+  if poll_for_entities; then break; fi
+  if ! startup_race_lost; then break; fi
+  if (( attempt == 2 )); then
+    echo "smoke-catalog FAIL: the backend lost the DevDataStore IPC race twice." >&2
+    echo "  This is an ENVIRONMENT failure, not a change you made — see" >&2
+    echo "  startup_race_lost() in this script for the mechanism. Every entity" >&2
+    echo "  will read as missing below. Re-run on a quieter machine." >&2
+    exit 1
+  fi
+  echo "smoke-catalog: backend lost the DevDataStore IPC race on boot, retrying once."
+  echo "  (a startup timing race, not a catalog problem — see startup_race_lost)"
+  cleanup
+  # A moment for the OS to release the socket before the retry tries to bind.
+  # If it does not, the retry's own boot failure reports it via port_still_held
+  # rather than as a mysterious "never logged Listening on".
+  sleep 2
 done
 
 # Field presence — a single-field substring is order-independent, so grep is fine.
