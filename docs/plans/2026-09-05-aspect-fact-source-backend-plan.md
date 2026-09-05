@@ -10,6 +10,10 @@
 
 **Spec:** `docs/plans/2026-08-29-aspect-fact-source-design.md`
 
+## Where you are working
+
+Every path here is relative to the **yggdrasil workspace root**, not to leidangr. `components/leidangr/...` is the component; `bash scripts/ws ...` is the workspace CLI and only resolves from the root. Running these steps from inside `components/leidangr` fails immediately on missing paths and a missing `scripts/ws`.
+
 ## Global Constraints
 
 - Outcomes come from `@siliconsaga/plugin-gildi-common`. **Never redefine the union, the verdict, or `CHECK_TYPES`** — importing them is the point of that package.
@@ -105,9 +109,12 @@ Facet filtering is the "just enough of sub-project 2" piece and is pure logic, s
     "@backstage/backend-plugin-api": "^1.4.1",
     "@backstage/catalog-model": "^1.7.3",
     "@backstage/errors": "^1.2.7",
+    "@backstage/integration": "^1.17.0",
     "@backstage/plugin-catalog-node": "^1.16.1",
+    "@octokit/rest": "^21.0.0",
     "@siliconsaga/plugin-gildi-common": "0.1.0",
     "express": "^4.21.2",
+    "knex": "^3.1.0",
     "yaml": "^2.7.0"
   },
   "devDependencies": {
@@ -196,6 +203,14 @@ describe('facetsOf', () => {
   it('is empty for an entity with no spec.type at all', () => {
     expect(facetsOf(component({}), STANDARD)).toEqual([]);
   });
+
+  it('falls back to the default for a blank annotation rather than exempting the component', () => {
+    // `facets: ""` is a half-finished edit, not a declaration of none. Reading
+    // it as an opt-out would leave a component enrolled and asked nothing,
+    // which looks identical to compliance.
+    const e = component({ type: 'website' }, { 'siliconsaga.org/facets': '  ,  ' });
+    expect(facetsOf(e, STANDARD)).toEqual(['web-ui']);
+  });
 });
 
 describe('applicableTrials', () => {
@@ -246,6 +261,12 @@ function parseList(value?: string): string[] {
  * The annotation OVERRIDES the type default rather than merging with it. A
  * component declaring its facets is stating what it is, and merging would make
  * the annotation unable to remove a facet its type implies.
+ *
+ * A present-but-BLANK annotation falls back to the default rather than meaning
+ * "no facets". `facets: ""` is overwhelmingly a half-finished edit, and reading
+ * it as a deliberate opt-out would silently exempt a component from every trial
+ * — the failure mode is a component that looks enrolled and is asked nothing.
+ * A component that genuinely applies to nothing simply has no matching block.
  */
 export function facetsOf(entity: Entity, standard: Standard): string[] {
   const declared = parseList(entity.metadata.annotations?.[FACETS_ANNOTATION]);
@@ -306,10 +327,24 @@ Run: `bash scripts/ws commit leidangr .commits/gildi-backend-facets.md`
 
 **Files:**
 - Create: `plugins/gildi-backend/src/standard.ts`, `src/standard.test.ts`
+- Modify: `plugins/gildi-common/src/standard.ts` (add `validateStandardShape`)
+- Modify: `plugins/gildi-common/src/index.ts`
+- Modify: `scripts/lib/standard-shape.ts` (delegate its shape checks)
+
+**Do not write a second validator.** `scripts/lib/standard-shape.ts` already validates this shape and is the thing that keeps volundr's file honest. It cannot be reused as-is — it takes a path and also checks that remediation files resolve on disk, which a standard read over the network cannot do. So the **shape** half moves into `gildi-common` where both callers can share it, and the filesystem half stays where it is. A backend that re-checks the shape its own way is exactly the drift the shared package exists to prevent.
 
 **Interfaces:**
 - Consumes: `Standard` from `gildi-common`; `UrlReaderService` from `@backstage/backend-plugin-api`.
 - Produces: `standardUrlFor(practice: Entity): string | undefined` and `loadStandard(reader: UrlReaderService, url: string): Promise<Standard>` (rejects on unreadable or malformed input).
+
+- [ ] **Step 0: Move the shape check into `gildi-common`**
+
+Lift the structural half of `scripts/lib/standard-shape.ts` into `plugins/gildi-common/src/standard.ts` as `validateStandardShape(root: unknown): StandardIssue[]`, exported from the package index. It checks exactly what that validator checks today minus anything touching the filesystem: standard `id` and `aspect` present, at least one block, each block with an `id` and a non-empty `appliesTo` of non-empty non-padded strings, each trial with `id`/`rule`/`artifact`/`factSource`/`remediation`, and any `check` being a mapping whose `type` is an unpadded member of `CHECK_TYPES` with a non-empty `value`.
+
+Then have `scripts/lib/standard-shape.ts` call it and append only its filesystem findings — remediation resolves, is a file, and does not escape the module. Its existing tests must pass unchanged; if any expectation moves, the lift changed behaviour and should be corrected rather than the test.
+
+Run: `bash scripts/ws test leidangr`
+Expected: PASS, including every pre-existing `standard-shape` case.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -341,7 +376,7 @@ describe('standardUrlFor', () => {
 
   it('is undefined when the practice declares no standard', () => {
     // Not an error: the seeded security practice has no standard annotation,
-    // and its trials become unmeasured rather than the run failing.
+    // and the run is recorded as unevaluated{no-standard} rather than failing.
     expect(
       standardUrlFor(
         practice({
@@ -392,7 +427,32 @@ standard:
     // failure to read the file. See design §7.
     await expect(
       loadStandard(readerReturning('something: else'), 'https://example.com/standard.yaml'),
-    ).rejects.toThrow(/no standard/i);
+    ).rejects.toThrow(/invalid standard/i);
+  });
+
+  // Shape faults reach us the same way a missing file does. A standard whose
+  // blocks are malformed would otherwise be cast to Standard and throw later,
+  // deep inside facet filtering, where the message says nothing useful.
+  it('rejects a standard whose shape is wrong, naming the fault', async () => {
+    await expect(
+      loadStandard(
+        readerReturning(`
+standard:
+  id: website-hygiene
+  blocks:
+    - id: build
+      appliesTo: [web-ui]
+      trials:
+        - id: t
+          rule: r
+          artifact: a
+          factSource: repo-files
+          check: { type: file-contins, value: x }
+          remediation: ./f.md
+`),
+        'https://example.com/standard.yaml',
+      ),
+    ).rejects.toThrow(/unknown check type file-contins/);
   });
 
   it('rejects malformed YAML', async () => {
@@ -463,11 +523,24 @@ export async function loadStandard(
   const response = await reader.readUrl(url);
   const body = (await response.buffer()).toString('utf8');
   const root = parse(body)?.standard;
-  if (!root || typeof root !== 'object' || !Array.isArray(root.blocks)) {
-    throw new Error(`no standard found at ${url}`);
+
+  // The SHARED shape check, not a second opinion about it. Rejecting on the
+  // same rules scripts/lib enforces means a standard that passes CI cannot
+  // then be refused here, and one that is malformed cannot slip through here
+  // after being caught there.
+  const issues = validateStandardShape(root);
+  if (issues.length > 0) {
+    const summary = issues.map(i => `${i.trial}: ${i.problem}`).join(', ');
+    throw new Error(`invalid standard at ${url} — ${summary}`);
   }
   return root as Standard;
 }
+```
+
+Add the import at the top of the same file:
+
+```ts
+import { validateStandardShape } from '@siliconsaga/plugin-gildi-common';
 ```
 
 - [ ] **Step 4: Run tests**
@@ -489,7 +562,7 @@ add:
 
 `loadStandard` throws rather than returning a partial standard, and that is the load-bearing decision. A hollow object produces an empty applicable set, and an empty applicable set derives medal `none` — a confident verdict about a component built on our own failure to read the file. The caller turns the rejection into an unevaluated run instead.
 
-A practice with no standard annotation is not an error. The seeded security practice has none, and its trials resolve to unmeasured rather than failing the run.
+A practice with no standard annotation is not an error. The seeded security practice has none, and the run is recorded as unevaluated with reason `no-standard` and no outcomes — not as a set of unmeasured trials, because without a standard we never learned what the trials were.
 ```
 
 Run: `bash scripts/ws commit leidangr .commits/gildi-backend-standard.md`
@@ -671,6 +744,13 @@ export interface ResolverContext {
   /** The adopting repository's directory URL, absent when undeterminable. */
   sourceUrl?: string;
   reader: UrlReaderService;
+  /**
+   * Aborted when the trial's budget expires. Resolvers MUST pass it to every
+   * request they make: without it a timed-out trial is only abandoned, not
+   * stopped, and its HTTP request keeps running against a rate limit nobody is
+   * waiting on. `Promise.race` ends the wait, not the work.
+   */
+  signal?: AbortSignal;
 }
 
 /**
@@ -727,7 +807,11 @@ export const repoFilesResolver: Resolver = {
     let body: string;
     try {
       const base = ctx.sourceUrl.endsWith('/') ? ctx.sourceUrl : `${ctx.sourceUrl}/`;
-      const response = await ctx.reader.readUrl(new URL(trial.artifact, base).toString());
+      // signal forwarded so the budget actually stops the request, not just
+      // the wait for it.
+      const response = await ctx.reader.readUrl(new URL(trial.artifact, base).toString(), {
+        signal: ctx.signal,
+      });
       body = (await response.buffer()).toString('utf8');
     } catch (err) {
       if (isNotFound(err)) {
@@ -1226,20 +1310,29 @@ export interface EvaluateInput {
 // detail says what to do about it.
 export const TRIAL_TIMEOUT_MS = 5 * 60 * 1000;
 
-function withTimeout<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+// Races the budget AND aborts the work. Promise.race alone only stops waiting:
+// the resolver's HTTP request would keep running, spending rate limit on an
+// answer nobody will read, and at hourly sweeps those accumulate.
+function withTimeout<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  ms: number,
+  label: string,
+): Promise<T> {
+  const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
   const expiry = new Promise<never>((_resolve, reject) => {
-    timer = setTimeout(
-      () =>
-        reject(
-          new Error(
-            `${label} exceeded ${ms}ms. A trial should read one artifact and compare one value — make it smaller or faster rather than raising this budget.`,
-          ),
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(
+        new Error(
+          `${label} exceeded ${ms}ms. A trial should read one artifact and compare one value — make it smaller or faster rather than raising this budget.`,
         ),
-      ms,
-    );
+      );
+    }, ms);
   });
-  return Promise.race([work, expiry]).finally(() => clearTimeout(timer)) as Promise<T>;
+  return Promise.race([run(controller.signal), expiry]).finally(() =>
+    clearTimeout(timer),
+  ) as Promise<T>;
 }
 
 export interface RunResult {
@@ -1291,7 +1384,7 @@ export async function evaluate(input: EvaluateInput): Promise<RunResult> {
       outcomes.push({
         trialId: trial.id,
         ...(await withTimeout(
-          resolver.answer(trial, ctx),
+          signal => resolver.answer(trial, { ...ctx, signal }),
           input.timeoutMs ?? TRIAL_TIMEOUT_MS,
           `trial ${trial.id}`,
         )),
@@ -1568,13 +1661,37 @@ describe('DatabaseTrialResultStore', () => {
       expect(kept[0].kind).toBe('unevaluated');
     });
 
-    it('still caps the total, so history cannot grow without bound', async () => {
+    // The cap must order by RUN TIME, not row id. Appending oldest-last makes
+    // insertion order the reverse of chronological order, so a cap that sorts
+    // by id keeps exactly the wrong two. Asserting the count alone would pass
+    // either way, which is how this went unnoticed the first time.
+    it('caps to the NEWEST runs even when they were inserted oldest-last', async () => {
       const s = await store();
-      for (const day of [10, 20, 30, 40]) {
+      await s.append(run({ runAt: ago(10, 1), medal: 'gold' }));
+      await s.append(run({ runAt: ago(20, 1), medal: 'silver' }));
+      await s.append(run({ runAt: ago(30, 1), medal: 'bronze' }));
+      await s.append(run({ runAt: ago(40, 1), medal: 'none' }));
+
+      await s.prune({ keep: 2, hourlyDays: 7 });
+
+      const kept = await s.history('component:default/site', 'website-hygiene');
+      expect(kept).toHaveLength(2);
+      expect(kept.map(r => r.medal)).toEqual(['gold', 'silver']);
+    });
+
+    it('does not delete a run appended while it is working', async () => {
+      // A refresh can land mid-prune. The new row is not in the survivor
+      // snapshot, and without an id ceiling the delete would take it.
+      const s = await store();
+      for (const day of [10, 20, 30]) {
         await s.append(run({ runAt: ago(day, 1), medal: 'gold' }));
       }
-      await s.prune({ keep: 2, hourlyDays: 7 });
-      expect(await s.history('component:default/site', 'website-hygiene')).toHaveLength(2);
+      const pruning = s.prune({ keep: 1, hourlyDays: 7 });
+      await s.append(run({ runAt: new Date().toISOString(), medal: 'silver' }));
+      await pruning;
+
+      const kept = await s.history('component:default/site', 'website-hygiene');
+      expect(kept.some(r => r.medal === 'silver')).toBe(true);
     });
 
     it('leaves other subjects untouched', async () => {
@@ -1740,13 +1857,18 @@ export class DatabaseTrialResultStore implements TrialResultStore {
           { column: 'id', order: 'desc' },
         ]);
 
-      const survivors: number[] = [];
+      // Survivors carry their timestamp, because the cap below must order by
+      // RUN TIME and not by row id. `runAt` is caller-supplied, so insertion
+      // order and chronological order are not the same thing — capping by id
+      // silently keeps the oldest runs when history is backfilled or a refresh
+      // races a sweep.
+      const survivors: Array<{ id: number; at: number }> = [];
       const bestOfDay = new Map<string, Record<string, unknown>>();
 
       for (const row of rows) {
         const at = new Date(row.run_at as string).getTime();
         if (at >= cutoff) {
-          survivors.push(Number(row.id));
+          survivors.push({ id: Number(row.id), at });
           continue;
         }
         const day = new Date(at).toISOString().slice(0, 10);
@@ -1756,19 +1878,28 @@ export class DatabaseTrialResultStore implements TrialResultStore {
         }
       }
       for (const row of bestOfDay.values()) {
-        survivors.push(Number(row.id));
+        survivors.push({ id: Number(row.id), at: new Date(row.run_at as string).getTime() });
       }
 
-      // Hard cap last, oldest first, so a very long history still cannot grow
+      // Hard cap last, newest first, so a very long history still cannot grow
       // without bound however the tiers fall.
       const capped = survivors
-        .sort((a, b) => b - a)
-        .slice(0, opts.keep);
+        .sort((a, b) => b.at - a.at || b.id - a.id)
+        .slice(0, opts.keep)
+        .map(s2 => s2.id);
 
-      removed += await this.db(TABLE)
-        .where({ entity_ref: s.entity_ref, aspect_id: s.aspect_id })
-        .whereNotIn('id', capped)
-        .delete();
+      // Deleted inside a transaction, bounded to rows that existed when the
+      // snapshot was taken. A refresh can append while this runs, and without
+      // the id ceiling that brand-new row is absent from `capped` and would be
+      // deleted — losing the very run someone just asked for.
+      await this.db.transaction(async tx => {
+        const ceiling = rows.length ? Math.max(...rows.map(r => Number(r.id))) : 0;
+        removed += await tx(TABLE)
+          .where({ entity_ref: s.entity_ref, aspect_id: s.aspect_id })
+          .where('id', '<=', ceiling)
+          .whereNotIn('id', capped)
+          .delete();
+      });
     }
     return removed;
   }
@@ -1858,6 +1989,7 @@ export function eventsFor(runsNewestFirst: TrialRun[]): HistoryEvent[] {
   const events: HistoryEvent[] = [];
   const seenMedals = new Set<string>();
   let release: string | undefined;
+  let heldMedal: string | undefined;
 
   for (const run of runs) {
     if (run.moduleRelease && run.moduleRelease !== release) {
@@ -1871,17 +2003,26 @@ export function eventsFor(runsNewestFirst: TrialRun[]): HistoryEvent[] {
       }
       release = run.moduleRelease;
     }
+
     // `none` is a real verdict but not an earned medal, and a suppressed run
     // has medal null — neither is a moment worth marking on a chart.
-    if (run.medal && run.medal !== 'none') {
+    const medal = run.medal && run.medal !== 'none' ? run.medal : undefined;
+
+    // TRANSITIONS, not occurrences. Emitting per run would put twenty-four
+    // identical "earned gold" marks on a day where nothing happened, burying
+    // the one day it changed. `heldMedal` tracks what the component currently
+    // holds, so losing gold and regaining it is two events while holding it is
+    // none.
+    if (medal && medal !== heldMedal) {
       events.push({
         type: 'medal-earned',
         at: run.runAt,
-        medal: run.medal,
-        first: !seenMedals.has(run.medal),
+        medal,
+        first: !seenMedals.has(medal),
       });
-      seenMedals.add(run.medal);
+      seenMedals.add(medal);
     }
+    heldMedal = medal;
   }
   return events;
 }
@@ -1967,7 +2108,7 @@ describe('eventsFor', () => {
     ]);
   });
 
-  it('marks a medal the first time and flags re-earning', () => {
+  it('marks a medal the first time and flags re-earning after losing it', () => {
     const events = eventsFor([
       run({ runAt: '2026-09-03T00:00:00.000Z', medal: 'gold' }),
       run({ runAt: '2026-09-02T00:00:00.000Z', medal: null }),
@@ -1977,6 +2118,28 @@ describe('eventsFor', () => {
       { type: 'medal-earned', at: '2026-09-01T00:00:00.000Z', medal: 'gold', first: true },
       { type: 'medal-earned', at: '2026-09-03T00:00:00.000Z', medal: 'gold', first: false },
     ]);
+  });
+
+  // TRANSITIONS, not occurrences. At hourly sweeps a steady component would
+  // otherwise collect twenty-four identical marks a day, burying the one day
+  // its medal actually changed.
+  it('emits nothing further while a medal is simply held', () => {
+    const events = eventsFor([
+      run({ runAt: '2026-09-03T00:00:00.000Z', medal: 'gold' }),
+      run({ runAt: '2026-09-02T00:00:00.000Z', medal: 'gold' }),
+      run({ runAt: '2026-09-01T00:00:00.000Z', medal: 'gold' }),
+    ]);
+    expect(events.filter(e => e.type === 'medal-earned')).toEqual([
+      { type: 'medal-earned', at: '2026-09-01T00:00:00.000Z', medal: 'gold', first: true },
+    ]);
+  });
+
+  it('treats an upgrade as its own transition', () => {
+    const events = eventsFor([
+      run({ runAt: '2026-09-02T00:00:00.000Z', medal: 'gold' }),
+      run({ runAt: '2026-09-01T00:00:00.000Z', medal: 'silver' }),
+    ]);
+    expect(events.map(e => e.medal)).toEqual(['silver', 'gold']);
   });
 
   it('does not treat none or a suppressed run as an earned medal', () => {
@@ -2008,6 +2171,11 @@ import {
 import { catalogServiceRef } from '@backstage/plugin-catalog-node';
 import { ANNOTATION_SOURCE_LOCATION, parseLocationRef } from '@backstage/catalog-model';
 import type { Entity } from '@backstage/catalog-model';
+import {
+  DefaultGithubCredentialsProvider,
+  ScmIntegrations,
+} from '@backstage/integration';
+import { Octokit } from '@octokit/rest';
 import { evaluate } from './evaluate';
 import { resolverFor } from './resolvers/registry';
 import { loadStandard, standardUrlFor } from './standard';
@@ -2026,6 +2194,16 @@ const MODULE_RELEASE = 'siliconsaga.org/module-release';
 const RUNS_KEPT_PER_SUBJECT = 500;
 const HOURLY_RETENTION_DAYS = 7;
 
+// `https://github.com/owner/repo/tree/main/` -> { owner, repo }. The Pages API
+// needs the slug, and the source location is a tree URL rather than a repo URL.
+function parseGithubSlug(sourceUrl: string): { owner: string; repo: string } {
+  const [, owner, repo] = new URL(sourceUrl).pathname.split('/');
+  if (!owner || !repo) {
+    throw new Error(`cannot parse an owner and repo from ${sourceUrl}`);
+  }
+  return { owner, repo };
+}
+
 const sourceUrlOf = (entity: Entity): string | undefined => {
   const raw = entity.metadata.annotations?.[ANNOTATION_SOURCE_LOCATION];
   if (!raw) return undefined;
@@ -2041,6 +2219,7 @@ export const gildiPlugin = createBackendPlugin({
   register(env) {
     env.registerInit({
       deps: {
+        config: coreServices.rootConfig,
         logger: coreServices.logger,
         database: coreServices.database,
         scheduler: coreServices.scheduler,
@@ -2050,8 +2229,38 @@ export const gildiPlugin = createBackendPlugin({
         reader: coreServices.urlReader,
         catalog: catalogServiceRef,
       },
-      async init({ logger, database, scheduler, httpRouter, httpAuth, auth, reader, catalog }) {
+      async init({ config, logger, database, scheduler, httpRouter, httpAuth, auth, reader, catalog }) {
         const store = await DatabaseTrialResultStore.create(database);
+
+        // WITHOUT THIS THE FEATURE NEVER AWARDS A MEDAL. pages-source-is-gh-pages
+        // applies to every website component, and a resolver with no way to ask
+        // returns unmeasured — which suppresses the medal. One unwired lookup
+        // therefore suppresses every medal in the catalog, permanently and
+        // silently. The resolver was built with the lookup on its context to
+        // stay testable, and this is where that context gets filled in.
+        const integrations = ScmIntegrations.fromConfig(config);
+        const githubCredentials = DefaultGithubCredentialsProvider.fromIntegrations(integrations);
+
+        const pagesSourceBranch = async (sourceUrl: string): Promise<string | undefined> => {
+          const { owner, repo } = parseGithubSlug(sourceUrl);
+          const { token } = await githubCredentials.getCredentials({ url: sourceUrl });
+          const octokit = new Octokit({
+            auth: token,
+            baseUrl: integrations.github.byUrl(sourceUrl)?.config.apiBaseUrl,
+          });
+          try {
+            const { data } = await octokit.rest.repos.getPages({ owner, repo });
+            return data.source?.branch;
+          } catch (err) {
+            // 404 means Pages is NOT CONFIGURED, which is an answer the trial
+            // can act on rather than an error. Anything else genuinely failed
+            // and must reach the resolver as one.
+            if ((err as { status?: number }).status === 404) {
+              return undefined;
+            }
+            throw err;
+          }
+        };
 
         // One entity, one aspect, one run row. Shared by the scheduled sweep
         // and the refresh endpoint so both paths cannot drift.
@@ -2088,6 +2297,7 @@ export const gildiPlugin = createBackendPlugin({
             reader,
             moduleRelease: practice?.metadata.annotations?.[MODULE_RELEASE],
             resolverFor,
+            pagesSourceBranch,
           });
 
           const v = result.verdict;
@@ -2128,9 +2338,22 @@ export const gildiPlugin = createBackendPlugin({
             // Small fixed concurrency rather than Promise.all over
             // every component, so the sweep cannot saturate the GitHub API or
             // the event loop as adoption grows.
+            // The scheduler's `timeout` releases the task but does not stop
+            // `fn`, so without a deadline of our own the workers keep draining
+            // after the scheduler has already considered this sweep finished —
+            // and the next invocation overlaps with it. Checked before
+            // admitting work rather than mid-flight, so a run in progress is
+            // never abandoned half-recorded.
+            const sweepDeadline = Date.now() + 9 * 60 * 1000;
             const queue = [...enrolled];
             const worker = async () => {
               for (let e = queue.shift(); e; e = queue.shift()) {
+                if (Date.now() > sweepDeadline) {
+                  logger.warn(
+                    `gildi: sweep deadline reached, ${queue.length + 1} components deferred to the next run`,
+                  );
+                  return;
+                }
                 const ref = `component:${e.metadata.namespace ?? 'default'}/${e.metadata.name}`;
                 for (const aspectId of (e.metadata.annotations?.[ASPECTS] ?? '')
                   .split(',')
@@ -2149,12 +2372,18 @@ export const gildiPlugin = createBackendPlugin({
             // Retention runs with the sweep rather than on its own schedule:
             // it only has work to do when rows were just added, and one task is
             // one thing to reason about. Design §8.
-            const removed = await store.prune({
-              keep: RUNS_KEPT_PER_SUBJECT,
-              hourlyDays: HOURLY_RETENTION_DAYS,
-            });
-            if (removed > 0) {
-              logger.info(`gildi: pruned ${removed} old trial runs`);
+            // Skipped when the sweep ran out of time: pruning against a
+            // half-finished sweep is not wrong, but the next run will do it
+            // with a complete picture and there is no value in racing the
+            // scheduler for it.
+            if (Date.now() <= sweepDeadline) {
+              const removed = await store.prune({
+                keep: RUNS_KEPT_PER_SUBJECT,
+                hourlyDays: HOURLY_RETENTION_DAYS,
+              });
+              if (removed > 0) {
+                logger.info(`gildi: pruned ${removed} old trial runs`);
+              }
             }
           },
         });
@@ -2290,18 +2519,12 @@ import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
 import type { Medal } from '@siliconsaga/plugin-gildi-common';
 import useAsync from 'react-use/lib/useAsync';
 
-export interface TrialRunView {
-  kind: 'evaluated' | 'unevaluated';
-  runAt: string;
-  moduleRelease?: string;
-  medal: string | null;
-  suppressedReasons: string[] | null;
-  applicable: number | null;
-  passing: number | null;
-  outcomes: Array<{ trialId: string; state: string; reason?: string; detail?: string }> | null;
-  unevaluatedReason?: string;
-  unevaluatedDetail?: string;
-}
+// The SAME type the backend serialises, imported rather than restated. A
+// hand-copied mirror of a response shape drifts silently on the first rename,
+// and the card would keep compiling while reading a field that no longer
+// exists. Move `TrialRun` and `TrialOutcomeRow` from gildi-backend's store.ts
+// into gildi-common as part of this task, and have the store import them.
+export type { TrialRun as TrialRunView } from '@siliconsaga/plugin-gildi-common';
 
 /**
  * The medal to render, or undefined when there is none TO render.
