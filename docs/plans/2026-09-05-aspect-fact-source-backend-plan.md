@@ -18,7 +18,7 @@
 - **An unreadable `standard.yaml` is `unevaluatedVerdict('no-standard')`, never `verdictFor([])`** (design §7). The latter yields a confident `none`.
 - **Failure is isolated per resolver** (design §7): a throwing resolver marks only its own trials `unmeasured{error}`.
 - Store is **append-only, one row per run**, with `applicable`/`passing` **null, not zero**, on an unevaluated run (design §8).
-- Bounded from day one: a **concurrency limit** across entities and a **per-run timeout** (design §7).
+- Bounded from day one (design §7), at **two** levels that do different jobs: a **per-trial timeout** so one slow trial cannot stretch a run and says so in terms its author can act on, and a **sweep concurrency limit** so the fleet cannot saturate the GitHub API as adoption grows.
 - **Commit via `ws commit`, never raw `git commit`.** Bodyfile paths relative to yggdrasil root; `add:` paths relative to component root.
 - Avoid semicolons in commit bodies and CR text — the permission hook flags them in quoted prose.
 - **Move files with plain `mv`, never `git mv`** — a hook rejects it; list both paths under `add:`.
@@ -1148,6 +1148,29 @@ describe('evaluate', () => {
     expect(result.verdict).toMatchObject({ kind: 'medal', medal: 'gold', applicable: 1, passing: 1 });
   });
 
+  // A hanging resolver must not stretch the run, and the message has to tell
+  // the trial's author what to do. Unmeasured rather than fail: we never got an
+  // answer, so blaming the component would be the wrong way round.
+  it('bounds a hanging trial and says how to fix it', async () => {
+    const result = await evaluate({
+      ...base,
+      standard: STANDARD,
+      timeoutMs: 20,
+      resolverFor: kind =>
+        kind === 'repo-files'
+          ? { answer: () => new Promise(() => {}) as Promise<never> }
+          : undefined,
+    });
+    expect(result.outcomes[0]).toMatchObject({
+      trialId: 'a',
+      state: 'unmeasured',
+      reason: 'error',
+    });
+    expect(result.outcomes[0].detail).toMatch(/smaller or faster/);
+    // The other trial still got its answer.
+    expect(result.outcomes).toHaveLength(2);
+  });
+
   it('marks every trial unmeasured when told the resolver set is empty', async () => {
     const result = await evaluate({
       ...base,
@@ -1192,6 +1215,31 @@ export interface EvaluateInput {
   moduleRelease?: string;
   resolverFor: (factSource: string) => Resolver | undefined;
   pagesSourceBranch?: ResolverContext['pagesSourceBranch'];
+  /** Per-trial budget. Defaults to TRIAL_TIMEOUT_MS. */
+  timeoutMs?: number;
+}
+
+// A trial is meant to be small: read one artifact, compare one value. Five
+// minutes is not a performance target, it is the point past which the trial is
+// the problem rather than the network. Bounding each trial rather than only the
+// sweep means one slow resolver cannot stretch every component's run, and the
+// detail says what to do about it.
+export const TRIAL_TIMEOUT_MS = 5 * 60 * 1000;
+
+function withTimeout<T>(work: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const expiry = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(
+      () =>
+        reject(
+          new Error(
+            `${label} exceeded ${ms}ms. A trial should read one artifact and compare one value — make it smaller or faster rather than raising this budget.`,
+          ),
+        ),
+      ms,
+    );
+  });
+  return Promise.race([work, expiry]).finally(() => clearTimeout(timer)) as Promise<T>;
 }
 
 export interface RunResult {
@@ -1232,10 +1280,22 @@ export async function evaluate(input: EvaluateInput): Promise<RunResult> {
       });
       continue;
     }
-    // Isolated per trial: a throwing resolver marks only its own and never
-    // takes the rest of the run with it. Design §7.
+    // Isolated per trial, and BOUNDED per trial: a throwing or hanging resolver
+    // marks only its own and never takes the rest of the run with it. Design §7.
+    //
+    // A timeout is unmeasured{error}, NOT fail. We never got an answer, and
+    // calling that a failure would blame the component for our slow resolver —
+    // the same inversion as treating a missing resolver as a failing trial. The
+    // actionable message rides in the detail, where the trial's author reads it.
     try {
-      outcomes.push({ trialId: trial.id, ...(await resolver.answer(trial, ctx)) });
+      outcomes.push({
+        trialId: trial.id,
+        ...(await withTimeout(
+          resolver.answer(trial, ctx),
+          input.timeoutMs ?? TRIAL_TIMEOUT_MS,
+          `trial ${trial.id}`,
+        )),
+      });
     } catch (err) {
       outcomes.push({ trialId: trial.id, ...unmeasured('error', String(err)) });
     }
@@ -1454,23 +1514,76 @@ describe('DatabaseTrialResultStore', () => {
     });
   });
 
-  // RETENTION. Append-only grows without bound, so something has to trim it
-  // (design §8). Keeping the newest N per subject rather than by age, because
-  // a component swept hourly and one swept once a year both deserve a usable
-  // history.
-  it('prunes to the newest N per subject, keeping other subjects intact', async () => {
-    const s = await store();
-    for (const hour of ['10', '11', '12', '13']) {
-      await s.append(run({ runAt: `2026-09-05T${hour}:00:00.000Z`, medal: 'gold' }));
-    }
-    await s.append(run({ entityRef: 'component:default/other', medal: 'bronze' }));
+  // RETENTION, two-tier (design §8). Recent runs stay at full resolution and
+  // older days collapse to one, so a fixed row budget reaches most of a year
+  // instead of three weeks.
+  describe('prune', () => {
+    const ago = (days: number, hour: number) =>
+      new Date(Date.now() - days * 86_400_000 + hour * 3_600_000).toISOString();
 
-    await s.prune(2);
+    it('keeps every run inside the hourly window', async () => {
+      const s = await store();
+      for (const hour of [0, 1, 2, 3]) {
+        await s.append(run({ runAt: ago(1, hour), medal: 'gold' }));
+      }
+      await s.prune({ keep: 500, hourlyDays: 7 });
+      expect(await s.history('component:default/site', 'website-hygiene')).toHaveLength(4);
+    });
 
-    const kept = await s.history('component:default/site', 'website-hygiene');
-    expect(kept).toHaveLength(2);
-    expect(kept[0].runAt).toBe('2026-09-05T13:00:00.000Z');
-    expect(await s.history('component:default/other', 'website-hygiene')).toHaveLength(1);
+    // THE ONE THAT MATTERS. Beyond the window a day collapses to its WORST run,
+    // not its newest — otherwise an outage that recovered before midnight
+    // disappears from the chart entirely, which is the day a reader is looking
+    // for.
+    it('collapses an older day to its worst run, not its latest', async () => {
+      const s = await store();
+      await s.append(run({ runAt: ago(30, 1), medal: 'gold' }));
+      await s.append(run({ runAt: ago(30, 2), medal: 'bronze' }));
+      await s.append(run({ runAt: ago(30, 3), medal: 'gold' }));
+
+      await s.prune({ keep: 500, hourlyDays: 7 });
+
+      const kept = await s.history('component:default/site', 'website-hygiene');
+      expect(kept).toHaveLength(1);
+      expect(kept[0].medal).toBe('bronze');
+    });
+
+    it('ranks an unevaluated day as worse than any medal', async () => {
+      const s = await store();
+      await s.append(run({ runAt: ago(30, 1), medal: 'gold' }));
+      await s.append(
+        run({
+          runAt: ago(30, 2),
+          kind: 'unevaluated',
+          medal: null,
+          applicable: null,
+          passing: null,
+          outcomes: null,
+          unevaluatedReason: 'no-standard',
+        }),
+      );
+      await s.prune({ keep: 500, hourlyDays: 7 });
+
+      const kept = await s.history('component:default/site', 'website-hygiene');
+      expect(kept).toHaveLength(1);
+      expect(kept[0].kind).toBe('unevaluated');
+    });
+
+    it('still caps the total, so history cannot grow without bound', async () => {
+      const s = await store();
+      for (const day of [10, 20, 30, 40]) {
+        await s.append(run({ runAt: ago(day, 1), medal: 'gold' }));
+      }
+      await s.prune({ keep: 2, hourlyDays: 7 });
+      expect(await s.history('component:default/site', 'website-hygiene')).toHaveLength(2);
+    });
+
+    it('leaves other subjects untouched', async () => {
+      const s = await store();
+      await s.append(run({ runAt: ago(30, 1) }));
+      await s.append(run({ runAt: ago(30, 2), entityRef: 'component:default/other' }));
+      await s.prune({ keep: 500, hourlyDays: 7 });
+      expect(await s.history('component:default/other', 'website-hygiene')).toHaveLength(1);
+    });
   });
 });
 ```
@@ -1518,8 +1631,8 @@ export interface TrialResultStore {
   append(run: TrialRun): Promise<void>;
   latest(entityRef: string, aspectId: string): Promise<TrialRun | undefined>;
   history(entityRef: string, aspectId: string, limit?: number): Promise<TrialRun[]>;
-  /** Keep only the newest `keep` runs per subject. */
-  prune(keep: number): Promise<number>;
+  /** Two-tier retention. Returns how many rows were removed. */
+  prune(opts: { keep: number; hourlyDays: number }): Promise<number>;
 }
 
 const TABLE = 'gildi_trial_runs';
@@ -1602,32 +1715,74 @@ export class DatabaseTrialResultStore implements TrialResultStore {
   }
 
   /**
-   * Keep the newest `keep` runs per (entity, aspect) and delete the rest.
+   * Two-tier retention: full resolution recently, one run per day beyond that.
    *
-   * By COUNT rather than by age, deliberately. A time-based cutoff gives a
-   * component swept hourly a rich history and one swept rarely nothing at all,
-   * which is backwards — the infrequent one is where the chart matters most.
-   * Returns how many rows were removed so the caller can log it.
+   * Flat count retention does not stretch far enough to be useful. At hourly
+   * sweeps, 500 rows is under three weeks — shorter than the window in which
+   * "when did this break" is usually asked. Keeping every run for a week and
+   * then one per day makes the same 500 rows reach most of a year.
+   *
+   * The survivor for an older day is the WORST run of that day, not the newest.
+   * A day where the medal dropped or the run could not be evaluated is the day
+   * worth seeing on the chart, and keeping the last run of the day would hide
+   * an outage that recovered before midnight.
    */
-  async prune(keep: number): Promise<number> {
+  async prune(opts: { keep: number; hourlyDays: number }): Promise<number> {
+    const cutoff = Date.now() - opts.hourlyDays * 24 * 60 * 60 * 1000;
     const subjects = await this.db(TABLE).distinct('entity_ref', 'aspect_id');
     let removed = 0;
+
     for (const s of subjects) {
-      const survivors = await this.db(TABLE)
+      const rows: Array<Record<string, unknown>> = await this.db(TABLE)
         .where({ entity_ref: s.entity_ref, aspect_id: s.aspect_id })
         .orderBy([
           { column: 'run_at', order: 'desc' },
           { column: 'id', order: 'desc' },
-        ])
-        .limit(keep)
-        .pluck('id');
+        ]);
+
+      const survivors: number[] = [];
+      const bestOfDay = new Map<string, Record<string, unknown>>();
+
+      for (const row of rows) {
+        const at = new Date(row.run_at as string).getTime();
+        if (at >= cutoff) {
+          survivors.push(Number(row.id));
+          continue;
+        }
+        const day = new Date(at).toISOString().slice(0, 10);
+        const held = bestOfDay.get(day);
+        if (!held || rankOf(row) < rankOf(held)) {
+          bestOfDay.set(day, row);
+        }
+      }
+      for (const row of bestOfDay.values()) {
+        survivors.push(Number(row.id));
+      }
+
+      // Hard cap last, oldest first, so a very long history still cannot grow
+      // without bound however the tiers fall.
+      const capped = survivors
+        .sort((a, b) => b - a)
+        .slice(0, opts.keep);
+
       removed += await this.db(TABLE)
         .where({ entity_ref: s.entity_ref, aspect_id: s.aspect_id })
-        .whereNotIn('id', survivors)
+        .whereNotIn('id', capped)
         .delete();
     }
     return removed;
   }
+}
+
+// Lower is worse. Unevaluated ranks below suppressed, and both below `none`:
+// `none` is at least a measurement, while the other two mean the run could not
+// say. On a downsampled chart the reader wants the day something went wrong,
+// not the day's tidiest number.
+function rankOf(row: Record<string, unknown>): number {
+  if (row.kind === 'unevaluated') return 0;
+  const medal = row.medal as string | null;
+  if (!medal) return 1; // suppressed
+  return { none: 2, bronze: 3, silver: 4, gold: 5 }[medal] ?? 2;
 }
 ```
 
@@ -1863,11 +2018,13 @@ const ASPECTS = 'siliconsaga.org/aspects';
 const ASPECT = 'siliconsaga.org/aspect';
 const MODULE_RELEASE = 'siliconsaga.org/module-release';
 
-// Enough history to chart a year of hourly sweeps' worth of CHANGES, which is
-// what a reader actually looks at, without the table growing without bound.
-// Not configurable yet: one number nobody has needed to tune beats a config key
-// with a single legal value.
+// Two tiers, sized so a fixed row budget covers most of a year rather than
+// three weeks. A week at full hourly resolution is 168 rows, and every day
+// beyond that costs one more — so 500 reaches roughly eleven months. A flat
+// count at hourly resolution would run out after twenty days, which is inside
+// the window where "when did this break" is usually asked.
 const RUNS_KEPT_PER_SUBJECT = 500;
+const HOURLY_RETENTION_DAYS = 7;
 
 const sourceUrlOf = (entity: Entity): string | undefined => {
   const raw = entity.metadata.annotations?.[ANNOTATION_SOURCE_LOCATION];
@@ -1965,7 +2122,10 @@ export const gildiPlugin = createBackendPlugin({
             const credentials = await auth.getOwnServiceCredentials();
             const { items } = await catalog.getEntities({ filter: { kind: 'Component' } }, { credentials });
             const enrolled = items.filter(e => e.metadata.annotations?.[ASPECTS]);
-            // Bounded: a small fixed concurrency rather than Promise.all over
+            // Fleet-level bound, distinct from the per-trial timeout in
+            // evaluate.ts: that one stops a slow trial stretching a run, this
+            // one stops N components' worth of GitHub calls going out at once.
+            // Small fixed concurrency rather than Promise.all over
             // every component, so the sweep cannot saturate the GitHub API or
             // the event loop as adoption grows.
             const queue = [...enrolled];
@@ -1989,7 +2149,10 @@ export const gildiPlugin = createBackendPlugin({
             // Retention runs with the sweep rather than on its own schedule:
             // it only has work to do when rows were just added, and one task is
             // one thing to reason about. Design §8.
-            const removed = await store.prune(RUNS_KEPT_PER_SUBJECT);
+            const removed = await store.prune({
+              keep: RUNS_KEPT_PER_SUBJECT,
+              hourlyDays: HOURLY_RETENTION_DAYS,
+            });
             if (removed > 0) {
               logger.info(`gildi: pruned ${removed} old trial runs`);
             }
@@ -2226,7 +2389,8 @@ Run: `bash scripts/ws commit leidangr .commits/gildi-use-component-trials.md`
 - `make -C components/leidangr smoke-catalog` still passes 37/37 with the plugin wired in.
 - Both negative controls were **proven to fail** when inverted: the near-miss `uses:` match, and `verdictFor([])` substituted for the unevaluated run.
 - A run row can be appended, read back, and does not overwrite its predecessor.
-- `prune` keeps the newest N per subject and leaves other subjects untouched.
+- `prune` keeps the hourly window intact, collapses older days to their **worst** run, and still caps the total.
+- A hanging trial is bounded and reports `unmeasured{error}` with a message naming the trial, not `fail`.
 - `useComponentTrials` returns a medal for an evaluated run and undefined for a suppressed one.
 
 ## Not in this plan
