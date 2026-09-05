@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -42,14 +42,21 @@ function extractFunction(): string {
 
 function detects(logBody: string): boolean {
   const dir = mkdtempSync(join(tmpdir(), 'smoke-race-'));
-  const log = join(dir, 'backend.log').replace(/\\/g, '/');
-  writeFileSync(log, logBody, 'utf8');
-  const program = `${extractFunction()}\nLOG="${log}"\nstartup_race_lost`;
   try {
-    execFileSync('bash', ['-c', program], { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
+    const log = join(dir, 'backend.log').replace(/\\/g, '/');
+    writeFileSync(log, logBody, 'utf8');
+    const program = `${extractFunction()}\nLOG="${log}"\nstartup_race_lost`;
+    try {
+      execFileSync('bash', ['-c', program], { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  } finally {
+    // Every case here writes a directory, and there are eight of them per run.
+    // Cleaning up in finally rather than after the call so a thrown assertion
+    // does not leave one behind.
+    rmSync(dir, { recursive: true, force: true });
   }
 }
 
@@ -103,5 +110,24 @@ catalog info Full refresh of the catalog completed`),
   it('declines a DevDataStore mention with no startup failure', () => {
     // The store is used on healthy boots too, so its name alone proves nothing.
     expect(detects('debug DevDataStore.load loaded=true key=auth-keys')).toBe(false);
+  });
+
+  // The pair that the first version got wrong: BOTH halves present, but the
+  // DevDataStore line is ordinary activity rather than the timeout. Matching the
+  // store's name alone retried this and then blamed the environment for it,
+  // which is the exact misdiagnosis the function is supposed to prevent.
+  it('declines a startup failure that merely coincides with store activity', () => {
+    expect(
+      detects(`debug DevDataStore.load loaded=true key=auth-keys
+Backend startup failed due to the following errors:
+  Plugin 'catalog' startup failed; caused by Error: connect ECONNREFUSED 127.0.0.1:5432`),
+    ).toBe(false);
+  });
+
+  it('declines a DevDataStore failure that is not a timeout', () => {
+    expect(
+      detects(`Backend startup failed due to the following errors:
+  Error: IPC request 'DevDataStore.load' with ID 8 was rejected`),
+    ).toBe(false);
   });
 });

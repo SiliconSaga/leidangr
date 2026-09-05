@@ -48,6 +48,26 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# cleanup kills the process this script started, but the listener is a
+# GRANDCHILD — corepack spawns backstage-cli, which spawns the node backend —
+# and killing a parent does not guarantee the grandchild goes with it,
+# particularly on Windows. If the old listener survives, the retry cannot bind
+# and reports "never logged 'Listening on'", which is a misleading error of
+# exactly the kind this script exists to stop producing.
+#
+# curl is already a prerequisite, so no new dependency: a refused connection
+# means the port is free. Any HTTP response at all, 404 included, means
+# something is still holding it.
+wait_for_port_release() {
+  for _ in $(seq 1 30); do
+    if ! curl -s -o /dev/null --connect-timeout 1 "http://localhost:7007/" 2>/dev/null; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
 # Boot and wait for the port. Returns non-zero if it never listened at all,
 # which is a different failure from listening and then not ingesting.
 start_backend() {
@@ -86,7 +106,12 @@ start_backend() {
 # is the more durable half. Both are accepted so neither alone is load-bearing.
 startup_race_lost() {
   grep -qE "BackendStartupError|Backend startup failed" "$LOG" 2>/dev/null || return 1
-  grep -q "DevDataStore.load" "$LOG" 2>/dev/null
+  # The TIMEOUT, not merely the store's name. A healthy boot mentions
+  # DevDataStore too, so matching the name alone would retry any startup failure
+  # that happened to occur in a log where the store was also busy — and then
+  # report it as an environment problem on the second attempt, which is the
+  # precise misdiagnosis this function exists to prevent.
+  grep -qE "IPC request 'DevDataStore\.load'.* timed out" "$LOG" 2>/dev/null
 }
 
 hdr=(-H "Authorization: Bearer ${TOKEN}")
@@ -189,6 +214,13 @@ for attempt in 1 2; do
   echo "smoke-catalog: backend lost the DevDataStore IPC race on boot, retrying once."
   echo "  (a startup timing race, not a catalog problem — see startup_race_lost)"
   cleanup
+  if ! wait_for_port_release; then
+    echo "smoke-catalog FAIL: port 7007 is still bound 30s after cleanup." >&2
+    echo "  A backend from the first attempt outlived the process we killed, so" >&2
+    echo "  the retry could not bind. Kill the stray node process and re-run —" >&2
+    echo "  reported separately because it is a leak, not the startup race." >&2
+    exit 1
+  fi
 done
 
 # Field presence — a single-field substring is order-independent, so grep is fine.
