@@ -1,4 +1,8 @@
 import { resolvePackagePath, type DatabaseService } from '@backstage/backend-plugin-api';
+import type {
+  TrialOutcomeRow,
+  TrialRun,
+} from '@siliconsaga/plugin-gildi-common';
 
 // Derived from the service rather than imported from `knex` directly.
 // backend-plugin-api carries its own nested copy of knex, so importing the type
@@ -8,27 +12,14 @@ import { resolvePackagePath, type DatabaseService } from '@backstage/backend-plu
 // package needs no runtime knex dependency at all.
 type KnexClient = Awaited<ReturnType<DatabaseService['getClient']>>;
 
-export interface TrialOutcomeRow {
-  trialId: string;
-  state: string;
-  reason?: string;
-  detail?: string;
-}
-
-export interface TrialRun {
-  entityRef: string;
-  aspectId: string;
-  runAt: string;
-  kind: 'evaluated' | 'unevaluated';
-  moduleRelease?: string;
-  medal: string | null;
-  suppressedReasons: string[] | null;
-  applicable: number | null;
-  passing: number | null;
-  outcomes: TrialOutcomeRow[] | null;
-  unevaluatedReason?: string;
-  unevaluatedDetail?: string;
-}
+// Declared in gildi-common so the frontend reads exactly the shape this store
+// writes, rather than a hand-copied mirror that drifts on the first rename.
+// Re-exported here because this package's callers think of it as the store's
+// row and should not need to know where the declaration lives.
+export type {
+  TrialOutcomeRow,
+  TrialRun,
+} from '@siliconsaga/plugin-gildi-common';
 
 /**
  * The seam that lets the runner and the store be replaced independently later

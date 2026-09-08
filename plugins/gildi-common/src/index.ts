@@ -10,6 +10,8 @@ export type { Outcome, UnmeasuredReason } from './outcome';
 export { unevaluatedVerdict, verdictFor } from './verdict';
 export type { UnevaluatedReason, Verdict } from './verdict';
 
+export type { TrialOutcomeRow, TrialRun } from './run';
+
 export { CHECK_TYPES, validateStandardShape } from './standard';
 export type {
   Block,
