@@ -34,12 +34,12 @@
     "@octokit/rest": "^19.0.13",
     "@siliconsaga/plugin-gildi-common": "0.1.0",
     "express": "^4.22.2",
-    "knex": "^3.1.0",
     "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@backstage/cli": "^0.36.3",
-    "better-sqlite3": "^12.11.1"
+    "better-sqlite3": "^12.11.1",
+    "knex": "^3.1.0"
   },
   "files": [
     "dist",

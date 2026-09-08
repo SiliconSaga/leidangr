@@ -114,7 +114,10 @@ describe('evaluate', () => {
       state: 'unmeasured',
       reason: 'error',
     });
-    expect(result.outcomes[0].detail).toMatch(/smaller or faster/);
+    // Narrowed explicitly: `detail` exists only on the fail and unmeasured
+    // arms, and the union is what stops a caller reading it off a pass.
+    const timedOut = result.outcomes[0] as { detail?: string };
+    expect(timedOut.detail).toMatch(/smaller or faster/);
     // The other trial still got its answer.
     expect(result.outcomes).toHaveLength(2);
   });
