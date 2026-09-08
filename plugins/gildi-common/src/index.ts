@@ -10,5 +10,12 @@ export type { Outcome, UnmeasuredReason } from './outcome';
 export { unevaluatedVerdict, verdictFor } from './verdict';
 export type { UnevaluatedReason, Verdict } from './verdict';
 
-export { CHECK_TYPES } from './standard';
-export type { Block, Check, CheckType, Standard, Trial } from './standard';
+export { CHECK_TYPES, validateStandardShape } from './standard';
+export type {
+  Block,
+  Check,
+  CheckType,
+  Standard,
+  StandardIssue,
+  Trial,
+} from './standard';
