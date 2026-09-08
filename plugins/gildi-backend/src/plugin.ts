@@ -140,6 +140,23 @@ export const gildiPlugin = createBackendPlugin({
           const { token } = await githubCredentials.getCredentials({
             url: sourceUrl,
           });
+          // WITHOUT A TOKEN WE CANNOT TELL THE TWO 404s APART, so we must not
+          // ask. GitHub answers 404 both for "this repository has no Pages" and
+          // for "you may not see whether it does", because distinguishing them
+          // would leak the existence of private resources. Unauthenticated,
+          // every repository therefore looks unconfigured — including one whose
+          // Pages is live and correct.
+          //
+          // Measured, not assumed: an anonymous read of a repository serving
+          // Pages from `main` returns 404, and the first end-to-end run failed a
+          // compliant site on the strength of it. That is the exact inversion
+          // the resolver's own comment forbids — a missing credential must not
+          // look like a non-compliant repository.
+          if (!token) {
+            throw new Error(
+              'no GitHub credentials are configured, and the Pages API answers 404 both for "not configured" and "not permitted" — so this cannot be measured rather than failed',
+            );
+          }
           const octokit = new Octokit({
             auth: token,
             baseUrl: integrations.github.byUrl(sourceUrl)?.config.apiBaseUrl,
@@ -151,6 +168,10 @@ export const gildiPlugin = createBackendPlugin({
             // 404 means Pages is NOT CONFIGURED, which is an answer the trial
             // can act on rather than an error. Anything else genuinely failed
             // and must reach the resolver as one.
+            //
+            // Only safe to read this way because we authenticated above. The
+            // same 404 from an anonymous call means "not permitted" just as
+            // often, which is why that case never reaches here.
             if ((err as { status?: number }).status === 404) {
               return undefined;
             }

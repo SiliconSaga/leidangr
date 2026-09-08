@@ -186,6 +186,22 @@ catalog:
       target: https://github.com/SiliconSaga/volundr/blob/main/aspect/template.yaml
       rules:
         - allow: [Template]
+    # A REAL ADOPTER of that aspect, and the only entity here that is a live
+    # repository rather than a fixture. Every other component in the catalog is
+    # invented, which means the fact source could only ever be pointed at
+    # something it cannot actually read — no Gemfile, no workflows, no Pages
+    # settings. This one has all three, so a run against it exercises the whole
+    # path: standard fetched over the network, both resolvers, the Pages API,
+    # and a verdict derived from facts nobody wrote down for the test.
+    #
+    # Deliberately NOT compliant. Its Pages source is `main` rather than
+    # `gh-pages`, so the aspect's one un-automatable trial fails and the medal
+    # lands on silver. An all-passing fixture would prove far less: it could not
+    # tell a working evaluator from one that says yes to everything.
+    - type: url
+      target: https://github.com/SiliconSaga/hygiene-testsite/blob/main/catalog-info.yaml
+      rules:
+        - allow: [Component]
     - type: file
       target: ../../examples/mock-org/cycles.yaml
       rules:
