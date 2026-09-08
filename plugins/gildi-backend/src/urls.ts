@@ -29,6 +29,17 @@ export function resolveWithin(base: string, relative: string): string | undefine
     return undefined;
   }
 
+  // HTTPS ONLY, and this is not theoretical. Both callers take their base from
+  // `backstage.io/source-location`, which the catalog derives from whatever
+  // location registered the entity — and this instance registers a dozen
+  // `type: file` locations, so a locally-seeded practice carries `file:…`.
+  // Resolving against that and handing the result to the UrlReader would read
+  // the operator's disk in answer to a trial. The standards this actually
+  // fetches are GitHub URLs over https, so anything else is a mistake or worse.
+  if (rootUrl.protocol !== 'https:' || resolved.protocol !== 'https:') {
+    return undefined;
+  }
+
   // Origin first: an absolute URL in the relative position replaces the base
   // entirely, so a same-path check alone would happily accept another host.
   if (resolved.origin !== rootUrl.origin) {

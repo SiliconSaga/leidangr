@@ -32,6 +32,21 @@ describe('resolveWithin', () => {
     expect(resolveWithin('not-a-url', './standard.yaml')).toBeUndefined();
   });
 
+  // Both callers take their base from backstage.io/source-location, and this
+  // instance registers a dozen `type: file` locations — so a locally-seeded
+  // entity really does carry `file:`. Resolving against it would read the
+  // operator's disk in answer to a trial.
+  it.each([
+    ['a file base', 'file:///C:/repos/volundr/aspect'],
+    ['a plain http base', 'http://internal.example.com/aspect'],
+  ])('refuses %s', (_label, base) => {
+    expect(resolveWithin(base, './standard.yaml')).toBeUndefined();
+  });
+
+  it('refuses a relative value that switches scheme', () => {
+    expect(resolveWithin(BASE, 'file:///etc/passwd')).toBeUndefined();
+  });
+
   it('refuses a sibling directory sharing a name prefix', () => {
     // `…/aspect-private/` starts with `…/aspect` as a STRING but is a
     // different directory. The forced trailing slash on the base is what makes
