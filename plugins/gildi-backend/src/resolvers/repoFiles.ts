@@ -7,6 +7,7 @@ import {
   type Trial,
 } from '@siliconsaga/plugin-gildi-common';
 import type { Resolver, ResolverContext } from './types';
+import { resolveWithin } from '../urls';
 
 // Absence of the artifact is an ANSWER, not an obstacle. Distinguished from a
 // transport failure by the reader's NotFoundError, because "no Gemfile" must
@@ -47,14 +48,24 @@ export const repoFilesResolver: Resolver = {
       return unmeasured('no-resolver', `repo-files cannot answer ${check.type}`);
     }
 
+    // Constrained to the adopting repository. `artifact` comes from a
+    // standard.yaml fetched from another repository, so without this a remote
+    // file could name `../../../other-repo/secret` or an absolute URL and have
+    // this backend fetch it with our credentials. Refusing is unmeasured rather
+    // than fail: the component did nothing wrong, the standard did.
+    const artifactUrl = resolveWithin(ctx.sourceUrl, trial.artifact);
+    if (!artifactUrl) {
+      return unmeasured(
+        'error',
+        `artifact ${trial.artifact} resolves outside the component's repository`,
+      );
+    }
+
     let body: string;
     try {
-      const base = ctx.sourceUrl.endsWith('/') ? ctx.sourceUrl : `${ctx.sourceUrl}/`;
       // signal forwarded so the trial's budget stops the request rather than
       // only the wait for it.
-      const response = await ctx.reader.readUrl(new URL(trial.artifact, base).toString(), {
-        signal: ctx.signal,
-      });
+      const response = await ctx.reader.readUrl(artifactUrl, { signal: ctx.signal });
       body = (await response.buffer()).toString('utf8');
     } catch (err) {
       if (isNotFound(err)) {

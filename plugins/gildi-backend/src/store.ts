@@ -38,8 +38,16 @@ export interface TrialResultStore {
   append(run: TrialRun): Promise<void>;
   latest(entityRef: string, aspectId: string): Promise<TrialRun | undefined>;
   history(entityRef: string, aspectId: string, limit?: number): Promise<TrialRun[]>;
-  /** Two-tier retention. Returns how many rows were removed. */
-  prune(opts: { keep: number; hourlyDays: number }): Promise<number>;
+  /**
+   * Two-tier retention. Returns how many rows were removed.
+   *
+   * `now` exists for tests. The day-collapse tier buckets by UTC calendar day,
+   * so a suite that derives its fixtures from the wall clock produces runs
+   * either side of midnight depending on the hour it runs at — a test that
+   * passes all afternoon and fails at 23:30. Injecting the instant is cheaper
+   * and less invasive than faking timers under a live sqlite driver.
+   */
+  prune(opts: { keep: number; hourlyDays: number; now?: number }): Promise<number>;
 }
 
 const TABLE = 'gildi_trial_runs';
@@ -146,8 +154,8 @@ export class DatabaseTrialResultStore implements TrialResultStore {
    * worth seeing on the chart, and keeping the last run of the day would hide
    * an outage that recovered before midnight.
    */
-  async prune(opts: { keep: number; hourlyDays: number }): Promise<number> {
-    const cutoff = Date.now() - opts.hourlyDays * 24 * 60 * 60 * 1000;
+  async prune(opts: { keep: number; hourlyDays: number; now?: number }): Promise<number> {
+    const cutoff = (opts.now ?? Date.now()) - opts.hourlyDays * 24 * 60 * 60 * 1000;
     const subjects = await this.db(TABLE).distinct('entity_ref', 'aspect_id');
     let removed = 0;
 

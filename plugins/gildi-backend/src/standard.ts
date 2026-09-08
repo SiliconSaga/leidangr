@@ -9,6 +9,7 @@ import {
   type Standard,
 } from '@siliconsaga/plugin-gildi-common';
 import { parse } from 'yaml';
+import { resolveWithin } from './urls';
 
 const STANDARD_ANNOTATION = 'siliconsaga.org/standard';
 
@@ -31,13 +32,14 @@ export function standardUrlFor(practice: Entity): string | undefined {
   } catch {
     return undefined;
   }
-  try {
-    // Trailing slash forced: without it `new URL('./standard.yaml', '…/aspect')`
-    // resolves against the PARENT, quietly reading a sibling module's standard.
-    return new URL(rel, target.endsWith('/') ? target : `${target}/`).toString();
-  } catch {
-    return undefined;
-  }
+  // Constrained to the module's own directory, not merely resolved against it.
+  // "The standard travels with the module" was a claim this function made in a
+  // comment and did not enforce: `../other/standard.yaml` would have read a
+  // sibling module's file, and an absolute URL would have read anything at all
+  // — through a reader holding our GitHub credentials. The annotation comes
+  // from an entity ingested over the network, so it is exactly the input that
+  // should not get to choose.
+  return resolveWithin(target, rel);
 }
 
 /**

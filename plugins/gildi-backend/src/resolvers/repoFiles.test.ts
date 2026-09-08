@@ -115,6 +115,19 @@ describe('repo-files resolver', () => {
     expect(out).toMatchObject({ state: 'unmeasured', reason: 'no-resolver' });
   });
 
+  // The artifact comes from a standard fetched from ANOTHER repository, so it
+  // must not be able to name a path outside the component being evaluated.
+  it.each([
+    ['a parent escape', '../../other-repo/secret'],
+    ['an absolute URL', 'https://evil.example.com/secret'],
+  ])('is unmeasured for an artifact that escapes the repo: %s', async (_l, artifact) => {
+    const escaping = { ...GEMFILE, artifact };
+    const out = await repoFilesResolver.answer(escaping as Trial, ctx({ secret: 'x' }));
+    expect(out).toMatchObject({ state: 'unmeasured', reason: 'error' });
+    // Unmeasured, not fail: the component did nothing wrong, the standard did.
+    expect(out.state).not.toBe('fail');
+  });
+
   it('is unmeasured for a check type belonging to another resolver', async () => {
     const wrong = { ...GEMFILE, check: { type: 'pages-source-branch', value: 'gh-pages' } };
     const out = await repoFilesResolver.answer(wrong as Trial, ctx({ Gemfile: 'x' }));

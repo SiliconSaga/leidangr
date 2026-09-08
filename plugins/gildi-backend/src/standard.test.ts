@@ -53,6 +53,25 @@ describe('standardUrlFor', () => {
     ).toBeUndefined();
   });
 
+  // "The standard travels with the module" has to be enforced, not asserted.
+  // The annotation arrives on an entity ingested over the network, so it is
+  // exactly the input that should not get to choose what we read.
+  it.each([
+    ['a sibling module', '../security/standard.yaml'],
+    ['another host', 'https://evil.example.com/standard.yaml'],
+    ['an absolute path', '/SiliconSaga/private/standard.yaml'],
+  ])('is undefined for a standard pointing at %s', (_label, target) => {
+    expect(
+      standardUrlFor(
+        practice({
+          'siliconsaga.org/standard': target,
+          'backstage.io/source-location':
+            'url:https://github.com/SiliconSaga/volundr/tree/main/aspect/',
+        }),
+      ),
+    ).toBeUndefined();
+  });
+
   it('is undefined for a source location that is not a parseable ref', () => {
     expect(
       standardUrlFor(

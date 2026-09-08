@@ -157,6 +157,20 @@ describe('validateStandard', () => {
     ]);
   });
 
+  it('rejects a padded factSource, which the registry looks up exactly', () => {
+    // Same hazard as a padded check type: it trims to a real resolver name, so
+    // a validator inspecting only the trimmed copy calls the file clean while
+    // the registry's exact lookup finds nothing and the medal quietly
+    // suppresses.
+    const body = WELL_FORMED.replace(
+      '          factSource: repo-files\n',
+      "          factSource: ' repo-files '\n",
+    );
+    expect(validateStandard(fixture(body, ['docs/fix.md']))).toEqual([
+      { trial: 'a-trial', problem: 'padded factSource repo-files' },
+    ]);
+  });
+
   it('rejects a padded check type, before testing the vocabulary', () => {
     // Order matters. ' file-contains ' trims to a real member, so a membership
     // test on the trimmed copy passes and the file reads as clean — then the

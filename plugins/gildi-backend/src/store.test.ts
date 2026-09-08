@@ -130,15 +130,22 @@ describe('DatabaseTrialResultStore', () => {
   // older days collapse to one, so a fixed row budget reaches most of a year
   // instead of three weeks.
   describe('prune', () => {
+    // Pinned to midday UTC rather than derived from the wall clock. The
+    // day-collapse tier buckets by UTC calendar day, so hour offsets taken from
+    // `Date.now()` land either side of midnight depending on when the suite
+    // runs — a test that passes all afternoon and fails at 23:30. Midday leaves
+    // twelve hours of headroom in both directions.
+    const NOW = Date.parse('2026-09-08T12:00:00.000Z');
     const ago = (days: number, hour: number) =>
-      new Date(Date.now() - days * 86_400_000 + hour * 3_600_000).toISOString();
+      new Date(NOW - days * 86_400_000 + hour * 3_600_000).toISOString();
+    const pruneOpts = (over: { keep: number; hourlyDays: number }) => ({ ...over, now: NOW });
 
     it('keeps every run inside the hourly window', async () => {
       const s = await store();
       for (const hour of [0, 1, 2, 3]) {
         await s.append(run({ runAt: ago(1, hour), medal: 'gold' }));
       }
-      await s.prune({ keep: 500, hourlyDays: 7 });
+      await s.prune(pruneOpts({ keep: 500, hourlyDays: 7 }));
       expect(await s.history('component:default/site', 'website-hygiene')).toHaveLength(4);
     });
 
@@ -152,7 +159,7 @@ describe('DatabaseTrialResultStore', () => {
       await s.append(run({ runAt: ago(30, 2), medal: 'bronze' }));
       await s.append(run({ runAt: ago(30, 3), medal: 'gold' }));
 
-      await s.prune({ keep: 500, hourlyDays: 7 });
+      await s.prune(pruneOpts({ keep: 500, hourlyDays: 7 }));
 
       const kept = await s.history('component:default/site', 'website-hygiene');
       expect(kept).toHaveLength(1);
@@ -173,7 +180,7 @@ describe('DatabaseTrialResultStore', () => {
           unevaluatedReason: 'no-standard',
         }),
       );
-      await s.prune({ keep: 500, hourlyDays: 7 });
+      await s.prune(pruneOpts({ keep: 500, hourlyDays: 7 }));
 
       const kept = await s.history('component:default/site', 'website-hygiene');
       expect(kept).toHaveLength(1);
@@ -191,7 +198,7 @@ describe('DatabaseTrialResultStore', () => {
       await s.append(run({ runAt: ago(30, 1), medal: 'bronze' }));
       await s.append(run({ runAt: ago(40, 1), medal: 'none' }));
 
-      await s.prune({ keep: 2, hourlyDays: 7 });
+      await s.prune(pruneOpts({ keep: 2, hourlyDays: 7 }));
 
       const kept = await s.history('component:default/site', 'website-hygiene');
       expect(kept).toHaveLength(2);
@@ -202,7 +209,7 @@ describe('DatabaseTrialResultStore', () => {
       const s = await store();
       await s.append(run({ runAt: ago(30, 1) }));
       await s.append(run({ runAt: ago(30, 2), entityRef: 'component:default/other' }));
-      await s.prune({ keep: 500, hourlyDays: 7 });
+      await s.prune(pruneOpts({ keep: 500, hourlyDays: 7 }));
       expect(await s.history('component:default/other', 'website-hygiene')).toHaveLength(1);
     });
 
@@ -210,7 +217,7 @@ describe('DatabaseTrialResultStore', () => {
       const s = await store();
       await s.append(run({ runAt: ago(30, 1), medal: 'gold' }));
       await s.append(run({ runAt: ago(30, 2), medal: 'gold' }));
-      expect(await s.prune({ keep: 500, hourlyDays: 7 })).toBe(1);
+      expect(await s.prune(pruneOpts({ keep: 500, hourlyDays: 7 }))).toBe(1);
     });
   });
 });

@@ -164,7 +164,14 @@ export function validateStandardShape(root: unknown): StandardIssue[] {
       if (!text(trial?.id)) issues.push({ trial: name, problem: 'missing id' });
       required('rule');
       required('artifact');
-      required('factSource');
+      // factSource is looked up in the resolver registry by EXACT equality, so
+      // padding here behaves like a typo: ' repo-files ' validates clean and
+      // then resolves to unmeasured{no-resolver}, suppressing the medal for a
+      // reason invisible in the file. Same hazard as a padded check type or
+      // facet, and caught in the same place rather than at evaluation time.
+      if (required('factSource') && padded(trial?.factSource)) {
+        issues.push({ trial: name, problem: `padded factSource ${text(trial?.factSource)}` });
+      }
 
       // A check is optional — the mock security standard declares none, and
       // those trials resolve to unmeasured rather than being a shape error.
