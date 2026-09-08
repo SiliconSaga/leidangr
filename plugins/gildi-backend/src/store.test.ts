@@ -117,6 +117,16 @@ describe('DatabaseTrialResultStore', () => {
     expect(got?.passing).toBe(0);
   });
 
+  // The column is free text, so a row written by an older release or edited by
+  // hand can hold anything. Reading it back as a medal would hand a card a
+  // value that does not exist, and no type would have caught it.
+  it('reads an unrecognised stored medal back as no medal', async () => {
+    const s = await store();
+    await s.append(run({ medal: 'platinum' as never }));
+    const got = await s.latest('component:default/site', 'website-hygiene');
+    expect(got?.medal).toBeNull();
+  });
+
   it('keeps subjects apart', async () => {
     const s = await store();
     await s.append(run());

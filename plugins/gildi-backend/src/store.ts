@@ -1,4 +1,9 @@
 import { resolvePackagePath, type DatabaseService } from '@backstage/backend-plugin-api';
+import {
+  isMedal,
+  type TrialOutcomeRow,
+  type TrialRun,
+} from '@siliconsaga/plugin-gildi-common';
 
 // Derived from the service rather than imported from `knex` directly.
 // backend-plugin-api carries its own nested copy of knex, so importing the type
@@ -8,27 +13,14 @@ import { resolvePackagePath, type DatabaseService } from '@backstage/backend-plu
 // package needs no runtime knex dependency at all.
 type KnexClient = Awaited<ReturnType<DatabaseService['getClient']>>;
 
-export interface TrialOutcomeRow {
-  trialId: string;
-  state: string;
-  reason?: string;
-  detail?: string;
-}
-
-export interface TrialRun {
-  entityRef: string;
-  aspectId: string;
-  runAt: string;
-  kind: 'evaluated' | 'unevaluated';
-  moduleRelease?: string;
-  medal: string | null;
-  suppressedReasons: string[] | null;
-  applicable: number | null;
-  passing: number | null;
-  outcomes: TrialOutcomeRow[] | null;
-  unevaluatedReason?: string;
-  unevaluatedDetail?: string;
-}
+// Declared in gildi-common so the frontend reads exactly the shape this store
+// writes, rather than a hand-copied mirror that drifts on the first rename.
+// Re-exported here because this package's callers think of it as the store's
+// row and should not need to know where the declaration lives.
+export type {
+  TrialOutcomeRow,
+  TrialRun,
+} from '@siliconsaga/plugin-gildi-common';
 
 /**
  * The seam that lets the runner and the store be replaced independently later
@@ -51,6 +43,16 @@ export interface TrialResultStore {
 }
 
 const TABLE = 'gildi_trial_runs';
+
+/**
+ * How many runs retention keeps per entity-and-aspect, and therefore the most
+ * a caller can usefully ask for.
+ *
+ * Lives here rather than beside the scheduled sweep so the retention policy and
+ * the read-path bound cannot drift apart: a request for more than is ever kept
+ * would spend a scan proving there is nothing else to return.
+ */
+export const RUNS_KEPT_PER_SUBJECT = 500;
 
 // JSON columns rather than a row per trial: we never query by trial, and a blob
 // avoids schema churn while the outcome union is young.
@@ -131,7 +133,12 @@ export class DatabaseTrialResultStore implements TrialResultStore {
       runAt: new Date(r.run_at as string).toISOString(),
       kind: r.kind as TrialRun['kind'],
       moduleRelease: (r.module_release as string) ?? undefined,
-      medal: (r.medal as string) ?? null,
+      // Validated on the way out, not cast. The column is free text, so a row
+      // written by an older release or edited by hand could hold anything, and
+      // a cast would hand that straight to a card as a medal. An unrecognised
+      // value reads as no medal, which is the safe direction: withholding one
+      // that was earned is a visible bug, while inventing one is not.
+      medal: isMedal(r.medal) ? r.medal : null,
       suppressedReasons: parseJson<string[]>(r.suppressed_reasons),
       applicable: num(r.applicable),
       passing: num(r.passing),
