@@ -42,6 +42,11 @@ smoke-gitea:
 smoke-catalog:
 	bash scripts/smoke-catalog.sh
 
+## smoke-facts — end-to-end check that the fact source derives a real medal by
+## evaluating a live repository (needs network; GH_TOKEN for the Pages trial)
+smoke-facts:
+	bash scripts/smoke-facts.sh
+
 ## theme-swatches — render every page-theme colour (stock + ours) with the
 ## spec.types using them, to .tmp/theme-swatches.html. Propose colours with
 ## ARGS='--candidate plum:#4A1942,#7A2E63:why this one'
