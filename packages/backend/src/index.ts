@@ -42,6 +42,9 @@ backend.add(import('@backstage/plugin-catalog-backend-module-logs'));
 backend.add(import('./modules/cycle/catalogModuleCycle'));
 backend.add(import('./modules/saga/catalogModuleSaga'));
 
+// guildhall fact source
+backend.add(import('@siliconsaga/plugin-gildi-backend'));
+
 // permission plugin
 backend.add(import('@backstage/plugin-permission-backend'));
 // See https://backstage.io/docs/permissions/getting-started for how to create your own permission policy

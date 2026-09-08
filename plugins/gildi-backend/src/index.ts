@@ -1,12 +1,7 @@
-// The package's public surface. The plugin itself arrives with the shell in
-// the next change; until then this exports the pieces that exist so the
-// entrypoint package.json already declares is real rather than a promise.
-export { applicableTrials, facetsOf } from './facets';
-export { loadStandard, standardUrlFor } from './standard';
-export { evaluate, TRIAL_TIMEOUT_MS } from './evaluate';
-export { resolverFor } from './resolvers/registry';
-export { DatabaseTrialResultStore } from './store';
-
-export type { EvaluateInput, RunResult } from './evaluate';
-export type { Resolver, ResolverContext } from './resolvers/types';
+// The package's public surface: the plugin the backend adds, and the run shape
+// its endpoints serialise. Everything else — resolvers, the evaluator, the
+// store implementation — is internal, reachable only through the plugin, and
+// stays free to change without a consumer noticing.
+export { gildiPlugin as default } from './plugin';
 export type { TrialOutcomeRow, TrialResultStore, TrialRun } from './store';
+export type { HistoryEvent } from './router';

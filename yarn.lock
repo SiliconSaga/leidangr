@@ -9193,7 +9193,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@siliconsaga/plugin-gildi-backend@workspace:plugins/gildi-backend":
+"@siliconsaga/plugin-gildi-backend@npm:0.1.0, @siliconsaga/plugin-gildi-backend@workspace:plugins/gildi-backend":
   version: 0.0.0-use.local
   resolution: "@siliconsaga/plugin-gildi-backend@workspace:plugins/gildi-backend"
   dependencies:
@@ -13643,6 +13643,7 @@ __metadata:
     "@backstage/plugin-search-backend-node": "npm:^1.4.5"
     "@backstage/plugin-signals-backend": "npm:^0.3.16"
     "@backstage/plugin-techdocs-backend": "npm:^2.2.1"
+    "@siliconsaga/plugin-gildi-backend": "npm:0.1.0"
     app: "link:../app"
     better-sqlite3: "npm:^12.0.0"
     node-gyp: "npm:^10.0.0"
