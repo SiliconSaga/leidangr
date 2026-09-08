@@ -44,4 +44,13 @@ describe('medalFromRun', () => {
       medalFromRun(run({ medal: 'platinum' as never })),
     ).toBeUndefined();
   });
+
+  // A run that measured nothing cannot have awarded anything, whatever the row
+  // says. This is the consumer that puts the badge on screen, so it checks the
+  // pairing rather than trusting whoever wrote the row.
+  it('renders no medal for an unevaluated run that carries one', () => {
+    expect(
+      medalFromRun(run({ kind: 'unevaluated', medal: 'gold' })),
+    ).toBeUndefined();
+  });
 });

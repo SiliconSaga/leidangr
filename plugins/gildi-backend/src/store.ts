@@ -44,6 +44,16 @@ export interface TrialResultStore {
 
 const TABLE = 'gildi_trial_runs';
 
+/**
+ * How many runs retention keeps per entity-and-aspect, and therefore the most
+ * a caller can usefully ask for.
+ *
+ * Lives here rather than beside the scheduled sweep so the retention policy and
+ * the read-path bound cannot drift apart: a request for more than is ever kept
+ * would spend a scan proving there is nothing else to return.
+ */
+export const RUNS_KEPT_PER_SUBJECT = 500;
+
 // JSON columns rather than a row per trial: we never query by trial, and a blob
 // avoids schema churn while the outcome union is young.
 const parseJson = <T>(value: unknown): T | null => {

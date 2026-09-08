@@ -10,7 +10,11 @@ import express from 'express';
 // bad input into a hung connection. Backstage's own backends use this adapter
 // for the same reason.
 import PromiseRouter from 'express-promise-router';
-import type { TrialResultStore, TrialRun } from './store';
+import {
+  RUNS_KEPT_PER_SUBJECT,
+  type TrialResultStore,
+  type TrialRun,
+} from './store';
 
 export interface HistoryEvent {
   type: 'release-changed' | 'medal-earned';
@@ -132,8 +136,18 @@ export function createRouter(options: {
     // Integer, not merely finite: 2.5 is a finite number that reaches knex's
     // .limit() and fails at the database rather than at the boundary that
     // could have said why.
-    if (limit !== undefined && (!Number.isInteger(limit) || limit <= 0)) {
-      throw new InputError('limit must be a positive integer');
+    //
+    // Capped at what retention keeps, so an unbounded number cannot make the
+    // database scan for rows that provably do not exist. Retention is a
+    // scheduled sweep rather than a read-path guarantee, so the bound has to be
+    // stated here too.
+    if (
+      limit !== undefined &&
+      (!Number.isInteger(limit) || limit <= 0 || limit > RUNS_KEPT_PER_SUBJECT)
+    ) {
+      throw new InputError(
+        `limit must be a positive integer no greater than ${RUNS_KEPT_PER_SUBJECT}`,
+      );
     }
     const runs = await store.history(refOf(req), aspectOf(req), limit);
     res.json({ runs, events: eventsFor(runs) });

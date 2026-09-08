@@ -25,9 +25,15 @@ export type TrialRunView = TrialRun;
  * declared type is a claim about the response and not a fact about it, so a
  * serialisation bug on the far side would otherwise render as a medal that does
  * not exist.
+ *
+ * Gated on `kind` for the same reason the history events are: an unevaluated
+ * run measured nothing, so whatever medal a row carries it cannot have been
+ * awarded by that run. This is the consumer that would put the badge on screen,
+ * which makes it the one that must not be talked into it.
  */
 export function medalFromRun(run: TrialRunView | undefined): Medal | undefined {
-  return isMedal(run?.medal) ? run.medal : undefined;
+  if (run?.kind !== 'evaluated') return undefined;
+  return isMedal(run.medal) ? run.medal : undefined;
 }
 
 export function useComponentTrials(entity: Entity, aspectId: string) {

@@ -17,7 +17,11 @@ import { Octokit } from '@octokit/rest';
 import { evaluate } from './evaluate';
 import { resolverFor } from './resolvers/registry';
 import { loadStandard, standardUrlFor } from './standard';
-import { DatabaseTrialResultStore, type TrialRun } from './store';
+import {
+  DatabaseTrialResultStore,
+  RUNS_KEPT_PER_SUBJECT,
+  type TrialRun,
+} from './store';
 import { createRouter } from './router';
 
 const ASPECTS = 'siliconsaga.org/aspects';
@@ -29,7 +33,7 @@ const MODULE_RELEASE = 'siliconsaga.org/module-release';
 // beyond that costs one more — so 500 reaches roughly eleven months. A flat
 // count at hourly resolution would run out after twenty days, which is inside
 // the window where "when did this break" is usually asked.
-const RUNS_KEPT_PER_SUBJECT = 500;
+// The row budget itself lives in store.ts, shared with the read path's bound.
 const HOURLY_RETENTION_DAYS = 7;
 
 // The scheduler's `timeout` releases the task but does NOT stop `fn`, so the
@@ -206,7 +210,21 @@ export const gildiPlugin = createBackendPlugin({
           let pending = practices?.get(aspectId);
           if (!pending) {
             pending = findPractice(aspectId, credentials);
-            practices?.set(aspectId, pending);
+            if (practices) {
+              const started = pending;
+              // A REJECTION MUST NOT BE CACHED. The workers catch a failed run
+              // and carry on, so without this one transient catalog error would
+              // be replayed to every remaining component in the aspect and take
+              // down the rest of the sweep with it. Evicted only if it is still
+              // the entry we put there, so a retry already in flight is not
+              // thrown away.
+              started.catch(() => {
+                if (practices.get(aspectId) === started) {
+                  practices.delete(aspectId);
+                }
+              });
+              practices.set(aspectId, started);
+            }
           }
           const practice = await pending;
           const standardUrl = practice ? standardUrlFor(practice) : undefined;
