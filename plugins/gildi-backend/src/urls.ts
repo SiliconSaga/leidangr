@@ -29,14 +29,22 @@ export function resolveWithin(base: string, relative: string): string | undefine
     return undefined;
   }
 
-  // HTTPS ONLY, and this is not theoretical. Both callers take their base from
-  // `backstage.io/source-location`, which the catalog derives from whatever
-  // location registered the entity — and this instance registers a dozen
-  // `type: file` locations, so a locally-seeded practice carries `file:…`.
-  // Resolving against that and handing the result to the UrlReader would read
-  // the operator's disk in answer to a trial. The standards this actually
-  // fetches are GitHub URLs over https, so anything else is a mistake or worse.
-  if (rootUrl.protocol !== 'https:' || resolved.protocol !== 'https:') {
+  // WEB SCHEMES ONLY, and the exclusion is not theoretical. Both callers take
+  // their base from `backstage.io/source-location`, which the catalog derives
+  // from whatever location registered the entity — and this instance registers
+  // a dozen `type: file` locations, so a locally-seeded practice carries
+  // `file:…`. Resolving against that and handing the result to the UrlReader
+  // would read the operator's disk in answer to a trial.
+  //
+  // http is allowed alongside https because `app-config.gitea.yaml` serves the
+  // whole dev stack from `http://gitea.localhost`. An https-only rule reads as
+  // the safer choice and is really a silent outage: every source location in
+  // that mode fails to resolve, every trial goes unmeasured, and every medal
+  // suppresses — with nothing in the file to explain why. Confidentiality on a
+  // localhost dev stack is not what is being protected here; the origin and
+  // path checks below are.
+  const WEB = ['http:', 'https:'];
+  if (!WEB.includes(rootUrl.protocol) || !WEB.includes(resolved.protocol)) {
     return undefined;
   }
 

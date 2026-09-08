@@ -38,13 +38,30 @@ describe('resolveWithin', () => {
   // operator's disk in answer to a trial.
   it.each([
     ['a file base', 'file:///C:/repos/volundr/aspect'],
-    ['a plain http base', 'http://internal.example.com/aspect'],
+    ['a data base', 'data:text/plain,hello'],
   ])('refuses %s', (_label, base) => {
     expect(resolveWithin(base, './standard.yaml')).toBeUndefined();
   });
 
   it('refuses a relative value that switches scheme', () => {
     expect(resolveWithin(BASE, 'file:///etc/passwd')).toBeUndefined();
+  });
+
+  // http is ALLOWED, and this test is the reason. `app-config.gitea.yaml`
+  // serves the dev stack from http://gitea.localhost, so an https-only rule
+  // would resolve nothing in that mode: every trial unmeasured, every medal
+  // suppressed, and no hint in the config as to why.
+  it('allows an http base, because the Gitea dev stack is served over it', () => {
+    expect(
+      resolveWithin('http://gitea.localhost/leidangr/site/raw/branch/main', 'Gemfile'),
+    ).toBe('http://gitea.localhost/leidangr/site/raw/branch/main/Gemfile');
+  });
+
+  it('still refuses an escape from an http base', () => {
+    // Allowing the scheme does not relax containment.
+    expect(
+      resolveWithin('http://gitea.localhost/leidangr/site/', '../other/Gemfile'),
+    ).toBeUndefined();
   });
 
   it('refuses a sibling directory sharing a name prefix', () => {
