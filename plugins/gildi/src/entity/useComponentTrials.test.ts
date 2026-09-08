@@ -35,4 +35,13 @@ describe('medalFromRun', () => {
   it('keeps none, which is a real verdict', () => {
     expect(medalFromRun(run({ medal: 'none' }))).toBe('none');
   });
+
+  // The value arrives over HTTP, where the declared type is a claim about the
+  // response rather than a fact about it. A cast would let a serialisation bug
+  // on the far side render as a medal that does not exist.
+  it('rejects a medal outside the union rather than rendering it', () => {
+    expect(
+      medalFromRun(run({ medal: 'platinum' as never })),
+    ).toBeUndefined();
+  });
 });

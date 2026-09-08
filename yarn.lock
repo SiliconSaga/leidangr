@@ -9207,6 +9207,7 @@ __metadata:
     "@siliconsaga/plugin-gildi-common": "npm:0.1.0"
     better-sqlite3: "npm:^12.11.1"
     express: "npm:^4.22.2"
+    express-promise-router: "npm:^4.1.0"
     knex: "npm:^3.1.0"
     yaml: "npm:^2.8.1"
   languageName: unknown

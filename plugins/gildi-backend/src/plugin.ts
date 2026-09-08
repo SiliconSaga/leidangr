@@ -6,6 +6,7 @@ import { catalogServiceRef } from '@backstage/plugin-catalog-node';
 import {
   ANNOTATION_SOURCE_LOCATION,
   parseLocationRef,
+  stringifyEntityRef,
 } from '@backstage/catalog-model';
 import type { Entity } from '@backstage/catalog-model';
 import {
@@ -63,8 +64,12 @@ const aspectsOf = (entity: Entity): string[] =>
     .map(s => s.trim())
     .filter(Boolean);
 
-const refOf = (entity: Entity): string =>
-  `component:${entity.metadata.namespace ?? 'default'}/${entity.metadata.name}`;
+// stringifyEntityRef rather than hand-formatting: it lowercases kind, namespace
+// and name, which is the canonical spelling every reader uses. Formatting the
+// metadata verbatim stores `component:default/MySite` while the frontend asks
+// for `component:default/mysite`, and the two never meet — a permanent 404 that
+// reads as though the sweep never ran.
+const refOf = (entity: Entity): string => stringifyEntityRef(entity);
 
 export const gildiPlugin = createBackendPlugin({
   pluginId: 'gildi',
@@ -104,9 +109,29 @@ export const gildiPlugin = createBackendPlugin({
         const githubCredentials =
           DefaultGithubCredentialsProvider.fromIntegrations(integrations);
 
+        // Hosts we can actually ask, taken from the configured integrations so
+        // GitHub Enterprise counts too. Derived from the integration LIST
+        // rather than from `byUrl` returning something, because a missing
+        // credential and a non-GitHub host are different problems that
+        // `byUrl` cannot tell apart.
+        const githubHosts = new Set(
+          integrations.github.list().map(i => i.config.host),
+        );
+
         const pagesSourceBranch = async (
           sourceUrl: string,
         ): Promise<string | undefined> => {
+          // A Gitea or GitLab component cannot be asked about GitHub Pages, and
+          // must not be told it FAILED the trial — `undefined` means "Pages is
+          // off", a real verdict about a repository we never queried. Throwing
+          // reaches the resolver as unmeasured{error}, which withholds the
+          // medal and says why instead of blaming the component.
+          const host = new URL(sourceUrl).hostname;
+          if (!githubHosts.has(host)) {
+            throw new Error(
+              `${host} is not a configured GitHub host, so its Pages settings cannot be read`,
+            );
+          }
           const { owner, repo } = parseGithubSlug(sourceUrl);
           const { token } = await githubCredentials.getCredentials({
             url: sourceUrl,
@@ -129,11 +154,43 @@ export const gildiPlugin = createBackendPlugin({
           }
         };
 
-        // One entity, one aspect, one run row. Shared by the scheduled sweep
-        // and the refresh endpoint so both paths cannot drift.
+        // The practice that owns an aspect. Filtered on `spec.type` as well as
+        // the annotation, matching how practices are identified everywhere else
+        // in the catalog, so a stray Component carrying the same annotation
+        // cannot be picked instead.
+        const findPractice = async (
+          aspectId: string,
+          credentials: Awaited<ReturnType<typeof auth.getOwnServiceCredentials>>,
+        ): Promise<Entity | undefined> => {
+          const practices = await catalog.getEntities(
+            {
+              filter: {
+                kind: 'Component',
+                'spec.type': 'practice',
+                [`metadata.annotations.${ASPECT}`]: aspectId,
+              },
+            },
+            { credentials },
+          );
+          return practices.items[0];
+        };
+
+        /**
+         * One entity, one aspect, one run row. Shared by the scheduled sweep
+         * and the refresh endpoint so both paths cannot drift.
+         *
+         * `practices` is an optional lookup cache. Every component enrolled in
+         * an aspect resolves the SAME practice, so a fleet sweep would
+         * otherwise repeat one identical catalog query per component per
+         * aspect. The sweep passes a cache scoped to that sweep — never a
+         * long-lived one, since a practice's standard URL and release are
+         * exactly the things a run is meant to notice changing. Refresh passes
+         * nothing and always reads fresh.
+         */
         const runOne = async (
           entityRef: string,
           aspectId: string,
+          practices?: Map<string, Promise<Entity | undefined>>,
         ): Promise<TrialRun> => {
           const credentials = await auth.getOwnServiceCredentials();
           const entity = await catalog.getEntityByRef(entityRef, {
@@ -143,16 +200,15 @@ export const gildiPlugin = createBackendPlugin({
             throw new Error(`no such entity: ${entityRef}`);
           }
 
-          const practices = await catalog.getEntities(
-            {
-              filter: {
-                kind: 'Component',
-                [`metadata.annotations.${ASPECT}`]: aspectId,
-              },
-            },
-            { credentials },
-          );
-          const practice = practices.items[0];
+          // The PROMISE is cached, not the result, so concurrent workers
+          // reaching the same aspect at once share one query rather than each
+          // starting their own before the first has resolved.
+          let pending = practices?.get(aspectId);
+          if (!pending) {
+            pending = findPractice(aspectId, credentials);
+            practices?.set(aspectId, pending);
+          }
+          const practice = await pending;
           const standardUrl = practice ? standardUrlFor(practice) : undefined;
 
           let standard;
@@ -226,6 +282,11 @@ export const gildiPlugin = createBackendPlugin({
             // half-recorded.
             const sweepDeadline = Date.now() + SWEEP_DEADLINE_MS;
             const queue = [...enrolled];
+            // Scoped to this sweep and discarded with it. A practice's standard
+            // URL and module release are what a run exists to notice changing,
+            // so caching them across sweeps would hide the change the next
+            // sweep is there to catch.
+            const practices = new Map<string, Promise<Entity | undefined>>();
             const worker = async () => {
               for (let e = queue.shift(); e; e = queue.shift()) {
                 if (Date.now() > sweepDeadline) {
@@ -237,7 +298,7 @@ export const gildiPlugin = createBackendPlugin({
                 const ref = refOf(e);
                 for (const aspectId of aspectsOf(e)) {
                   try {
-                    await runOne(ref, aspectId);
+                    await runOne(ref, aspectId, practices);
                   } catch (err) {
                     logger.warn(
                       `gildi: run failed for ${ref} / ${aspectId}: ${err}`,

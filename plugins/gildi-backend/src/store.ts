@@ -1,7 +1,8 @@
 import { resolvePackagePath, type DatabaseService } from '@backstage/backend-plugin-api';
-import type {
-  TrialOutcomeRow,
-  TrialRun,
+import {
+  isMedal,
+  type TrialOutcomeRow,
+  type TrialRun,
 } from '@siliconsaga/plugin-gildi-common';
 
 // Derived from the service rather than imported from `knex` directly.
@@ -122,7 +123,12 @@ export class DatabaseTrialResultStore implements TrialResultStore {
       runAt: new Date(r.run_at as string).toISOString(),
       kind: r.kind as TrialRun['kind'],
       moduleRelease: (r.module_release as string) ?? undefined,
-      medal: (r.medal as string) ?? null,
+      // Validated on the way out, not cast. The column is free text, so a row
+      // written by an older release or edited by hand could hold anything, and
+      // a cast would hand that straight to a card as a medal. An unrecognised
+      // value reads as no medal, which is the safe direction: withholding one
+      // that was earned is a visible bug, while inventing one is not.
+      medal: isMedal(r.medal) ? r.medal : null,
       suppressedReasons: parseJson<string[]>(r.suppressed_reasons),
       applicable: num(r.applicable),
       passing: num(r.passing),

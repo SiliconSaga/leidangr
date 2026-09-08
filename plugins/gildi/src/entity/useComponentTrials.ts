@@ -4,7 +4,7 @@ import {
   fetchApiRef,
 } from '@backstage/core-plugin-api';
 import { stringifyEntityRef, type Entity } from '@backstage/catalog-model';
-import type { Medal, TrialRun } from '@siliconsaga/plugin-gildi-common';
+import { isMedal, type Medal, type TrialRun } from '@siliconsaga/plugin-gildi-common';
 import useAsync from 'react-use/lib/useAsync';
 
 // The SAME type the backend serialises, imported rather than restated. A
@@ -20,9 +20,14 @@ export type TrialRunView = TrialRun;
  * is a real verdict about a component — measured, and nothing passed — while
  * the other two are statements about us, and collapsing them would tell a
  * component it earned nothing on a run that measured nothing.
+ *
+ * Checked at runtime rather than cast. The value arrives over HTTP, where the
+ * declared type is a claim about the response and not a fact about it, so a
+ * serialisation bug on the far side would otherwise render as a medal that does
+ * not exist.
  */
 export function medalFromRun(run: TrialRunView | undefined): Medal | undefined {
-  return (run?.medal as Medal | null) ?? undefined;
+  return isMedal(run?.medal) ? run.medal : undefined;
 }
 
 export function useComponentTrials(entity: Entity, aspectId: string) {

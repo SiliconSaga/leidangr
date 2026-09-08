@@ -4,7 +4,17 @@
 // gold for that trial. Assigned tiers could not do this: they produced medals
 // no component had a path to, and every new trial had to be slotted into a rung
 // by hand. See ADR 0013.
-export type Medal = 'gold' | 'silver' | 'bronze' | 'none';
+export const MEDALS = ['gold', 'silver', 'bronze', 'none'] as const;
+
+export type Medal = (typeof MEDALS)[number];
+
+// A run arrives at the frontend over HTTP, where the type says nothing about
+// what actually came back. Casting a `string` to `Medal` at that boundary would
+// let a serialisation bug reach the UI as a medal that does not exist, and the
+// compiler would have signed off on it.
+export function isMedal(value: unknown): value is Medal {
+  return typeof value === 'string' && (MEDALS as readonly string[]).includes(value);
+}
 
 export function medalFor(applicable: number, passing: number): Medal {
   // Nothing applicable is `none`, not a vacuous gold: an aspect that asked
