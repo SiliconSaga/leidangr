@@ -107,24 +107,48 @@ refresh() {
     2>/dev/null || echo '{}'
 }
 
+# One retry, and only for the race named above — the same loop smoke-catalog
+# uses, for the same reason.
+#
+# ⚠ THE RETRY BELONGS ON THE INGESTION FAILURE, NOT THE BOOT FAILURE. When the
+# backend loses the IPC race it still logs "Listening on" and still serves, so
+# `start_backend` SUCCEEDS and the run proceeds to find every entity missing.
+# Checking the signature only in the boot-failure path therefore never fires,
+# which is exactly how the first version of this script failed. A backend that
+# listened and then ingested nothing for any OTHER reason is a real finding and
+# must not be retried into looking flaky, so the log signature earns the second
+# attempt — never the failure alone.
 echo "smoke-facts: booting the backend"
-if ! start_backend; then
-  if port_still_held; then
-    echo "smoke-facts: port 7007 is still held by an earlier backend — stop it and retry" >&2
+for attempt in 1 2; do
+  if ! start_backend; then
+    if port_still_held; then
+      echo "smoke-facts FAIL: port 7007 is still held by another process." >&2
+      echo "  A backend outlived the process this script killed. Kill the stray" >&2
+      echo "  node process and re-run. This is a leak, not the startup race." >&2
+    else
+      echo "smoke-facts FAIL: backend never logged 'Listening on'. Recent log:" >&2
+    fi
+    tail -n 40 "$LOG" >&2 || true
     exit 1
   fi
-  if startup_race_lost; then
-    echo "smoke-facts: backend lost the DevDataStore IPC race on boot, retrying once."
-    cleanup
-    start_backend || { echo "smoke-facts: backend never logged 'Listening on'" >&2; exit 1; }
-  else
-    echo "smoke-facts: backend never logged 'Listening on'" >&2
+  echo "smoke-facts: waiting for the subject and its practice to ingest"
+  if poll_for_entities; then break; fi
+  if ! startup_race_lost; then
+    echo "smoke-facts FAIL: entities never ingested — see $LOG" >&2
     exit 1
   fi
-fi
-
-echo "smoke-facts: waiting for the subject and its practice to ingest"
-poll_for_entities || { echo "smoke-facts: entities never ingested — see $LOG" >&2; exit 1; }
+  if (( attempt == 2 )); then
+    echo "smoke-facts FAIL: the backend lost the DevDataStore IPC race twice." >&2
+    echo "  This is an ENVIRONMENT failure, not a change you made — see" >&2
+    echo "  startup_race_lost() in scripts/smoke-catalog.sh for the mechanism." >&2
+    exit 1
+  fi
+  echo "smoke-facts: backend lost the DevDataStore IPC race on boot, retrying once."
+  echo "  (a startup timing race, not a catalog problem — see startup_race_lost)"
+  cleanup
+  # A moment for the OS to release the socket before the retry tries to bind.
+  sleep 2
+done
 
 echo "smoke-facts: evaluating ${SUBJECT} against ${ASPECT}"
 RUN="$(refresh)"
@@ -178,9 +202,18 @@ check 'medal derived from what passed'     "$WANT_MEDAL" "$(field '.medal')"
 # The run must also be READABLE BACK. An evaluation that is never persisted is
 # invisible to every consumer, and the append path is the half the endpoint
 # above does not exercise on its own.
-LATEST="$(curl -fsS --connect-timeout 3 --max-time 10 "${hdr[@]}" \
-  "http://localhost:7007/api/gildi/trials/$(printf '%s' "$SUBJECT" | jq -sRr @uri)?aspect=${ASPECT}" 2>/dev/null || echo '{}')"
-check 'the run was stored and reads back'  "$(field '.runAt')" "$(printf '%s' "$LATEST" | jq -r '.runAt' 2>/dev/null || echo '?')"
+#
+# Asserted against HISTORY, not against `latest`. The scheduled sweep calls the
+# same `runOne` for this component, so a sweep landing between the refresh and
+# this read would make a newer, perfectly valid row the latest one — and an
+# equality check against latest would fail on correct behaviour. The store is
+# append-only, so the refresh row is still in history either way; that it is
+# present is the real claim, and which row happens to be newest is not.
+HISTORY="$(curl -fsS --connect-timeout 3 --max-time 10 "${hdr[@]}" \
+  "http://localhost:7007/api/gildi/trials/$(printf '%s' "$SUBJECT" | jq -sRr @uri)/history?aspect=${ASPECT}" 2>/dev/null || echo '{}')"
+check 'the run was stored and reads back' 'yes' \
+  "$(printf '%s' "$HISTORY" | jq -r --arg at "$(field '.runAt')" \
+    'if any(.runs[]?; .runAt == $at) then "yes" else "no" end' 2>/dev/null || echo '?')"
 
 echo "--- the run ---"
 printf '%s\n' "$RUN" | jq '{kind, medal, applicable, passing, moduleRelease, suppressedReasons, outcomes}' 2>/dev/null || printf '%s\n' "$RUN"
