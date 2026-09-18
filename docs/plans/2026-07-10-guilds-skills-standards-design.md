@@ -100,6 +100,42 @@ In AOP nothing happens until the weaver runs; the Guildhall's weavers are its **
 
 The enrollment annotation is the **record of application** — the weave scar. Hand-enrollment (adding the annotation yourself) stays legal; adoptions are the paved road for enrollment itself.
 
+### 3.8 Variants: one practice, many worlds
+
+> **Future — not built, not phased.** Recorded because ADR 0010 left the seam open in as many words ("one practice, one concern; possibly several **editions/variants** of the module") and the shape is now clear enough to write down. Added 2026-09-18.
+
+An aspect's *intent* is usually uniform while its *implementation* is not. "Scan your container images" is one concern with one rationale, but the trial that checks it differs between Docker, Podman, and buildpacks. "Lint your code" is one concern; the tool is per-language. And the pattern is **not only technical**: "document your decisions" is one obligation, but one team may be required to use Confluence and another TechDocs — nothing about the *component* decides that, the org does.
+
+Today each of those forces a bad trade: one aspect per technology, which balloons enrollment annotations and fragments the single badge — the exact failure §3.6 rejected — or one aspect whose standard quietly hard-codes one world and mis-measures every other.
+
+A **variant** is a scoped edition of the module. The root holds what is true everywhere; a subdirectory holds what is true in one world.
+
+| Root (shared) | Variant (`variants/podman/`) |
+|---|---|
+| Why the practice exists; what good looks like | Nothing — rationale is never re-argued per world |
+| **Teaching vísar** (§3.5) — variant-invariant by nature | **Operational vísar** — the commands actually differ |
+| Trials that hold in every world | The concrete trials: which file, which tool, which value |
+| Medal semantics (ADR 0013), inherited and never redefined | The paved road and skeletons for that world |
+
+The split falls exactly where §3.5 already drew it, which is a good sign the seam is real: *why you scan images* does not change with the runtime; *how you scan them* is the whole variance. In `volundr/aspect/` today that means `docs/index.md` stays at the root while `skeleton-deploy/` and `docs/adopting.md` are what a variant would own.
+
+**Variants are not facets.** The two are easy to confuse and sit on different axes:
+
+- A **facet** is a property of the **component**, and it selects *which trials apply* within one standard. Everyone reads the same standard; some trials skip.
+- A **variant** is a property of the **module**, and it selects *which standard you read at all* — along with its paved road, its skeletons, and its remediation.
+
+Facets alone cannot carry this. They gate trials and nothing else: a Docker adopter and a Podman adopter need different CI includes and different remediation commands, and no `appliesTo` list has any say over either. The single `standard.yaml` would also grow to hold every world's trials, which is the monolith problem facets were introduced to fix, reappearing one level up. **Facets decide what applies; variants decide what "it" is.**
+
+**Selection has two sources and one record.** A variant may be *derived* from the component (its container runtime, its language — plausibly reusing the facet machinery), or *assigned* by policy (the documentation-platform case, where the team or org decides and the component is silent). Either way the enrollment annotation records which variant was applied, extending what `siliconsaga.org/aspect-versions` already does — visible and auditable, in the house style, and the value the fact source reads back. Explicit override stays legal, because hand-enrollment stays legal.
+
+**Composition should be additive only.** A variant may add trials; it may never redefine a root one. That keeps merging to concatenation — the only merge that cannot surprise — and follows the same instinct that kept the fact source's `check:` vocabulary closed rather than making it an expression language.
+
+**What it would cost the fact source: very little.** Variant resolution happens at *standard-load time* — picking which file to fetch. The evaluator, the resolver registry, the outcome union, and medal derivation are all downstream of that and would not change. This is additive to what shipped, not a rework of it.
+
+**Two traps worth naming now.** First, a component in a world no variant covers must read as **unevaluated**, never `none` and never a failure: that is a gap in the practice, not a verdict on the component — the same distinction the fact source already draws for a missing standard. Usefully, that bucket becomes demand signal: *three components are asking for a Kaniko variant* is a roadmap input the practice can act on. Second, gold in a thin variant and gold in a thick one are both "complete for your context" (ADR 0013 — complete at any size), but unlike standard *size*, which is visible in one file, variant asymmetry hides across directories. The guard is institutional rather than mechanical: one practice owns all its variants, so one institution holds the bar.
+
+**No new kinds.** A variant is a directory plus an annotation value — the §6 non-goal survives intact.
+
 ## 4. The Kenning Layer (display terminology)
 
 Technical identifiers commit to **one canonical vocabulary** (below). The UI never hard-codes those strings: it renders through a **kennings map** — a configurable lexicon resolving each technical term to a display term (a *kenning* being the Old Norse device of calling a thing by another name).
@@ -164,6 +200,9 @@ Follows the established discipline: no kind introduced merely to filter; nothing
 - **Norse kenning skin for `aspect`**: *þáttr* (strand; tale-within-a-saga) fit best but is rejected — it sound-collides with a rude Danish word. Live candidates: *þráðr* (thread — keeps the woven-through imagery, Danish-safe *tråd*), *vefr* (the weave — strengthened by the module sense: the aspect is the woven thing), *háttr* (manner/mode/verse-form — Snorri's *Háttatal* is a catalog of patterns), *siðr* (custom/practice, as in *forn siðr*), *grein* (branch/discipline — most legible). No urgency: `aspect` is canonical and the skin is display-only.
 - **Term-splitting the vísir grades**: keep one noun with grade adjectives, adopt **Fræði** (lore) for teaching material with **Vísir** reserved for the dynamic runbook, or leave teaching material as plain "docs." Revisit once the runbooks plugin takes shape.
 - ~~Ordered levels vs. unordered blocks~~ — **resolved (§3.6)**: both, on orthogonal axes. Blocks are thematic (tool/sub-concern, facet-scoped); tiers are the ordered maturity ladder referencing trials across blocks.
+- **Variant versioning** (§3.8): one `module-release` for the whole module, or one per variant? A single release is simpler but makes a Docker-only fix read as *behind* to every Podman adopter — and because the comparison is deliberately equality-only, a spurious *behind* has no way to say "this did not concern you." Per-variant releases are accurate but multiply the moving parts and change what an adopter records.
+- **Variant selector precedence** (§3.8): when a component-derived variant and a policy-assigned one disagree, which wins? Policy plausibly outranks inference — an org mandate is not a guess — but a component that genuinely is Podman cannot be measured by Docker trials whatever the policy says, so the honest answer may be that the two never address the same aspect. Needs a real second example before deciding.
+- **A kenning for `variant`** (§3.8) if the skin ever lands: *snið* (cut/shape/style) is untaken, where *háttr* and *grein* are already in the running for `aspect` itself above.
 - **Where craft and aspect definitions live** long-term if matching/enrollment gets real (vocabulary → entity promotion path).
 - **Kennings scope**: exact config shape, and whether spec *field* names (not just kind/type display) participate in display mapping.
 - **Runbooks plugin shape**: parameter syntax, URL-parameter contract, and how `/runbooks` coexists with TechDocs (separate renderer vs. TechDocs extension). **Parameter safety is a hard requirement** (surfaced in CR #5 review): placeholder values arrive via URL, so the renderer must allowlist-validate and shell-escape them before interpolating into commands — a crafted link must never turn a copy-pasted command into an injection.
