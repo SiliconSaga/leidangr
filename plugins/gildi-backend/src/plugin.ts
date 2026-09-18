@@ -14,6 +14,7 @@ import {
   ScmIntegrations,
 } from '@backstage/integration';
 import { Octokit } from '@octokit/rest';
+import { createPagesSourceBranch } from './pages';
 import { evaluate } from './evaluate';
 import { resolverFor } from './resolvers/registry';
 import { loadStandard, standardUrlFor } from './standard';
@@ -41,16 +42,6 @@ const HOURLY_RETENTION_DAYS = 7;
 // workers stop before the next invocation can overlap them.
 const SWEEP_DEADLINE_MS = 9 * 60 * 1000;
 const SWEEP_CONCURRENCY = 3;
-
-// `https://github.com/owner/repo/tree/main/` -> { owner, repo }. The Pages API
-// needs the slug, and the source location is a tree URL rather than a repo URL.
-function parseGithubSlug(sourceUrl: string): { owner: string; repo: string } {
-  const [, owner, repo] = new URL(sourceUrl).pathname.split('/');
-  if (!owner || !repo) {
-    throw new Error(`cannot parse an owner and repo from ${sourceUrl}`);
-  }
-  return { owner, repo };
-}
 
 const sourceUrlOf = (entity: Entity): string | undefined => {
   const raw = entity.metadata.annotations?.[ANNOTATION_SOURCE_LOCATION];
@@ -122,41 +113,52 @@ export const gildiPlugin = createBackendPlugin({
           integrations.github.list().map(i => i.config.host),
         );
 
-        const pagesSourceBranch = async (
-          sourceUrl: string,
-        ): Promise<string | undefined> => {
-          // A Gitea or GitLab component cannot be asked about GitHub Pages, and
-          // must not be told it FAILED the trial — `undefined` means "Pages is
-          // off", a real verdict about a repository we never queried. Throwing
-          // reaches the resolver as unmeasured{error}, which withholds the
-          // medal and says why instead of blaming the component.
-          const host = new URL(sourceUrl).hostname;
-          if (!githubHosts.has(host)) {
-            throw new Error(
-              `${host} is not a configured GitHub host, so its Pages settings cannot be read`,
-            );
-          }
-          const { owner, repo } = parseGithubSlug(sourceUrl);
-          const { token } = await githubCredentials.getCredentials({
-            url: sourceUrl,
-          });
-          const octokit = new Octokit({
-            auth: token,
-            baseUrl: integrations.github.byUrl(sourceUrl)?.config.apiBaseUrl,
-          });
-          try {
-            const { data } = await octokit.rest.repos.getPages({ owner, repo });
-            return data.source?.branch;
-          } catch (err) {
-            // 404 means Pages is NOT CONFIGURED, which is an answer the trial
-            // can act on rather than an error. Anything else genuinely failed
-            // and must reach the resolver as one.
-            if ((err as { status?: number }).status === 404) {
-              return undefined;
-            }
-            throw err;
-          }
-        };
+        // The POLICY — which 404 means what — lives in pages.ts where it is
+        // unit-tested. What stays here is the adapter: Octokit wiring thin
+        // enough to read in one glance, and no decisions of its own.
+        const pagesSourceBranch = createPagesSourceBranch({
+          githubHosts,
+          tokenFor: async sourceUrl =>
+            (await githubCredentials.getCredentials({ url: sourceUrl })).token,
+          apiFor: (sourceUrl, token) => {
+            const octokit = new Octokit({
+              auth: token,
+              baseUrl: integrations.github.byUrl(sourceUrl)?.config.apiBaseUrl,
+            });
+            return {
+              async pagesSourceBranch(slug) {
+                try {
+                  const { data } = await octokit.rest.repos.getPages({
+                    owner: slug.owner,
+                    repo: slug.repo,
+                  });
+                  return { branch: data.source?.branch };
+                } catch (err) {
+                  // Reported as ambiguous rather than interpreted. Only the
+                  // policy knows what else to ask about a 404.
+                  if ((err as { status?: number }).status === 404) {
+                    return { notFound: true };
+                  }
+                  throw err;
+                }
+              },
+              async canSeeRepo(slug) {
+                try {
+                  await octokit.rest.repos.get({
+                    owner: slug.owner,
+                    repo: slug.repo,
+                  });
+                  return true;
+                } catch (err) {
+                  if ((err as { status?: number }).status === 404) {
+                    return false;
+                  }
+                  throw err;
+                }
+              },
+            };
+          },
+        });
 
         // The practice that owns an aspect. Filtered on `spec.type` as well as
         // the annotation, matching how practices are identified everywhere else

@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-gitea smoke-gitea smoke-catalog test test-app tsc lint config-check secrets ci
+.PHONY: doctor deps dev dev-gitea smoke-gitea smoke-catalog smoke-facts test test-app tsc lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -41,6 +41,11 @@ smoke-gitea:
 ## (stub mode — no cluster, no secrets; safe anywhere incl. CI)
 smoke-catalog:
 	bash scripts/smoke-catalog.sh
+
+## smoke-facts — end-to-end check that the fact source derives a real medal by
+## evaluating a live repository (needs network; GH_TOKEN for the Pages trial)
+smoke-facts:
+	bash scripts/smoke-facts.sh
 
 ## theme-swatches — render every page-theme colour (stock + ours) with the
 ## spec.types using them, to .tmp/theme-swatches.html. Propose colours with
