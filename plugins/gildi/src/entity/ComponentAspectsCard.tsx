@@ -5,9 +5,11 @@ import UpgradeIcon from '@material-ui/icons/ArrowUpward';
 import { InfoCard, Link, Progress, ResponseErrorPanel } from '@backstage/core-components';
 import { entityRouteRef, useEntity } from '@backstage/plugin-catalog-react';
 import { useRouteRef } from '@backstage/core-plugin-api';
-import { parseEntityRef } from '@backstage/catalog-model';
+import { parseEntityRef, type Entity } from '@backstage/catalog-model';
 import { Crest } from '../crest';
+import { MedalBadge } from '../badge';
 import { aspectLabel } from './aspects';
+import { useComponentTrials } from './useComponentTrials';
 import { useComponentAspects, type AspectAdoptionView } from './useComponentAspects';
 
 // Four columns: [identity] [name + links] [version pills] [badge]. The identity
@@ -99,7 +101,18 @@ function PillLink({ to, label }: { to: string; label: string }) {
   );
 }
 
-function AspectRow({ aspect }: { aspect: AspectAdoptionView }) {
+function AspectRow({
+  aspect,
+  entity,
+}: {
+  aspect: AspectAdoptionView;
+  entity: Entity;
+}) {
+  // One fetch per row rather than one per card: the endpoint answers for a
+  // single (component, aspect) pair, and a component carries a handful of
+  // aspects at most. A batch read is the right call once that stops being true,
+  // and would not change anything this row renders.
+  const { run } = useComponentTrials(entity, aspect.aspectId);
   const entityRoute = useRouteRef(entityRouteRef);
 
   let practiceHref: string | undefined;
@@ -123,9 +136,13 @@ function AspectRow({ aspect }: { aspect: AspectAdoptionView }) {
         {aspectLabel(aspect.aspectId)}
       </Typography>
       <VersionPills aspect={aspect} />
-      {/* Reserved for the earned tier badge. Empty today: no tier data exists,
-          and a visible placeholder on every row reads as a broken card. */}
-      <div data-testid={`aspect-badge-${aspect.aspectId}`} />
+      {/* The earned tier badge — the component's, not the aspect's (hub design
+          §8). MedalBadge renders nothing at all when there is no run, which is
+          what keeps the old reservation's promise: no placeholder appears
+          beside a component the sweep has not reached yet. */}
+      <div data-testid={`aspect-badge-${aspect.aspectId}`}>
+        <MedalBadge run={run} />
+      </div>
 
       {(practiceHref || aspect.recordUrl) && (
         <div style={links}>
@@ -152,7 +169,7 @@ export function ComponentAspectsCard() {
     body = aspects.map((a, i) => (
       <div key={a.aspectId}>
         {i > 0 && <Divider />}
-        <AspectRow aspect={a} />
+        <AspectRow aspect={a} entity={entity} />
       </div>
     ));
   }

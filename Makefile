@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-gitea smoke-gitea smoke-catalog smoke-facts test test-app tsc lint config-check secrets ci
+.PHONY: doctor deps dev dev-gitea smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches test test-app tsc lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -52,6 +52,11 @@ smoke-facts:
 ## ARGS='--candidate plum:#4A1942,#7A2E63:why this one'
 theme-swatches:
 	node scripts/lib/run-theme-swatches.mjs $(ARGS)
+
+## medal-swatches — render every medal badge state to .tmp/medal-swatches.html
+## so the six states can be compared side by side without booting the app
+medal-swatches:
+	node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-medal-swatches.mjs $(ARGS)
 
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:
