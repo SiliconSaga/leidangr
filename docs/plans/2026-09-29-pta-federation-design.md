@@ -123,7 +123,63 @@ metadata:
 
 Leiðangr renders these on the PTA's entity page as "how this PTA communicates", which is the documentation the Council never had. knarr's config generation reads the same annotations **from Git, never from the Backstage API at runtime**, so a knarr digest keeps running while Leiðangr is down and a PTA can change its preferences with a pull request to its own repo. The annotation names are provisional; the rule that they are the PTA's to set, in the PTA's file, is the design.
 
-## 7. Bus factor, stated as rules
+## 7. Shared places: facilities, owners, stewards
+
+PTAs run events in school rooms and on school or municipal fields; MTL needs fields and gyms every season. "X needs a facility for activity Y near Z" is a question Leiðangr should answer, and answering it well means keeping three sub-questions apart:
+
+1. **Existence and attributes.** What spaces exist, capacity, indoor or outdoor, lights, restrooms, address. Catalog data.
+2. **Access rules and the path to book.** Who may use a space, on what terms, and how you ask: the township permit office, the district's facility-use form, the custodian's email, lead time, fees, insurance. For every facility we do not arbitrate this is the whole value, and Leiðangr stops at the answer. Booking stays with the owner's process.
+3. **Availability.** Only knowable where a calendar exists. Our own assets use the booking substrate from the devex reference; a school or park that publishes a calendar gets a read-only busy view, with the caveat that no event does not mean free.
+
+Conflating the three is how a district catalog turns into an attempt to build a booking system for fields nobody here owns.
+
+### Entity shape
+
+Phase 3's conventions hold unchanged: a facility is a `System` (`spec.type: facility`), its spaces are `Resource`s of type `bookable-space`, and a `Cycle` says where it `happensAt`. Owners become `Group`s even when nobody from them participates, the same "referenced, not held" stance the TeamSnap System takes:
+
+```text
+Group: west-orange-public-schools   (organization)
+ └─ Group: school-washington        (school) owns System: washington-elementary-campus
+        Resources: gym, cafeteria, back-field, playground
+Group: west-orange-township         (municipality)
+ └─ Group: wo-recreation            (department) owns System: colgate-park
+        Resources: field-1, field-2
+Group: mtl                          (organization) owns System: mtl-house (already seeded)
+```
+
+### Owner, steward, custody
+
+`spec.owner` alone cannot carry this, so three things the catalog blurs are separated:
+
+- **Owner** is the legal or operational owner, in `spec.owner`.
+- **Steward** is who maintains the entry today, in `siliconsaga.org/steward`. An owner `Group` carries `siliconsaga.org/participation: none | informal | maintains` so the catalog is honest about who is actually in the room.
+- **Custody** is where the descriptor file lives, and the location tells the truth: a drafted entry is in the gazetteer, a delegated one is in the owner's repo. Backstage keys an entity by kind and name, not by file, so identity survives a move, and two locations declaring the same facility is a catalog conflict, which makes custody exclusive by construction.
+
+**Start with a gazetteer, grow into stewardship.** A `west-orange-places` repo (a leaf: two owners now, the Council later) holds one directory per owning organization, drafted centrally from OpenStreetMap, the district's site, and the township's pages, and registered as one location. When an organization wants custody, its directory moves into its own repo and a location is added for it, with the gazetteer copy deleted in the same change. When an entry goes stale, `siliconsaga.org/last-verified` older than a year reads as `behind` through the same machinery aspects use, and the Council re-drafts it into the gazetteer. Delegation and reclaim are both one move of a directory, in either direction.
+
+OpenStreetMap and government data are a **seeding aid and a reference annotation** (`siliconsaga.org/osm-ref`), never a live entity provider: Backstage has no override layering, so a provider owning the entity would fight the steward's file.
+
+### Access, as annotations and a vísir
+
+Each space says who it is available to and how, and carries a short "how to book this space" document the owner can adopt verbatim when they take custody:
+
+```yaml
+annotations:
+  siliconsaga.org/available-to: group:default/pta-washington, community
+  siliconsaga.org/access-path: form          # permit | form | email | member | owner-only
+  siliconsaga.org/access-doc: ./docs/booking-washington-gym.md
+  siliconsaga.org/lead-time: P14D
+  siliconsaga.org/ics: <public calendar, if the owner publishes one>
+  siliconsaga.org/osm-ref: way/123456
+```
+
+The query then reads: spaces whose features cover Y, whose `available-to` includes X's group or `community`, near Z by address or OSM ref, then availability where an ICS or the substrate exists, then the access document. The devex reference's scaffolder picker ("which fields are free on Saturday") is the UI for the last two steps, and an event template's `happensAt` field uses the same picker.
+
+### Why MTL goes first
+
+MTL needs fields and gyms every season, already has `Cycle` seeds with `happensAt`, and its coordinators hold the tacit knowledge of who to ask. PTAs need rooms for a handful of events a year. The gazetteer earns its keep with MTL's winter gyms first, and the event templates pick up the same spaces afterwards. Every Saga that says how a field was obtained then becomes the record that used to leave with the coordinator, which is the turnover problem again, seen from the facilities side.
+
+## 8. Bus factor, stated as rules
 
 These are the constraints that make §2 true rather than aspirational. Each is checkable, and several belong in the `pta-hygiene` standard's next release.
 
@@ -134,7 +190,7 @@ These are the constraints that make §2 true rather than aspirational. Each is c
 5. **Credentials never live in a leaf.** Workspace service-account keys and GitHub tokens sit in OpenBao for the nexus and nowhere in a PTA repo, which is volundr's rule extended: the paved road holds no secrets.
 6. **The instance is rebuildable from Git.** A fresh Leiðangr with the location list re-ingests the district. The location list itself is committed.
 
-## 8. Google Workspace as a leaf provider
+## 9. Google Workspace as a leaf provider
 
 The Workspace activation makes calendars and groups creatable by API, which is what `new-pta-calendar` and `join-wopta` need. The mechanism, so the templates are not designed against a guess:
 
@@ -145,9 +201,9 @@ The Workspace activation makes calendars and groups creatable by API, which is w
 
 The Workspace is a leaf provider, not a nexus: a PTA's calendar created there is theirs, and if the WOPTA Workspace lapses, Google's own export and ownership-transfer paths apply with no SiliconSaga code in the way.
 
-## 9. Phasing
+## 10. Phasing
 
-Ordered so each step leaves a working district behind it.
+Ordered so each step leaves a working district behind it. Calendars for PTAs come first; the gazetteer runs in parallel because MTL's payoff is immediate.
 
 - **Phase 0 — declare what exists.** Seed the Council and eleven `Group`s under `examples/`; add `catalog-info.yaml` to wopta.org (Component, calendar Resource, the annotations from §6 for Mount Pleasant) and register it. *Exit: the Council and every PTA appear in the catalog; Mount Pleasant's page links its site, calendar, and preferences.*
 - **Phase 1 — `new-pta-site` and its agent twin.** Generalize the wopta.org shape into a template; prove it by creating a second PTA's site from it. *Exit: a site for one more PTA exists, made from the template, with its descriptor registered.*
@@ -155,17 +211,19 @@ Ordered so each step leaves a working district behind it.
 - **Phase 3 — one event template**, the first recurring event Mount Pleasant runs, with the `Cycle`, the directory, the calendar publish, and the Saga skeleton. *Exit: one real event ran from the template and its Saga was written.*
 - **Phase 4 — `pta-hygiene`** with `url-probe` and the attestation axis, and the Council overview showing medals. *Exit: every PTA in the catalog has a medal or a stated reason for none.*
 - **Phase 5 — preferences feed knarr**: knarr's digest and presentation config generated from the §6 annotations read out of Git. *Exit: changing a PTA's digest day by pull request changes when its digest arrives.*
+- **Phase G, in parallel, MTL first — the gazetteer.** `west-orange-places` with the gyms and fields MTL uses this winter and the rooms Mount Pleasant uses for its events, drafted from OSM and the district site, each with an access document; MTL's season `Cycle`s point at real spaces. *Exit: "where does U10 soccer play and who do we ask" is answerable from the catalog, and one PTA event template picks its room from it.*
 
-## 10. Deferred, with the reason
+## 11. Deferred, with the reason
 
 - **Skill inventory, proposal workflow, commitment tracking** (manifesto module 13). They are the volunteer-marketplace half of the umbrella design and belong to Ting and the Phase 4 store, not to this note. The catalog shape here is what they will hang off.
 - **A Council-level Backstage instance of its own.** Not until the Council has people to run it. Until then this instance is the nexus and the leaves are what the Council owns.
 - **Subdomain automation.** DNS has two humans; a template can print the record to add.
 - **Per-PTA Workspace accounts as a general offer.** A calendar and a Group per PTA are enough; user accounts are a PTA-by-PTA conversation.
 
-## 11. Open questions
+## 12. Open questions
 
 1. Where do the paved-path templates live: a SiliconSaga repo, the `mpe-wopta` org, or a future Council org? The design only requires that it be a leaf with two owners.
 2. Does the `Cycle` for an event carry the calendar event's UID, so a Saga can be reached from the calendar and back? Cheap, and it would make the calendar the index into the memory.
 3. Whether `pta` deserves to be a `Group` `spec.type` of its own or is `organization` under a Council `organization`. The vocabulary is open; consistency with the MTL seed (`organization → sport → team`) suggests `organization → pta → board`.
 4. How much of `_config.yml`'s `org:` block should be *derived* from the catalog descriptor rather than duplicated. Today the site is the source; that is the right default for a leaf, and the descriptor should copy it rather than the other way round.
+5. Whether a school's PTA should steward its own school's spaces in the gazetteer from the start, since the PTA is the party most often in those rooms, or whether that is better left to the Council until a district contact exists. Either way the entry's owner stays the district.
