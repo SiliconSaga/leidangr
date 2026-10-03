@@ -75,7 +75,13 @@ cleanup() {
   kill_tree "$DEV_PID"
   DEV_PID=""
 }
-trap cleanup EXIT INT TERM
+# EXIT cleans up; INT and TERM clean up AND STOP. Trapping all three to the same
+# handler let an interrupt fall back into whatever loop was running — Ctrl-C
+# would tear the server down and then carry on polling a backend that no longer
+# existed. The 130/143 statuses are the conventional "killed by SIGINT/SIGTERM".
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT
+trap 'cleanup; exit 143' TERM
 
 hdr=(-H "Authorization: Bearer ${TOKEN}")
 # Polled in a loop, so a lost call costs one iteration rather than the run — but
@@ -235,7 +241,7 @@ fi
 ERRFILE="$ROOT/.dev/dev-facts-curl.err"
 refresh_one() {
   curl -fsS --connect-timeout 30 --max-time 300 -X POST "${hdr[@]}" \
-    "${BASE}/api/gildi/trials/$(printf '%s' "$1" | jq -sRr @uri)/refresh?aspect=${2}" \
+    "${BASE}/api/gildi/trials/$(printf '%s' "$1" | jq -sRr @uri)/refresh?aspect=$(printf '%s' "$2" | jq -sRr @uri)" \
     2>"$ERRFILE"
 }
 

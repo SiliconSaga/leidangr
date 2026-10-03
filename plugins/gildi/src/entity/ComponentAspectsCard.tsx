@@ -112,7 +112,11 @@ function AspectRow({
   // single (component, aspect) pair, and a component carries a handful of
   // aspects at most. A batch read is the right call once that stops being true,
   // and would not change anything this row renders.
-  const { run } = useComponentTrials(entity, aspect.aspectId);
+  // `error` is carried through, not dropped. A 404 is a normal "no run yet" and
+  // the hook already turns it into an undefined run; anything else genuinely
+  // failed, and letting that render as an absent badge would make our own
+  // outage look exactly like a component the sweep has not reached.
+  const { run, error } = useComponentTrials(entity, aspect.aspectId);
   const entityRoute = useRouteRef(entityRouteRef);
 
   let practiceHref: string | undefined;
@@ -141,7 +145,7 @@ function AspectRow({
           what keeps the old reservation's promise: no placeholder appears
           beside a component the sweep has not reached yet. */}
       <div data-testid={`aspect-badge-${aspect.aspectId}`}>
-        <MedalBadge run={run} />
+        <MedalBadge run={run} error={error} />
       </div>
 
       {(practiceHref || aspect.recordUrl) && (

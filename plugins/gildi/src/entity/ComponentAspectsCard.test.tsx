@@ -247,12 +247,24 @@ describe('ComponentAspectsCard', () => {
       expect(screen.getByText('not evaluated')).toBeInTheDocument();
     });
 
-    it('explains the medal on hover, counting the trials behind it', async () => {
+    it('explains the medal, counting the trials behind it', async () => {
       await render(enrolled(), practices, trials(run({ medal: 'silver', passing: 3 })));
+      // Exposed as the accessible name rather than a `title` attribute: a
+      // tooltip opens on keyboard focus, which `title` never does.
       expect(await screen.findByTestId('medal-silver')).toHaveAttribute(
-        'title',
+        'aria-label',
         'Silver — 3 of 4 applicable trials passed',
       );
+    });
+
+    // A FAILED REQUEST IS NOT "no run yet". Rendering nothing for it would make
+    // our own outage look exactly like a component the sweep has not reached.
+    it('marks the badge unavailable when the request fails outright', async () => {
+      const broken = { fetch: async () => ({ ok: false, status: 500 }) as any } as any;
+      await render(enrolled(), practices, broken);
+      expect(await screen.findByTestId('medal-unavailable')).toBeInTheDocument();
+      expect(screen.getByText('unavailable')).toBeInTheDocument();
+      expect(screen.queryByTestId('aspect-badge-security')).not.toBeEmptyDOMElement();
     });
   });
 });

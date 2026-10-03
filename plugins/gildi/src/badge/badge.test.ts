@@ -1,5 +1,12 @@
 import type { TrialRun } from '@siliconsaga/plugin-gildi-common';
-import { badgeLabelFor, badgeStateFor, badgeTitleFor, isEarned } from './badge';
+import {
+  badgeLabelFor,
+  badgeStateFor,
+  badgeTitleFor,
+  badgeTitleForError,
+  isEarned,
+  isGap,
+} from './badge';
 
 const run = (over: Partial<TrialRun> = {}): TrialRun => ({
   entityRef: 'component:default/site',
@@ -67,6 +74,43 @@ describe('isEarned', () => {
       false,
       false,
     ]);
+  });
+});
+
+describe('isGap', () => {
+  // The silhouette rule, decided once. Every state that is a statement about us
+  // takes the lozenge; every verdict about the component keeps the medallion.
+  it('covers each state that is about us rather than the component', () => {
+    expect(['withheld', 'unevaluated', 'unavailable'].map(s => isGap(s as never))).toEqual([
+      true,
+      true,
+      true,
+    ]);
+  });
+
+  // `none` is the one that has to stay on the medal side: it IS a measurement,
+  // the bottom rung of the same ladder.
+  it('leaves none and the earned tiers on the medallion', () => {
+    expect(['gold', 'silver', 'bronze', 'none'].map(s => isGap(s as never))).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+});
+
+describe('badgeTitleForError', () => {
+  // A FAILED REQUEST IS OUR GAP. Drawing nothing for it would make an outage
+  // indistinguishable from a component the sweep has not reached yet.
+  it('names the failure and refuses to read as a verdict', () => {
+    const title = badgeTitleForError(new Error('trials request failed: 500'));
+    expect(title).toContain('trials request failed: 500');
+    expect(title).toContain('not a verdict about the component');
+  });
+
+  it('still explains itself with no message to quote', () => {
+    expect(badgeTitleForError(undefined)).toContain("Could not read this component's trials");
   });
 });
 

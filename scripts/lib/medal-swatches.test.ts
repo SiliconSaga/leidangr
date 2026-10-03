@@ -86,8 +86,8 @@ describe('the medal marks', () => {
 describe('renderMedalSwatchPage', () => {
   const page = renderMedalSwatchPage();
 
-  it('shows all six states', () => {
-    expect(ALL_STATES).toHaveLength(6);
+  it('shows every state the badge can draw', () => {
+    expect(ALL_STATES).toHaveLength(7);
     for (const s of ALL_STATES) {
       expect(page).toContain(`>${s.state}</span>`);
     }

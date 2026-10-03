@@ -57,13 +57,17 @@ smoke-facts:
 ## theme-swatches — render every page-theme colour (stock + ours) with the
 ## spec.types using them, to .tmp/theme-swatches.html. Propose colours with
 ## ARGS='--candidate plum:#4A1942,#7A2E63:why this one'
+##
+## Both swatch targets import a .ts module through Node's type stripping, which
+## is only unflagged from 22.18. package.json engines allows plain "22", so the
+## flag is what keeps 22.6–22.17 working; it is accepted and harmless on 24.
 theme-swatches:
-	node scripts/lib/run-theme-swatches.mjs $(ARGS)
+	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-theme-swatches.mjs $(ARGS)
 
 ## medal-swatches — render every medal badge state to .tmp/medal-swatches.html
 ## so the six states can be compared side by side without booting the app
 medal-swatches:
-	node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-medal-swatches.mjs $(ARGS)
+	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-medal-swatches.mjs $(ARGS)
 
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:

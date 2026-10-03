@@ -23,11 +23,23 @@ export type BadgeState =
   | 'bronze'
   | 'none'
   | 'withheld'
-  | 'unevaluated';
+  | 'unevaluated'
+  | 'unavailable';
 
 /** The three states that are an achievement rather than a report about a gap. */
 const EARNED = new Set<BadgeState>(['gold', 'silver', 'bronze']);
 export const isEarned = (s: BadgeState): boolean => EARNED.has(s);
+
+/**
+ * The states that are a statement about US rather than a verdict about the
+ * component, and therefore take the lozenge rather than the medallion.
+ *
+ * A set rather than a condition spelled out at the point of render: the
+ * silhouette rule is the design's load-bearing claim, and it should be decided
+ * once here rather than re-derived everywhere a mark is drawn.
+ */
+const GAP = new Set<BadgeState>(['withheld', 'unevaluated', 'unavailable']);
+export const isGap = (s: BadgeState): boolean => GAP.has(s);
 
 /**
  * `undefined` means DRAW NOTHING, and is deliberately distinct from every state
@@ -58,9 +70,24 @@ export function badgeLabelFor(state: BadgeState): string {
       return 'withheld';
     case 'unevaluated':
       return 'not evaluated';
+    case 'unavailable':
+      return 'unavailable';
     default:
       return state;
   }
+}
+
+/**
+ * The title for a component whose trials could not be FETCHED at all.
+ *
+ * Distinct from drawing nothing, which means "no run yet". A failed request is
+ * our gap, and rendering it as an absent badge would make our own outage look
+ * like a component the sweep has not reached — the same inversion the outcome
+ * model refuses everywhere else, arriving by a different route.
+ */
+export function badgeTitleForError(error: Error | undefined): string {
+  const why = error?.message?.trim();
+  return `Could not read this component's trials${why ? `: ${why}` : ''}. This is a gap in what we could fetch, not a verdict about the component.`;
 }
 
 /**

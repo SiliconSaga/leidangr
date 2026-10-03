@@ -86,6 +86,12 @@ export const BANDS: MedalBand[] = [
         label: 'not evaluated',
         meaning: 'We never learned what the trials were — the standard itself could not be read.',
       },
+      {
+        state: 'unavailable',
+        label: 'unavailable',
+        meaning:
+          'The request for this component’s trials failed outright. Drawing nothing here would make our own outage look like a component the sweep has not reached yet.',
+      },
     ],
   },
 ];
@@ -95,6 +101,7 @@ export const ALL_STATES: MedalSwatch[] = BANDS.flatMap(b => b.states);
 /** How a stored run becomes one of the six. The real derivation, in order. */
 export const DERIVATION: Array<[string, string]> = [
   ['no run recorded', 'nothing is drawn'],
+  ['the request failed', 'unavailable'],
   ['kind = unevaluated', 'not evaluated'],
   ['kind = evaluated, medal = null', 'withheld'],
   ['medal = gold | silver | bronze', 'that tier'],
@@ -264,7 +271,11 @@ h1 {
    line rather than carrying its own leading. */
 .chip span { font-size: 12px; line-height: 1; white-space: nowrap; }
 .chip .earned { font-weight: 600; }
-.chip .gap { color: ${MUTED}; }
+/* --ink-soft, not the mark's own grey: #8a8a94 clears 3:1 as a GRAPHIC but not
+   the 4.5:1 that 12px text needs on this surface. The SVG keeps the grey — a
+   stroke is held to the lower bar — while the label takes a token that is
+   readable in both themes. */
+.chip .gap { color: var(--ink-soft); }
 
 table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
 th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); }
@@ -320,7 +331,7 @@ ${b.states
 <header>
   <h1>Guildhall medal badges</h1>
   <p class="thesis">
-    <strong>Six states, not three.</strong> A component earns a tier by passing an aspect’s
+    <strong>Seven states, not three.</strong> A component earns a tier by passing an aspect’s
     trials, and the badge has to carry three different kinds of “no medal” without
     flattening them. The marks below are grouped by <em>what kind of answer they are</em>,
     because that grouping is the whole design.

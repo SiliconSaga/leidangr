@@ -1,10 +1,13 @@
 import { useId } from 'react';
+import { Tooltip, makeStyles } from '@material-ui/core';
 import type { TrialRun } from '@siliconsaga/plugin-gildi-common';
 import {
   badgeLabelFor,
   badgeStateFor,
   badgeTitleFor,
+  badgeTitleForError,
   isEarned,
+  isGap,
   type BadgeState,
 } from './badge';
 
@@ -88,58 +91,106 @@ function NoVerdict() {
   );
 }
 
+// The LABEL takes a theme token, while the mark keeps its own grey. #8a8a94
+// clears the 3:1 that a graphic is held to, but not the 4.5:1 that 12px text
+// needs — and a literal would only be right in one theme anyway.
+const useStyles = makeStyles(theme => ({
+  gapLabel: { color: theme.palette.text.secondary },
+  // A real <button>, reset to look like plain content. The tooltip has to open
+  // on keyboard focus as well as hover, and only an interactive element can
+  // take focus honestly — a <span tabIndex={0}> is focusable without ever
+  // telling assistive tech what it is.
+  trigger: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    background: 'none',
+    border: 0,
+    padding: 0,
+    margin: 0,
+    font: 'inherit',
+    color: 'inherit',
+    cursor: 'help',
+    textAlign: 'left',
+  },
+}));
+
+/**
+ * `undefined` means draw nothing: no run and nothing went wrong, so the sweep
+ * has simply not reached this component yet.
+ */
+function stateFor(run?: TrialRun, error?: Error): BadgeState | undefined {
+  if (run) return badgeStateFor(run);
+  return error ? 'unavailable' : undefined;
+}
+
 /**
  * The earned tier badge — the component's, never the aspect's (hub design §8:
  * an aspect holds a ladder, a component earns a rung).
  *
- * Renders nothing at all when there is no run, which is why the card can mount
- * this on every row without a placeholder appearing beside components the sweep
- * has not reached.
+ * Renders nothing at all when there is no run AND nothing went wrong, which is
+ * why the card can mount this on every row without a placeholder appearing
+ * beside components the sweep has not reached.
+ *
+ * `error` is the case that absence cannot cover. A request that FAILED is our
+ * gap, and drawing nothing for it would make our own outage indistinguishable
+ * from a component the sweep simply has not got to — so it takes the lozenge
+ * and says so.
  */
-export function MedalBadge({ run, size = 26 }: { run?: TrialRun; size?: number }) {
+export function MedalBadge({
+  run,
+  error,
+  size = 26,
+}: {
+  run?: TrialRun;
+  error?: Error;
+  size?: number;
+}) {
   const id = useId();
-  const state = badgeStateFor(run);
-  if (!state || !run) return null;
+  const classes = useStyles();
+  const state = stateFor(run, error);
+  if (!state) return null;
 
   const label = badgeLabelFor(state);
-  const title = badgeTitleFor(run, state);
+  const title = run ? badgeTitleFor(run, state) : badgeTitleForError(error);
 
   return (
-    <span
-      title={title}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
-      data-testid={`medal-${state}`}
-    >
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 48 48"
-        role="img"
-        aria-labelledby={id}
-        style={{ display: 'block', flex: 'none' }}
+    // Tooltip rather than a `title` attribute: `title` surfaces on hover only,
+    // so a sighted keyboard user never learns WHY a medal was withheld.
+    <Tooltip title={title}>
+      <button
+        type="button"
+        aria-label={title}
+        className={classes.trigger}
+        data-testid={`medal-${state}`}
       >
-        <title id={id}>{title}</title>
-        {state === 'withheld' || state === 'unevaluated' ? (
-          <NoVerdict />
-        ) : (
-          <Medallion state={state} />
-        )}
-      </svg>
-      <span
-        style={{
-          fontSize: 12,
-          // Explicit, so the label's own line box cannot add leading above and
-          // below the text and shift it off the mark's centre line.
-          lineHeight: 1,
-          // Earned tiers carry their weight; a gap state stays quiet so a row
-          // that could not be measured never shouts louder than one that was.
-          fontWeight: isEarned(state) ? 600 : 400,
-          color: isEarned(state) ? undefined : MUTED,
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {label}
-      </span>
-    </span>
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 48 48"
+          role="img"
+          aria-labelledby={id}
+          style={{ display: 'block', flex: 'none' }}
+        >
+          <title id={id}>{title}</title>
+          {isGap(state) ? <NoVerdict /> : <Medallion state={state} />}
+        </svg>
+        <span
+          className={isEarned(state) ? undefined : classes.gapLabel}
+          style={{
+            fontSize: 12,
+            // Explicit, so the label's own line box cannot add leading above and
+            // below the text and shift it off the mark's centre line.
+            lineHeight: 1,
+            // Earned tiers carry their weight; a gap state stays quiet so a row
+            // that could not be measured never shouts louder than one that was.
+            fontWeight: isEarned(state) ? 600 : 400,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {label}
+        </span>
+      </button>
+    </Tooltip>
   );
 }
