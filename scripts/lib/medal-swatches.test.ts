@@ -23,7 +23,7 @@ describe('the medal marks', () => {
 
   it.each(['withheld', 'unevaluated'])('draws %s as a lozenge, not a medallion', state => {
     const svg = markFor(state);
-    expect(svg).toContain('<polygon points="24,17');
+    expect(svg).toContain('<polygon points="24,9 39,24 24,39 9,24"');
     expect(svg).not.toContain('<circle');
   });
 
@@ -32,7 +32,31 @@ describe('the medal marks', () => {
     expect(svg).toContain('<circle');
     expect(svg).not.toContain('stroke-dasharray');
     // The charge only appears on an earned medal — it is what `none` drops.
-    expect(svg).toContain('<polygon points="24,27');
+    expect(svg).toContain('<polygon points="24,22');
+  });
+
+  // ⚠ THE ALIGNMENT REGRESSION. `align-items: center` centres the SVG BOX, so a
+  // mark drawn off-centre inside it floats against its own label — and two
+  // shapes sitting at different heights float by different amounts, which is
+  // what made the real card read as crooked. A square box with both marks on
+  // (24, 24) is the fix, and these pin it.
+  it('gives every mark the same square box', () => {
+    for (const s of ALL_STATES) {
+      expect(markFor(s.state, 26)).toContain('viewBox="0 0 48 48"');
+      expect(markFor(s.state, 26)).toContain('width="26" height="26"');
+    }
+  });
+
+  it('centres both silhouettes on the same point', () => {
+    // Medallion: ribbon apex down to the circle's lower edge, about 4 to 44.
+    expect(medallionSvg('gold')).toContain('cy="30"');
+    expect(medallionSvg('gold')).toContain('r="13"');
+    expect(medallionSvg('gold')).toContain('M18 6 L24 18 L30 6');
+    // Lozenge: symmetric about (24, 24) by construction — 9 and 39 either side.
+    expect(noVerdictSvg()).toContain('24,9 39,24 24,39 9,24');
+    // Its bar straddles the same centre line rather than sitting below it.
+    expect(noVerdictSvg()).toContain('y="22.5"');
+    expect(noVerdictSvg()).toContain('height="3"');
   });
 
   it('gives gold and bronze visibly different hues rather than two close yellows', () => {
@@ -54,7 +78,7 @@ describe('the medal marks', () => {
   it('scales the viewBox rather than the coordinates', () => {
     // Same drawing at any size, so the 26px strip and the 48px rows cannot
     // drift apart into two different marks.
-    expect(medallionSvg('gold', 26)).toContain('viewBox="0 0 48 60"');
+    expect(medallionSvg('gold', 26)).toContain('viewBox="0 0 48 48"');
     expect(medallionSvg('gold', 26)).toContain('width="26"');
   });
 });

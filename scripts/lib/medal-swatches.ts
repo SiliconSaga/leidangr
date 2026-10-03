@@ -101,25 +101,32 @@ export const DERIVATION: Array<[string, string]> = [
   ['medal = none', 'none'],
 ];
 
+// ⚠ BOTH MARKS CENTRE ON (24, 24) IN A SQUARE 48×48 BOX. Centring aligns the
+// SVG BOX, so content sitting off-centre inside it shows up as a mark floating
+// against its own label — and two shapes at different heights inside the box
+// float by different amounts, which reads as a crooked row. Keep any new mark
+// centred on the same point. See MedalBadge.tsx, which carries the same
+// geometry for the reason documented at the top of this file.
+const MEDALLION_STAR =
+  '24,22 26,27.3 31.6,27.5 27.2,31.1 28.7,36.5 24,33.4 19.3,36.5 20.8,31.1 16.4,27.5 22,27.3';
+
 export function medallionSvg(state: string, size = 48): string {
   const m = METAL[state];
-  const star =
-    '24,27 26.6,34.2 34.2,34.2 28.1,38.7 30.4,46 24,41.5 17.6,46 19.9,38.7 13.8,34.2 21.4,34.2';
-  return `<svg width="${size}" height="${(size * 60) / 48}" viewBox="0 0 48 60" role="img" aria-label="${state} medal"${
+  return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="${state} medal"${
     m ? '' : ' class="void"'
   }>
-<path d="M17 6 L24 22 L31 6" fill="none" stroke="${RIBBON}" stroke-width="4" opacity="${m ? 1 : 0.4}"/>
-<circle cx="24" cy="36" r="15" fill="${m ? m.fill : 'none'}" stroke="${m ? m.rim : MUTED}" stroke-width="2.5"${
+<path d="M18 6 L24 18 L30 6" fill="none" stroke="${RIBBON}" stroke-width="3.5" opacity="${m ? 1 : 0.4}"/>
+<circle cx="24" cy="30" r="13" fill="${m ? m.fill : 'none'}" stroke="${m ? m.rim : MUTED}" stroke-width="2.5"${
     m ? '' : ' stroke-dasharray="3 3"'
   }/>
-${m ? `<polygon points="${star}" fill="${m.charge}"/>` : ''}
+${m ? `<polygon points="${MEDALLION_STAR}" fill="${m.charge}"/>` : ''}
 </svg>`;
 }
 
 export function noVerdictSvg(size = 48): string {
-  return `<svg width="${size}" height="${(size * 60) / 48}" viewBox="0 0 48 60" role="img" aria-label="no verdict">
-<polygon points="24,17 39,36 24,55 9,36" fill="none" stroke="${MUTED}" stroke-width="2.5" stroke-dasharray="3 3"/>
-<rect x="16" y="34.5" width="16" height="3" fill="${MUTED}" rx="1.5"/>
+  return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="no verdict">
+<polygon points="24,9 39,24 24,39 9,24" fill="none" stroke="${MUTED}" stroke-width="2.5" stroke-dasharray="3 3"/>
+<rect x="16" y="22.5" width="16" height="3" fill="${MUTED}" rx="1.5"/>
 </svg>`;
 }
 
@@ -218,7 +225,10 @@ h1 {
   gap: 0 1rem;
   align-items: start;
 }
-.state .mark { display: flex; justify-content: center; padding-top: 2px; }
+/* No nudge needed: the mark is centred inside a square box, so it lines up with
+   the name beside it on its own. */
+.state .mark { display: flex; justify-content: center; align-items: center; }
+.state .mark svg { display: block; }
 .state .name {
   font-family: var(--display);
   font-size: 1.1rem;
@@ -249,7 +259,10 @@ h1 {
   padding: 1.1rem 1.3rem;
 }
 .chip { display: inline-flex; align-items: center; gap: 5px; }
-.chip span { font-size: 12px; white-space: nowrap; }
+.chip svg { display: block; flex: none; }
+/* line-height matches the component, so the label sits on the mark's centre
+   line rather than carrying its own leading. */
+.chip span { font-size: 12px; line-height: 1; white-space: nowrap; }
 .chip .earned { font-weight: 600; }
 .chip .gap { color: ${MUTED}; }
 

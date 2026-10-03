@@ -24,6 +24,18 @@ const MUTED = '#8a8a94';
 
 const RIBBON = '#6b3a6b'; // purpure, the guildhall's own colour
 
+// ⚠ BOTH MARKS ARE CENTRED ON (24, 24) IN A SQUARE 48×48 BOX, and that is not
+// incidental tidiness. `align-items: center` centres the SVG BOX, so any gap
+// between the box's centre and the drawn content's centre shows up as a mark
+// floating against its own label — and if the two shapes sit at different
+// heights inside the box, they float by different amounts and the row reads as
+// crooked. An earlier version used a 48×60 box with the medallion's content
+// centred near y=28 and the lozenge's near y=25, which did exactly that. The
+// square box also keeps the badge from standing taller than the 20px version
+// pills beside it and stretching the row.
+const MEDALLION_STAR =
+  '24,22 26,27.3 31.6,27.5 27.2,31.1 28.7,36.5 24,33.4 19.3,36.5 20.8,31.1 16.4,27.5 22,27.3';
+
 /**
  * A voided medallion: the same silhouette as an earned one, with no metal in
  * it. `none` belongs on the tier scale — it IS a measurement, the bottom of the
@@ -33,22 +45,23 @@ function Medallion({ state }: { state: BadgeState }) {
   const metal = METAL[state];
   return (
     <>
-      <path d="M17 6 L24 22 L31 6" fill="none" stroke={RIBBON} strokeWidth="4" opacity={metal ? 1 : 0.4} />
+      <path
+        d="M18 6 L24 18 L30 6"
+        fill="none"
+        stroke={RIBBON}
+        strokeWidth="3.5"
+        opacity={metal ? 1 : 0.4}
+      />
       <circle
         cx="24"
-        cy="36"
-        r="15"
+        cy="30"
+        r="13"
         fill={metal ? metal.fill : 'none'}
         stroke={metal ? metal.rim : MUTED}
         strokeWidth="2.5"
         strokeDasharray={metal ? undefined : '3 3'}
       />
-      {metal && (
-        <polygon
-          points="24,27 26.6,34.2 34.2,34.2 28.1,38.7 30.4,46 24,41.5 17.6,46 19.9,38.7 13.8,34.2 21.4,34.2"
-          fill={metal.charge}
-        />
-      )}
+      {metal && <polygon points={MEDALLION_STAR} fill={metal.charge} />}
     </>
   );
 }
@@ -64,13 +77,13 @@ function NoVerdict() {
   return (
     <>
       <polygon
-        points="24,17 39,36 24,55 9,36"
+        points="24,9 39,24 24,39 9,24"
         fill="none"
         stroke={MUTED}
         strokeWidth="2.5"
         strokeDasharray="3 3"
       />
-      <rect x="16" y="34.5" width="16" height="3" fill={MUTED} rx="1.5" />
+      <rect x="16" y="22.5" width="16" height="3" fill={MUTED} rx="1.5" />
     </>
   );
 }
@@ -99,10 +112,11 @@ export function MedalBadge({ run, size = 26 }: { run?: TrialRun; size?: number }
     >
       <svg
         width={size}
-        height={(size * 60) / 48}
-        viewBox="0 0 48 60"
+        height={size}
+        viewBox="0 0 48 48"
         role="img"
         aria-labelledby={id}
+        style={{ display: 'block', flex: 'none' }}
       >
         <title id={id}>{title}</title>
         {state === 'withheld' || state === 'unevaluated' ? (
@@ -114,6 +128,9 @@ export function MedalBadge({ run, size = 26 }: { run?: TrialRun; size?: number }
       <span
         style={{
           fontSize: 12,
+          // Explicit, so the label's own line box cannot add leading above and
+          // below the text and shift it off the mark's centre line.
+          lineHeight: 1,
           // Earned tiers carry their weight; a gap state stays quiet so a row
           // that could not be measured never shouts louder than one that was.
           fontWeight: isEarned(state) ? 600 : 400,
