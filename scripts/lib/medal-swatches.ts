@@ -12,14 +12,27 @@
 // theme-swatches.ts already documents for the guildhall themes. The duplication
 // is bounded (two shapes and a palette) and drift is visible the moment anyone
 // looks at the page, which is the only reason it is acceptable here.
+//
+// `renderMedalSwatchPage` emits <title> + <style> + content with no document
+// skeleton, which is the shape the Artifact publisher wants. `standalone()`
+// wraps that for a file you can double-click. One source, two wrappers — so the
+// page under review and the page on disk can never disagree.
 
 export interface MedalSwatch {
   state: string;
   label: string;
   meaning: string;
-  earned: boolean;
 }
 
+export interface MedalBand {
+  /** What this group of states IS, which is the page's actual argument. */
+  eyebrow: string;
+  claim: string;
+  states: MedalSwatch[];
+}
+
+// The badge's own values, lifted verbatim. Deliberately NOT themed: these are
+// the thing under review, so they must render identically to the card.
 export const METAL: Record<string, { fill: string; rim: string; charge: string }> = {
   gold: { fill: '#d9b23a', rim: '#8f7220', charge: '#4a3c10' },
   silver: { fill: '#dcdce0', rim: '#9a9aa2', charge: '#4a4a52' },
@@ -27,123 +40,325 @@ export const METAL: Record<string, { fill: string; rim: string; charge: string }
 };
 
 export const MUTED = '#8a8a94';
-export const RIBBON = '#6b3a6b';
+export const RIBBON = '#6b3a6b'; // purpure
 
-export const SWATCHES: MedalSwatch[] = [
+/**
+ * Three bands, not six rows. The grouping IS the design argument: the earned
+ * tiers and `none` sit on one scale and share a silhouette, while the two gap
+ * states are a different kind of answer and get a different shape.
+ */
+export const BANDS: MedalBand[] = [
   {
-    state: 'gold',
-    label: 'gold',
-    meaning: 'Every applicable trial passed. Complete at any standard size (ADR 0013).',
-    earned: true,
+    eyebrow: 'Earned',
+    claim:
+      'A verdict about the component, and an achievement. Medals are derived from what passed, never assigned to named rungs — so an aspect is complete at any standard size (ADR 0013).',
+    states: [
+      { state: 'gold', label: 'gold', meaning: 'Every applicable trial passed.' },
+      { state: 'silver', label: 'silver', meaning: 'One trial short of complete.' },
+      { state: 'bronze', label: 'bronze', meaning: 'At least one applicable trial passed.' },
+    ],
   },
   {
-    state: 'silver',
-    label: 'silver',
-    meaning: 'One trial short of complete.',
-    earned: true,
+    eyebrow: 'Measured, nothing earned',
+    claim:
+      'Still a verdict about the component — we measured, and nothing passed. It belongs on the tier scale, so it keeps the medallion silhouette and simply holds no metal.',
+    states: [
+      {
+        state: 'none',
+        label: 'none',
+        meaning: 'The standard applied, and no applicable trial passed.',
+      },
+    ],
   },
   {
-    state: 'bronze',
-    label: 'bronze',
-    meaning: 'At least one applicable trial passed.',
-    earned: true,
-  },
-  {
-    state: 'none',
-    label: 'none',
-    meaning:
-      'A VERDICT ABOUT THE COMPONENT — we measured, and nothing passed. On the tier scale, so it keeps the medal silhouette and simply holds no metal.',
-    earned: false,
-  },
-  {
-    state: 'withheld',
-    label: 'withheld',
-    meaning:
-      'A statement about US — a trial could not be measured, so the medal is suppressed rather than denied. NOT a lower rank, so not a medal shape.',
-    earned: false,
-  },
-  {
-    state: 'unevaluated',
-    label: 'not evaluated',
-    meaning:
-      'Also about us, one step earlier — we never learned what the trials were. Same kind of answer as withheld, different cause.',
-    earned: false,
+    eyebrow: 'Could not say',
+    claim:
+      'Not a verdict at all — a statement about us. A dimmed medal would read as a worse medal and put a gap in our own knowledge onto the component’s record, so these take a different silhouette entirely.',
+    states: [
+      {
+        state: 'withheld',
+        label: 'withheld',
+        meaning:
+          'A trial could not be measured, so the medal is suppressed rather than denied. The hover names every reason.',
+      },
+      {
+        state: 'unevaluated',
+        label: 'not evaluated',
+        meaning: 'We never learned what the trials were — the standard itself could not be read.',
+      },
+    ],
   },
 ];
 
-export function medallionSvg(state: string, size = 44): string {
+export const ALL_STATES: MedalSwatch[] = BANDS.flatMap(b => b.states);
+
+/** How a stored run becomes one of the six. The real derivation, in order. */
+export const DERIVATION: Array<[string, string]> = [
+  ['no run recorded', 'nothing is drawn'],
+  ['kind = unevaluated', 'not evaluated'],
+  ['kind = evaluated, medal = null', 'withheld'],
+  ['medal = gold | silver | bronze', 'that tier'],
+  ['medal = none', 'none'],
+];
+
+export function medallionSvg(state: string, size = 48): string {
   const m = METAL[state];
   const star =
     '24,27 26.6,34.2 34.2,34.2 28.1,38.7 30.4,46 24,41.5 17.6,46 19.9,38.7 13.8,34.2 21.4,34.2';
-  return `<svg width="${size}" height="${(size * 60) / 48}" viewBox="0 0 48 60" role="img" aria-label="${state}">
-    <path d="M17 6 L24 22 L31 6" fill="none" stroke="${RIBBON}" stroke-width="4" opacity="${m ? 1 : 0.4}"/>
-    <circle cx="24" cy="36" r="15" fill="${m ? m.fill : 'none'}" stroke="${m ? m.rim : MUTED}" stroke-width="2.5"${m ? '' : ' stroke-dasharray="3 3"'}/>
-    ${m ? `<polygon points="${star}" fill="${m.charge}"/>` : ''}
-  </svg>`;
+  return `<svg width="${size}" height="${(size * 60) / 48}" viewBox="0 0 48 60" role="img" aria-label="${state} medal"${
+    m ? '' : ' class="void"'
+  }>
+<path d="M17 6 L24 22 L31 6" fill="none" stroke="${RIBBON}" stroke-width="4" opacity="${m ? 1 : 0.4}"/>
+<circle cx="24" cy="36" r="15" fill="${m ? m.fill : 'none'}" stroke="${m ? m.rim : MUTED}" stroke-width="2.5"${
+    m ? '' : ' stroke-dasharray="3 3"'
+  }/>
+${m ? `<polygon points="${star}" fill="${m.charge}"/>` : ''}
+</svg>`;
 }
 
-export function noVerdictSvg(size = 44): string {
+export function noVerdictSvg(size = 48): string {
   return `<svg width="${size}" height="${(size * 60) / 48}" viewBox="0 0 48 60" role="img" aria-label="no verdict">
-    <polygon points="24,17 39,36 24,55 9,36" fill="none" stroke="${MUTED}" stroke-width="2.5" stroke-dasharray="3 3"/>
-    <rect x="16" y="34.5" width="16" height="3" fill="${MUTED}" rx="1.5"/>
-  </svg>`;
+<polygon points="24,17 39,36 24,55 9,36" fill="none" stroke="${MUTED}" stroke-width="2.5" stroke-dasharray="3 3"/>
+<rect x="16" y="34.5" width="16" height="3" fill="${MUTED}" rx="1.5"/>
+</svg>`;
 }
 
-export function markFor(state: string, size = 44): string {
+export function markFor(state: string, size = 48): string {
   return state === 'withheld' || state === 'unevaluated'
     ? noVerdictSvg(size)
     : medallionSvg(state, size);
 }
 
-export function renderMedalSwatchPage(swatches: MedalSwatch[] = SWATCHES): string {
-  const rows = swatches
+const STYLE = `
+/* Layout: a stacked spec sheet — three argument bands, then the size check. */
+:root {
+  --ground: #faf8fb;
+  --surface: #ffffff;
+  --ink: #241f28;
+  --ink-soft: #6b6474;
+  --rule: #e4dfe9;
+  --accent: #6b3a6b;
+  --accent-wash: #f1eaf1;
+  --display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --body: 'Archivo', 'Segoe UI', system-ui, sans-serif;
+  --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #171419;
+    --surface: #201c23;
+    --ink: #ece8ef;
+    --ink-soft: #a39baa;
+    --rule: #332d38;
+    --accent: #c08dc0;
+    --accent-wash: #2a2130;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #171419;
+  --surface: #201c23;
+  --ink: #ece8ef;
+  --ink-soft: #a39baa;
+  --rule: #332d38;
+  --accent: #c08dc0;
+  --accent-wash: #2a2130;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.6;
+  margin: 0;
+  padding-block: 2.5rem 3.5rem;
+  padding-left: 20px;
+  padding-right: 20px;
+}
+.wrap { max-width: 50rem; margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
+
+header { display: flex; flex-direction: column; gap: 0.6rem; }
+h1 {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: clamp(1.75rem, 5vw, 2.4rem);
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+  letter-spacing: -0.01em;
+}
+.thesis { margin: 0; color: var(--ink-soft); max-width: 42rem; }
+.thesis strong { color: var(--ink); font-weight: 600; }
+
+.band {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 1.4rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0;
+}
+.claim { margin: -0.5rem 0 0; color: var(--ink-soft); font-size: 0.93rem; max-width: 44rem; }
+
+.states { display: flex; flex-direction: column; gap: 1.1rem; }
+.state {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 0 1rem;
+  align-items: start;
+}
+.state .mark { display: flex; justify-content: center; padding-top: 2px; }
+.state .name {
+  font-family: var(--display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+.state .token {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  background: var(--accent-wash);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+  font-weight: 400;
+}
+.state .meaning { margin: 0.15rem 0 0; color: var(--ink-soft); font-size: 0.93rem; min-width: 0; }
+
+.check { display: flex; flex-direction: column; gap: 0.9rem; }
+.strip {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  padding: 1.1rem 1.3rem;
+}
+.chip { display: inline-flex; align-items: center; gap: 5px; }
+.chip span { font-size: 12px; white-space: nowrap; }
+.chip .earned { font-weight: 600; }
+.chip .gap { color: ${MUTED}; }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); }
+th { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; }
+td:first-child { font-family: var(--mono); font-size: 0.82rem; white-space: nowrap; }
+.scroll { overflow-x: auto; }
+
+footer { color: var(--ink-soft); font-size: 0.85rem; border-top: 1px solid var(--rule); padding-top: 1.1rem; }
+footer code { font-family: var(--mono); font-size: 0.82rem; }
+h2 { font-family: var(--display); font-size: 1.25rem; font-weight: 600; margin: 0; }
+svg.void { opacity: 0.95; }
+@media (max-width: 420px) {
+  .state { grid-template-columns: 44px 1fr; gap: 0 0.7rem; }
+}
+`;
+
+export function renderMedalSwatchPage(bands: MedalBand[] = BANDS): string {
+  const band = (b: MedalBand) => `<section class="band">
+<p class="eyebrow">${b.eyebrow}</p>
+<p class="claim">${b.claim}</p>
+<div class="states">
+${b.states
+  .map(
+    s => `  <div class="state">
+    <div class="mark">${markFor(s.state)}</div>
+    <div>
+      <p class="name">${s.label}<span class="token">${s.state}</span></p>
+      <p class="meaning">${s.meaning}</p>
+    </div>
+  </div>`,
+  )
+  .join('\n')}
+</div>
+</section>`;
+
+  const states = bands.flatMap(b => b.states);
+  const earned = new Set(['gold', 'silver', 'bronze']);
+  const chips = states
     .map(
-      s => `<tr>
-      <td class="mark">${markFor(s.state)}</td>
-      <td><code>${s.state}</code></td>
-      <td class="${s.earned ? 'earned' : 'gap'}">${s.label}</td>
-      <td class="meaning">${s.meaning}</td>
-    </tr>`,
+      s =>
+        `<span class="chip">${markFor(s.state, 26)}<span class="${
+          earned.has(s.state) ? 'earned' : 'gap'
+        }">${s.label}</span></span>`,
     )
     .join('\n');
 
-  // Also rendered at the size the card actually uses, because a mark that
-  // reads at 44px and turns to mud at 26px is a mark that does not work.
-  const inline = swatches
-    .map(s => `<span class="chip">${markFor(s.state, 26)}<em>${s.label}</em></span>`)
-    .join('\n');
+  const rows = DERIVATION.map(([from, to]) => `<tr><td>${from}</td><td>${to}</td></tr>`).join('\n');
 
-  return `<!doctype html>
-<meta charset="utf-8">
-<title>Guildhall medal badges</title>
-<style>
-  body { font: 14px/1.5 system-ui, sans-serif; margin: 2rem; max-width: 60rem; color: #23232a; }
-  h1 { font-size: 1.3rem; }
-  p.lede { color: #55555f; }
-  table { border-collapse: collapse; width: 100%; margin-top: 1.5rem; }
-  td { border-top: 1px solid #e4e4ea; padding: 12px 10px; vertical-align: middle; }
-  td.mark { width: 60px; text-align: center; }
-  td.meaning { color: #55555f; }
-  .earned { font-weight: 600; }
-  .gap { color: ${MUTED}; }
-  code { background: #f2f2f6; padding: 1px 5px; border-radius: 3px; }
-  .strip { margin-top: 2rem; padding: 1rem; background: #fafafc; border: 1px solid #e4e4ea; border-radius: 6px; display: flex; gap: 22px; flex-wrap: wrap; align-items: center; }
-  .chip { display: inline-flex; align-items: center; gap: 5px; }
-  .chip em { font-style: normal; font-size: 12px; }
-</style>
-<h1>Guildhall medal badges</h1>
-<p class="lede">
-  Six states, not three. The three earned tiers share one silhouette; <code>none</code>
-  keeps that silhouette voided because it is a real measurement at the bottom of the
-  same ladder; <code>withheld</code> and <code>unevaluated</code> get a different shape
-  entirely, because they are a different <em>kind</em> of answer rather than a lower rank.
-</p>
-<table>
+  return `<title>Guildhall medal badges</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Archivo:wght@400;500;600&display=swap">
+<style>${STYLE}</style>
+<div class="wrap">
+<header>
+  <h1>Guildhall medal badges</h1>
+  <p class="thesis">
+    <strong>Six states, not three.</strong> A component earns a tier by passing an aspect’s
+    trials, and the badge has to carry three different kinds of “no medal” without
+    flattening them. The marks below are grouped by <em>what kind of answer they are</em>,
+    because that grouping is the whole design.
+  </p>
+</header>
+
+${bands.map(band).join('\n\n')}
+
+<section class="check">
+  <h2>At the size the card uses</h2>
+  <div class="strip">
+${chips}
+  </div>
+  <p class="claim">
+    26px, in a row, as they appear in <code>ComponentAspectsCard</code>. A mark that reads at
+    48px and turns to mud at 26 is a mark that does not work — and gold beside bronze is the
+    pair to check.
+  </p>
+</section>
+
+<section class="check">
+  <h2>How a run becomes a mark</h2>
+  <div class="scroll">
+    <table>
+      <tr><th>Stored run</th><th>Badge</th></tr>
 ${rows}
-</table>
-<div class="strip">
-${inline}
+    </table>
+  </div>
+</section>
+
+<footer>
+  The metals are the badge’s own values and are deliberately <em>not</em> themed — they must
+  render identically to the card in light and dark. The ribbon is <code>purpure</code>, the
+  guildhall’s own tincture, shared with the generated guild crests. Regenerate this page with
+  <code>make medal-swatches</code>.
+</footer>
 </div>
-<p class="lede">Above: the same marks at the 26px the card renders them at.</p>
+`;
+}
+
+/** The same page wrapped for a file you can open directly. */
+export function standalone(body: string = renderMedalSwatchPage()): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body style="margin:0">
+${body}
+</body>
+</html>
 `;
 }

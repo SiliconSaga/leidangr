@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-gitea smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches test test-app tsc lint config-check secrets ci
+.PHONY: doctor deps dev dev-facts dev-gitea smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches test test-app tsc lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -25,6 +25,13 @@ deps:
 ## `make dev` behaves identically however it is launched.
 dev:
 	bash scripts/with-mkdocs.sh corepack yarn start
+
+## dev-facts — `make dev` with the trial store seeded, so the medal badges are
+## already there on load instead of appearing two minutes in (the dev database is
+## in-memory, so it starts empty on every boot). Needs network; GH_TOKEN for the
+## Pages trial.
+dev-facts:
+	bash scripts/dev-facts.sh
 
 ## dev-gitea — start Backstage with the Gitea catalog source (after `make secrets`)
 dev-gitea:
