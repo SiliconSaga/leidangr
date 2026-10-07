@@ -96,22 +96,19 @@ function NoVerdict() {
 // needs — and a literal would only be right in one theme anyway.
 const useStyles = makeStyles(theme => ({
   gapLabel: { color: theme.palette.text.secondary },
-  // A real <button>, reset to look like plain content. The tooltip has to open
-  // on keyboard focus as well as hover, and only an interactive element can
-  // take focus honestly — a <span tabIndex={0}> is focusable without ever
-  // telling assistive tech what it is.
+  // A focusable span, NOT a button. The tooltip has to open on keyboard focus
+  // as well as hover, which needs focusability — but a <button> is announced as
+  // one, and activating this does nothing, so screen-reader users would be
+  // promised an action that is not there. A span with tabIndex is the ARIA
+  // tooltip pattern's own answer for a non-interactive trigger: it takes focus
+  // and announces its label, and nothing more.
   trigger: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 5,
-    background: 'none',
-    border: 0,
-    padding: 0,
-    margin: 0,
-    font: 'inherit',
-    color: 'inherit',
     cursor: 'help',
-    textAlign: 'left',
+    // So the focus ring hugs the badge rather than the whole grid cell.
+    borderRadius: 4,
   },
 }));
 
@@ -158,8 +155,14 @@ export function MedalBadge({
     // Tooltip rather than a `title` attribute: `title` surfaces on hover only,
     // so a sighted keyboard user never learns WHY a medal was withheld.
     <Tooltip title={title}>
-      <button
-        type="button"
+      {/* The rule exists to stop focus being put on things that do nothing with
+          it. Here focus is the whole point — it is what opens the tooltip — and
+          the alternative the rule pushes you toward, a <button>, would announce
+          an action this has none of. Suppressed deliberately, per the ARIA
+          tooltip pattern for a non-interactive trigger. */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
+      <span tabIndex={0}
+        role="note"
         aria-label={title}
         className={classes.trigger}
         data-testid={`medal-${state}`}
@@ -190,7 +193,7 @@ export function MedalBadge({
         >
           {label}
         </span>
-      </button>
+      </span>
     </Tooltip>
   );
 }

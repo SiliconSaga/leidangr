@@ -1,9 +1,9 @@
 import type { TrialRun } from '@siliconsaga/plugin-gildi-common';
 
 /**
- * What the badge draws — SIX states, not three.
+ * What the badge draws — SEVEN states, not three.
  *
- * The whole outcome model exists to keep three different kinds of "no medal"
+ * The whole outcome model exists to keep four different kinds of "no medal"
  * apart, and this is the last mile where that distinction either survives or
  * gets flattened into an empty cell:
  *
@@ -12,10 +12,18 @@ import type { TrialRun } from '@siliconsaga/plugin-gildi-common';
  *   medal is suppressed rather than denied.
  * - `unevaluated` is also about us, one step earlier — we never learned what
  *   the trials were.
+ * - `unavailable` is about us too, and one step earlier still: the request for
+ *   the run never succeeded, so there is nothing to read either way.
  *
- * Rendering the last two as `none` would tell a component it earned nothing on
- * a run that measured nothing, which is the exact inversion the backend spent
- * two designs avoiding.
+ * Rendering any of the last three as `none` would tell a component it earned
+ * nothing on a run that measured nothing, which is the exact inversion the
+ * backend spent two designs avoiding.
+ *
+ * `unavailable` was SIX when this landed and is seven now, on review: a failed
+ * fetch had been rendering as an absent badge, which made our own outage
+ * indistinguishable from a component the sweep had not reached. It is the only
+ * state that does not come from a stored run, and the count is called out here
+ * because the count is the design's own argument.
  */
 export type BadgeState =
   | 'gold'

@@ -1,4 +1,4 @@
-// The badge's six states, rendered to one page so they can be compared side by
+// The badge's seven states, rendered to one page so they can be compared side by
 // side without booting the app and hand-making each state in a database.
 //
 // Comparison is the whole point. The states matter RELATIVE to each other —

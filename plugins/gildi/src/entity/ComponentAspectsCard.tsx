@@ -28,6 +28,13 @@ const row: CSSProperties = {
 
 const pills: CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, justifySelf: 'end' };
 
+// Enough for the widest state the badge can draw — a 26px mark, a 5px gap, and
+// `not evaluated` at 12px — so the track does not change width between rows and
+// the pills above and below it stay in one vertical line. A floor, not a cap:
+// the column is still `auto`, so a longer label grows past this rather than
+// being clipped.
+const badgeCell: CSSProperties = { minWidth: 112 };
+
 // Links sit under the name, in the same grid column, so they indent with it.
 const links: CSSProperties = {
   gridColumn: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
@@ -143,8 +150,15 @@ function AspectRow({
       {/* The earned tier badge — the component's, not the aspect's (hub design
           §8). MedalBadge renders nothing at all when there is no run, which is
           what keeps the old reservation's promise: no placeholder appears
-          beside a component the sweep has not reached yet. */}
-      <div data-testid={`aspect-badge-${aspect.aspectId}`}>
+          beside a component the sweep has not reached yet.
+
+          The cell still RESERVES ITS WIDTH, though, which is a different thing
+          from showing a placeholder. Without it the track collapses to zero on
+          a badge-less row, the pills column lands somewhere else than on the
+          row above, and the card reads as ragged — the same complaint the
+          marks' own centring fixed one layer up. Reserving width is invisible;
+          only a visible placeholder was ever the problem. */}
+      <div data-testid={`aspect-badge-${aspect.aspectId}`} style={badgeCell}>
         <MedalBadge run={run} error={error} />
       </div>
 

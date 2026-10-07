@@ -246,7 +246,14 @@ refresh_one() {
 }
 
 echo "dev-facts: evaluating now, rather than waiting out the sweep's 2-minute delay"
-printf '%s\n' "$PAIRS" | while read -r ref aspect; do
+
+# A HERE-STRING, not a pipe. `printf | while read` runs the loop in a subshell,
+# so the counters below would be discarded at the end of it and the script would
+# print its success message no matter what happened — which is exactly what it
+# used to do.
+SEEDED=0
+FAILED=0
+while read -r ref aspect; do
   if [[ -z "$ref" || -z "$aspect" ]]; then continue; fi
   : > "$ERRFILE"
   # Retried once: the first call for a given aspect pays for the practice lookup
@@ -255,21 +262,44 @@ printf '%s\n' "$PAIRS" | while read -r ref aspect; do
   if [[ -z "$run" ]]; then
     why="$(tr -d '\r' < "$ERRFILE" | tr '\n' ' ' | sed 's/  */ /g')"
     echo "  ?? ${ref} / ${aspect} — ${why:-no response and no error from curl}"
+    FAILED=$((FAILED + 1))
     continue
   fi
   # One line per pair, naming the verdict AND why when there is no medal — the
-  # whole point of the badge is that those are different answers.
-  printf '%s\n' "$run" | jq -r --arg ref "$ref" --arg aspect "$aspect" '
+  # whole point of the badge is that those are different answers. An unevaluated
+  # or withheld run still COUNTS as seeded: a row was written, and the badge has
+  # something true to draw.
+  line="$(printf '%s\n' "$run" | jq -r --arg ref "$ref" --arg aspect "$aspect" '
     if .kind == null then "  ?? \($ref) / \($aspect) — no run in the response"
     elif .kind == "unevaluated" then "  -- \($ref) / \($aspect) — not evaluated (\(.unevaluatedReason // "unknown"))"
     elif .medal == null then "  -- \($ref) / \($aspect) — withheld (\((.suppressedReasons // []) | join(", ")))"
     else "  ok \($ref) / \($aspect) — \(.medal) (\(.passing)/\(.applicable))"
-    end' 2>/dev/null || echo "  ?? ${ref} / ${aspect} — malformed response"
-done
+    end' 2>/dev/null || true)"
+  if [[ -z "$line" ]]; then
+    line="  ?? ${ref} / ${aspect} — malformed response"
+  fi
+  echo "$line"
+  case "$line" in
+    '  ??'*) FAILED=$((FAILED + 1)) ;;
+    *) SEEDED=$((SEEDED + 1)) ;;
+  esac
+done <<< "$PAIRS"
+
+echo ""
+if (( SEEDED == 0 )); then
+  # NOT a success message. The server is still the deliverable and the sweep
+  # will populate the badges on its own in a couple of minutes, so this does not
+  # tear anything down — but it must not claim the badges are there.
+  echo "dev-facts: NOTHING was seeded — all ${FAILED} refresh attempts failed." >&2
+  echo "  The app is up and usable, and the scheduled sweep will fill the badges" >&2
+  echo "  in once it fires. The badge column is empty until then." >&2
+elif (( FAILED > 0 )); then
+  echo "dev-facts: seeded ${SEEDED}, FAILED ${FAILED}. The failures are listed above."
+else
+  echo "dev-facts: seeded ${SEEDED}."
+fi
 
 cat <<'EOF'
-
-dev-facts: seeded. The badges are on a component's Aspects card now.
   http://localhost:3000/catalog/default/component/hygiene-testsite
 
   The sweep still fires on its own two minutes in and appends fresh runs on top
