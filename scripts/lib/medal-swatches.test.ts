@@ -1,6 +1,8 @@
 import {
   ALL_STATES,
   BANDS,
+  ERROR,
+  isErrorState,
   markFor,
   medallionSvg,
   noVerdictSvg,
@@ -21,10 +23,42 @@ describe('the medal marks', () => {
     expect(svg).toContain('stroke-dasharray');
   });
 
-  it.each(['withheld', 'unevaluated'])('draws %s as a lozenge, not a medallion', state => {
-    const svg = markFor(state);
-    expect(svg).toContain('<polygon points="24,9 39,24 24,39 9,24"');
-    expect(svg).not.toContain('<circle');
+  it.each(['withheld', 'unevaluated', 'unavailable'])(
+    'draws %s as a lozenge, not a medallion',
+    state => {
+      expect(markFor(state)).toContain('<polygon points="24,9 39,24 24,39 9,24"');
+    },
+  );
+
+  // ⚠ THE THREE GAP STATES MUST NOT BE INTERCHANGEABLE. They shared one mark
+  // and were told apart only by their label, which is what prompted this split.
+  it('bars the withheld lozenge and leaves the unevaluated one empty', () => {
+    expect(noVerdictSvg('withheld')).toContain('<rect x="16" y="22.5"');
+    expect(noVerdictSvg('unevaluated')).not.toContain('<rect');
+    expect(noVerdictSvg('unevaluated')).not.toContain('<circle');
+  });
+
+  // Only the state that actually broke is red, and it is solid rather than
+  // dashed: an absence nobody needs to act on must not look like a fault.
+  it('reddens and solidifies only unavailable', () => {
+    const bad = noVerdictSvg('unavailable');
+    expect(bad).toContain(ERROR);
+    expect(bad).not.toContain('stroke-dasharray');
+    // A warning glyph rather than a bar — the mark says "fault", not "held".
+    expect(bad).toContain('<circle cx="24" cy="29.5"');
+
+    for (const soft of ['withheld', 'unevaluated']) {
+      expect(noVerdictSvg(soft)).toContain('stroke-dasharray');
+      expect(noVerdictSvg(soft)).not.toContain(ERROR);
+    }
+  });
+
+  // `none` is a measured verdict. Colouring it as a fault would be the same
+  // inversion the outcome model exists to prevent.
+  it('never reddens none or an earned tier', () => {
+    for (const state of ['gold', 'silver', 'bronze', 'none']) {
+      expect(markFor(state)).not.toContain(ERROR);
+    }
   });
 
   it.each(['gold', 'silver', 'bronze'])('fills %s with its own metal', state => {
@@ -67,12 +101,21 @@ describe('the medal marks', () => {
     expect(gold).not.toContain('#a9713b');
   });
 
+  it('treats unavailable as the only error state', () => {
+    expect(isErrorState('unavailable')).toBe(true);
+    for (const state of ['withheld', 'unevaluated', 'none', 'gold', 'silver', 'bronze']) {
+      expect(isErrorState(state)).toBe(false);
+    }
+  });
+
   it('labels every mark for a screen reader', () => {
     for (const s of ALL_STATES) {
       expect(markFor(s.state)).toContain('role="img"');
       expect(markFor(s.state)).toContain('aria-label=');
     }
-    expect(noVerdictSvg()).toContain('aria-label="no verdict"');
+    // Named by its own state now that the three marks differ, so the label is
+    // not three different drawings all announcing "no verdict".
+    expect(noVerdictSvg('unavailable')).toContain('aria-label="unavailable"');
   });
 
   it('scales the viewBox rather than the coordinates', () => {

@@ -5,6 +5,7 @@ import {
   badgeTitleFor,
   badgeTitleForError,
   isEarned,
+  isError,
   isGap,
 } from './badge';
 
@@ -92,6 +93,30 @@ describe('isGap', () => {
   // the bottom rung of the same ladder.
   it('leaves none and the earned tiers on the medallion', () => {
     expect(['gold', 'silver', 'bronze', 'none'].map(s => isGap(s as never))).toEqual([
+      false,
+      false,
+      false,
+      false,
+    ]);
+  });
+});
+
+describe('isError', () => {
+  it('is only the state where something actually broke', () => {
+    expect(isError('unavailable')).toBe(true);
+  });
+
+  // ⚠ `unevaluated` STAYS GREY. It is routinely just a practice that has not
+  // published a standard — six rows in the demo catalog sit there — and
+  // painting those red would spend the colour until nobody reads it.
+  it('leaves an ordinary absence alone', () => {
+    expect(['withheld', 'unevaluated'].map(s => isError(s as never))).toEqual([false, false]);
+  });
+
+  // `none` is a measured verdict about the component. Colouring it as a fault
+  // is the inversion the whole outcome model exists to prevent.
+  it('never marks a measured verdict as a fault', () => {
+    expect(['none', 'gold', 'silver', 'bronze'].map(s => isError(s as never))).toEqual([
       false,
       false,
       false,

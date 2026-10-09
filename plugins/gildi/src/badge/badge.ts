@@ -50,6 +50,23 @@ const GAP = new Set<BadgeState>(['withheld', 'unevaluated', 'unavailable']);
 export const isGap = (s: BadgeState): boolean => GAP.has(s);
 
 /**
+ * The gap states that are an ERROR rather than an ordinary absence, and are
+ * therefore marked in red rather than muted grey.
+ *
+ * ⚠ `unevaluated` is deliberately NOT here. It means a standard could not be
+ * read, which is routinely just a practice that has not published one yet —
+ * six rows in the demo catalog sit in exactly that state, and painting them
+ * all red would cry wolf until nobody reads the colour at all. Red is reserved
+ * for the case where something actually broke: we could not even ask.
+ *
+ * `none` is not here either, and never will be. It is a real verdict about the
+ * component, and colouring a measured result as a fault is the same inversion
+ * the whole outcome model exists to prevent.
+ */
+const ERRORED = new Set<BadgeState>(['unavailable']);
+export const isError = (s: BadgeState): boolean => ERRORED.has(s);
+
+/**
  * `undefined` means DRAW NOTHING, and is deliberately distinct from every state
  * above: a component the sweep has not reached yet has no run at all, which is
  * not a finding about it. The card's existing empty rendering is already

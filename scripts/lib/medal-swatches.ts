@@ -42,6 +42,14 @@ export const METAL: Record<string, { fill: string; rim: string; charge: string }
 export const MUTED = '#8a8a94';
 export const RIBBON = '#6b3a6b'; // purpure
 
+// `gules` lightened from #a83a3a so it still clears 3:1 on the dark surface.
+// Reserved for a genuine failure, so red on this card always means something
+// broke — never an ordinary absence, and never a measured verdict.
+export const ERROR = '#c0504a';
+
+/** The only gap state that is an error. See badge.ts for why not `unevaluated`. */
+export const isErrorState = (state: string): boolean => state === 'unavailable';
+
 /**
  * Three bands, not six rows. The grouping IS the design argument: the earned
  * tiers and `none` sit on one scale and share a silhouette, while the two gap
@@ -73,24 +81,25 @@ export const BANDS: MedalBand[] = [
   {
     eyebrow: 'Could not say',
     claim:
-      'Not a verdict at all — a statement about us. A dimmed medal would read as a worse medal and put a gap in our own knowledge onto the component’s record, so these take a different silhouette entirely.',
+      'Not a verdict at all — a statement about us. A dimmed medal would read as a worse medal and put a gap in our own knowledge onto the component’s record, so these take a different silhouette entirely. They are then told apart <em>inside</em> the lozenge, and only the one that actually broke is red: an absence nobody needs to act on must not look like a fault, or the colour stops meaning anything.',
     states: [
       {
         state: 'withheld',
         label: 'withheld',
         meaning:
-          'A trial could not be measured, so the medal is suppressed rather than denied. The hover names every reason.',
+          'A trial could not be measured, so the medal is suppressed rather than denied — <strong>barred</strong>, because something was held back. The hover names every reason.',
       },
       {
         state: 'unevaluated',
         label: 'not evaluated',
-        meaning: 'We never learned what the trials were — the standard itself could not be read.',
+        meaning:
+          'We never learned what the trials were — the standard itself could not be read. <strong>Empty</strong>, because nothing was measured at all. Routinely just a practice that has not published a standard yet, which is why it stays grey.',
       },
       {
         state: 'unavailable',
         label: 'unavailable',
         meaning:
-          'The request for this component’s trials failed outright. Drawing nothing here would make our own outage look like a component the sweep has not reached yet.',
+          'The request for this component’s trials failed outright. <strong>The only red one</strong>, and solid rather than dashed: the others are absences, this is a fault. Drawing nothing here would make our own outage look like a component the sweep has not reached yet.',
       },
     ],
   },
@@ -130,17 +139,35 @@ ${m ? `<polygon points="${MEDALLION_STAR}" fill="${m.charge}"/>` : ''}
 </svg>`;
 }
 
-export function noVerdictSvg(size = 48): string {
-  return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="no verdict">
-<polygon points="24,9 39,24 24,39 9,24" fill="none" stroke="${MUTED}" stroke-width="2.5" stroke-dasharray="3 3"/>
-<rect x="16" y="22.5" width="16" height="3" fill="${MUTED}" rx="1.5"/>
+/**
+ * The three gap states, told apart INSIDE the lozenge so they stop being
+ * interchangeable: `withheld` is barred, `unevaluated` is empty, `unavailable`
+ * is a solid red warning diamond. Solid rather than dashed on purpose — a
+ * dashed outline reads as a soft, expected gap, and that one is a failure.
+ */
+export function noVerdictSvg(state = 'withheld', size = 48): string {
+  const errored = isErrorState(state);
+  const ink = errored ? ERROR : MUTED;
+  const inner = errored
+    ? `<rect x="22.5" y="17" width="3" height="8.5" fill="${ink}" rx="1.5"/>
+<circle cx="24" cy="29.5" r="1.8" fill="${ink}"/>`
+    : state === 'withheld'
+      ? `<rect x="16" y="22.5" width="16" height="3" fill="${ink}" rx="1.5"/>`
+      : '';
+  return `<svg width="${size}" height="${size}" viewBox="0 0 48 48" role="img" aria-label="${state}"${
+    errored ? ' class="errored"' : ''
+  }>
+<polygon points="24,9 39,24 24,39 9,24" fill="none" stroke="${ink}" stroke-width="2.5"${
+    errored ? '' : ' stroke-dasharray="3 3"'
+  }/>
+${inner}
 </svg>`;
 }
 
+const GAP_STATES = new Set(['withheld', 'unevaluated', 'unavailable']);
+
 export function markFor(state: string, size = 48): string {
-  return state === 'withheld' || state === 'unevaluated'
-    ? noVerdictSvg(size)
-    : medallionSvg(state, size);
+  return GAP_STATES.has(state) ? noVerdictSvg(state, size) : medallionSvg(state, size);
 }
 
 const STYLE = `
@@ -153,6 +180,7 @@ const STYLE = `
   --rule: #e4dfe9;
   --accent: #6b3a6b;
   --accent-wash: #f1eaf1;
+  --error-text: #a3302b;
   --display: 'Newsreader', Georgia, 'Times New Roman', serif;
   --body: 'Archivo', 'Segoe UI', system-ui, sans-serif;
   --mono: ui-monospace, 'Cascadia Mono', Consolas, monospace;
@@ -166,6 +194,7 @@ const STYLE = `
     --rule: #332d38;
     --accent: #c08dc0;
     --accent-wash: #2a2130;
+    --error-text: #e8928c;
     color-scheme: dark;
   }
 }
@@ -177,6 +206,7 @@ const STYLE = `
   --rule: #332d38;
   --accent: #c08dc0;
   --accent-wash: #2a2130;
+  --error-text: #e8928c;
   color-scheme: dark;
 }
 
@@ -276,6 +306,11 @@ h1 {
    stroke is held to the lower bar — while the label takes a token that is
    readable in both themes. */
 .chip .gap { color: var(--ink-soft); }
+/* The MARK's red only has to clear 3:1; this is text and needs 4.5:1, which
+   that red misses on the dark surface — so the label takes a per-theme token
+   instead. Same split as the muted gap labels above. */
+.chip .errored { color: var(--error-text); font-weight: 600; }
+.state .errored-name { color: var(--error-text); }
 
 table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
 th, td { text-align: left; padding: 7px 10px 7px 0; border-bottom: 1px solid var(--rule); }
@@ -313,12 +348,14 @@ ${b.states
 
   const states = bands.flatMap(b => b.states);
   const earned = new Set(['gold', 'silver', 'bronze']);
+  const chipClass = (state: string) =>
+    isErrorState(state) ? 'errored' : earned.has(state) ? 'earned' : 'gap';
   const chips = states
     .map(
       s =>
-        `<span class="chip">${markFor(s.state, 26)}<span class="${
-          earned.has(s.state) ? 'earned' : 'gap'
-        }">${s.label}</span></span>`,
+        `<span class="chip">${markFor(s.state, 26)}<span class="${chipClass(s.state)}">${
+          s.label
+        }</span></span>`,
     )
     .join('\n');
 

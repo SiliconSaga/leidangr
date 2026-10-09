@@ -7,6 +7,7 @@ import {
   badgeTitleFor,
   badgeTitleForError,
   isEarned,
+  isError,
   isGap,
   type BadgeState,
 } from './badge';
@@ -26,6 +27,13 @@ const METAL: Record<string, { fill: string; rim: string; charge: string }> = {
 const MUTED = '#8a8a94';
 
 const RIBBON = '#6b3a6b'; // purpure, the guildhall's own colour
+
+// `gules`, the crest palette's red, lightened from #a83a3a so it still clears
+// the 3:1 a graphic is held to against the DARK surface — the heraldic value
+// manages only 2.4:1 there. Reserved for a genuine failure, never for an
+// ordinary absence, so that seeing red on this card always means something
+// broke.
+const ERROR = '#c0504a';
 
 // ⚠ BOTH MARKS ARE CENTRED ON (24, 24) IN A SQUARE 48×48 BOX, and that is not
 // incidental tidiness. `align-items: center` centres the SVG BOX, so any gap
@@ -70,23 +78,38 @@ function Medallion({ state }: { state: BadgeState }) {
 }
 
 /**
- * NOT a medallion. Withheld and unevaluated are a different KIND of answer, not
- * a lower rank, so they get a different silhouette — a voided lozenge with a bar
- * through it. A dimmed medal would read as "worse medal" and put a gap in our
- * own knowledge onto the component's record, which is the one thing the outcome
- * model refuses to do.
+ * NOT a medallion. These are a different KIND of answer, not a lower rank, so
+ * they get a different silhouette. A dimmed medal would read as "worse medal"
+ * and put a gap in our own knowledge onto the component's record, which is the
+ * one thing the outcome model refuses to do.
+ *
+ * The three are told apart inside the lozenge rather than left identical:
+ *
+ * - `withheld` — barred. A medal was held back, and the bar says so.
+ * - `unevaluated` — empty. Nothing was measured at all, so nothing is drawn.
+ * - `unavailable` — a warning diamond, solid and red. Solid rather than dashed
+ *   because a dashed outline reads as a soft, expected gap, and this one is a
+ *   failure; the glyph is the universal warning sign, which is what it is.
  */
-function NoVerdict() {
+function NoVerdict({ state }: { state: BadgeState }) {
+  const errored = isError(state);
+  const ink = errored ? ERROR : MUTED;
   return (
     <>
       <polygon
         points="24,9 39,24 24,39 9,24"
         fill="none"
-        stroke={MUTED}
+        stroke={ink}
         strokeWidth="2.5"
-        strokeDasharray="3 3"
+        strokeDasharray={errored ? undefined : '3 3'}
       />
-      <rect x="16" y="22.5" width="16" height="3" fill={MUTED} rx="1.5" />
+      {state === 'withheld' && <rect x="16" y="22.5" width="16" height="3" fill={ink} rx="1.5" />}
+      {errored && (
+        <>
+          <rect x="22.5" y="17" width="3" height="8.5" fill={ink} rx="1.5" />
+          <circle cx="24" cy="29.5" r="1.8" fill={ink} />
+        </>
+      )}
     </>
   );
 }
@@ -96,6 +119,11 @@ function NoVerdict() {
 // needs — and a literal would only be right in one theme anyway.
 const useStyles = makeStyles(theme => ({
   gapLabel: { color: theme.palette.text.secondary },
+  // The MARK keeps a fixed red, which only has to clear 3:1; the LABEL is text
+  // and needs 4.5:1, which that same red misses on the dark surface. MUI's
+  // error colour is defined per mode and is built for exactly this, so the two
+  // differ on purpose — the same split already used for the muted gap labels.
+  errorLabel: { color: theme.palette.error.main },
   // A focusable span, NOT a button. The tooltip has to open on keyboard focus
   // as well as hover, which needs focusability — but a <button> is announced as
   // one, and activating this does nothing, so screen-reader users would be
@@ -119,6 +147,15 @@ const useStyles = makeStyles(theme => ({
 function stateFor(run?: TrialRun, error?: Error): BadgeState | undefined {
   if (run) return badgeStateFor(run);
   return error ? 'unavailable' : undefined;
+}
+
+/** Earned tiers take the body colour, a gap goes quiet, a failure goes red. */
+function labelClassFor(
+  state: BadgeState,
+  classes: { gapLabel: string; errorLabel: string },
+): string | undefined {
+  if (isError(state)) return classes.errorLabel;
+  return isEarned(state) ? undefined : classes.gapLabel;
 }
 
 /**
@@ -176,10 +213,10 @@ export function MedalBadge({
           style={{ display: 'block', flex: 'none' }}
         >
           <title id={id}>{title}</title>
-          {isGap(state) ? <NoVerdict /> : <Medallion state={state} />}
+          {isGap(state) ? <NoVerdict state={state} /> : <Medallion state={state} />}
         </svg>
         <span
-          className={isEarned(state) ? undefined : classes.gapLabel}
+          className={labelClassFor(state, classes)}
           style={{
             fontSize: 12,
             // Explicit, so the label's own line box cannot add leading above and
