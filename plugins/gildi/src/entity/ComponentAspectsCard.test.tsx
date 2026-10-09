@@ -247,14 +247,13 @@ describe('ComponentAspectsCard', () => {
       expect(screen.getByText('not evaluated')).toBeInTheDocument();
     });
 
-    it('explains the medal, counting the trials behind it', async () => {
+    // NAME is short, DESCRIPTION carries the detail: the trigger is named by its
+    // tier and the explanation rides on the tooltip, so a screen reader does not
+    // recite the same sentence three times for one badge. The sentence itself is
+    // covered in ../badge/badge.test.ts.
+    it('names the badge by its tier, not by the whole explanation', async () => {
       await render(enrolled(), practices, trials(run({ medal: 'silver', passing: 3 })));
-      // Exposed as the accessible name rather than a `title` attribute: a
-      // tooltip opens on keyboard focus, which `title` never does.
-      expect(await screen.findByTestId('medal-silver')).toHaveAttribute(
-        'aria-label',
-        'Silver — 3 of 4 applicable trials passed',
-      );
+      expect(await screen.findByTestId('medal-silver')).toHaveAttribute('aria-label', 'silver');
     });
 
     // A FAILED REQUEST IS NOT "no run yet". Rendering nothing for it would make

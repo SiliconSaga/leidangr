@@ -1,4 +1,3 @@
-import { useId } from 'react';
 import { Tooltip, makeStyles } from '@material-ui/core';
 import type { TrialRun } from '@siliconsaga/plugin-gildi-common';
 import {
@@ -180,7 +179,6 @@ export function MedalBadge({
   error?: Error;
   size?: number;
 }) {
-  const id = useId();
   const classes = useStyles();
   const state = stateFor(run, error);
   if (!state) return null;
@@ -197,22 +195,28 @@ export function MedalBadge({
           the alternative the rule pushes you toward, a <button>, would announce
           an action this has none of. Suppressed deliberately, per the ARIA
           tooltip pattern for a non-interactive trigger. */}
+      {/* NAME is the short label, DESCRIPTION is the explanation (MUI puts the
+          tooltip text on aria-describedby). Naming the trigger with the full
+          sentence made a screen reader read it as the name, then again as the
+          description, then a third time off the SVG — three recitals of one
+          badge. */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex */}
       <span tabIndex={0}
         role="note"
-        aria-label={title}
+        aria-label={label}
         className={classes.trigger}
         data-testid={`medal-${state}`}
       >
+        {/* Decorative: the label beside it already says what this is, so the
+            mark has nothing left to add to assistive tech. */}
         <svg
           width={size}
           height={size}
           viewBox="0 0 48 48"
-          role="img"
-          aria-labelledby={id}
+          aria-hidden="true"
+          focusable="false"
           style={{ display: 'block', flex: 'none' }}
         >
-          <title id={id}>{title}</title>
           {isGap(state) ? <NoVerdict state={state} /> : <Medallion state={state} />}
         </svg>
         <span
