@@ -5,9 +5,11 @@ import UpgradeIcon from '@material-ui/icons/ArrowUpward';
 import { InfoCard, Link, Progress, ResponseErrorPanel } from '@backstage/core-components';
 import { entityRouteRef, useEntity } from '@backstage/plugin-catalog-react';
 import { useRouteRef } from '@backstage/core-plugin-api';
-import { parseEntityRef } from '@backstage/catalog-model';
+import { parseEntityRef, type Entity } from '@backstage/catalog-model';
 import { Crest } from '../crest';
+import { MedalBadge } from '../badge';
 import { aspectLabel } from './aspects';
+import { useComponentTrials } from './useComponentTrials';
 import { useComponentAspects, type AspectAdoptionView } from './useComponentAspects';
 
 // Four columns: [identity] [name + links] [version pills] [badge]. The identity
@@ -25,6 +27,13 @@ const row: CSSProperties = {
 };
 
 const pills: CSSProperties = { display: 'flex', alignItems: 'center', gap: 4, justifySelf: 'end' };
+
+// Enough for the widest state the badge can draw — a 26px mark, a 5px gap, and
+// `not evaluated` at 12px — so the track does not change width between rows and
+// the pills above and below it stay in one vertical line. A floor, not a cap:
+// the column is still `auto`, so a longer label grows past this rather than
+// being clipped.
+const badgeCell: CSSProperties = { minWidth: 112 };
 
 // Links sit under the name, in the same grid column, so they indent with it.
 const links: CSSProperties = {
@@ -99,7 +108,22 @@ function PillLink({ to, label }: { to: string; label: string }) {
   );
 }
 
-function AspectRow({ aspect }: { aspect: AspectAdoptionView }) {
+function AspectRow({
+  aspect,
+  entity,
+}: {
+  aspect: AspectAdoptionView;
+  entity: Entity;
+}) {
+  // One fetch per row rather than one per card: the endpoint answers for a
+  // single (component, aspect) pair, and a component carries a handful of
+  // aspects at most. A batch read is the right call once that stops being true,
+  // and would not change anything this row renders.
+  // `error` is carried through, not dropped. A 404 is a normal "no run yet" and
+  // the hook already turns it into an undefined run; anything else genuinely
+  // failed, and letting that render as an absent badge would make our own
+  // outage look exactly like a component the sweep has not reached.
+  const { run, error } = useComponentTrials(entity, aspect.aspectId);
   const entityRoute = useRouteRef(entityRouteRef);
 
   let practiceHref: string | undefined;
@@ -123,9 +147,20 @@ function AspectRow({ aspect }: { aspect: AspectAdoptionView }) {
         {aspectLabel(aspect.aspectId)}
       </Typography>
       <VersionPills aspect={aspect} />
-      {/* Reserved for the earned tier badge. Empty today: no tier data exists,
-          and a visible placeholder on every row reads as a broken card. */}
-      <div data-testid={`aspect-badge-${aspect.aspectId}`} />
+      {/* The earned tier badge — the component's, not the aspect's (hub design
+          §8). MedalBadge renders nothing at all when there is no run, which is
+          what keeps the old reservation's promise: no placeholder appears
+          beside a component the sweep has not reached yet.
+
+          The cell still RESERVES ITS WIDTH, though, which is a different thing
+          from showing a placeholder. Without it the track collapses to zero on
+          a badge-less row, the pills column lands somewhere else than on the
+          row above, and the card reads as ragged — the same complaint the
+          marks' own centring fixed one layer up. Reserving width is invisible;
+          only a visible placeholder was ever the problem. */}
+      <div data-testid={`aspect-badge-${aspect.aspectId}`} style={badgeCell}>
+        <MedalBadge run={run} error={error} />
+      </div>
 
       {(practiceHref || aspect.recordUrl) && (
         <div style={links}>
@@ -152,7 +187,7 @@ export function ComponentAspectsCard() {
     body = aspects.map((a, i) => (
       <div key={a.aspectId}>
         {i > 0 && <Divider />}
-        <AspectRow aspect={a} />
+        <AspectRow aspect={a} entity={entity} />
       </div>
     ));
   }
