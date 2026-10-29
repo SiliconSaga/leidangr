@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-facts dev-gitea smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches test test-app tsc lint config-check secrets ci
+.PHONY: doctor deps dev dev-facts dev-gitea smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches history-swatches test test-app tsc lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -68,6 +68,13 @@ theme-swatches:
 ## so the states can be compared side by side without booting the app
 medal-swatches:
 	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-medal-swatches.mjs $(ARGS)
+
+## history-swatches — render representative medal histories to
+## .tmp/history-swatches.html. The ONLY way to see this chart: it needs two
+## measured runs and dev-facts seeds one per component, so a dev stack draws
+## nothing.
+history-swatches:
+	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-history-swatches.mjs $(ARGS)
 
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:
