@@ -12,6 +12,8 @@ export type { UnevaluatedReason, Verdict } from './verdict';
 
 export type { TrialOutcomeRow, TrialRun } from './run';
 
+export type { HistoryEvent, TrialHistory } from './history';
+
 export { CHECK_TYPES, validateStandardShape } from './standard';
 export type {
   Block,

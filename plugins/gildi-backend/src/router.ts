@@ -10,20 +10,16 @@ import express from 'express';
 // bad input into a hung connection. Backstage's own backends use this adapter
 // for the same reason.
 import PromiseRouter from 'express-promise-router';
+import type { HistoryEvent } from '@siliconsaga/plugin-gildi-common';
 import {
   RUNS_KEPT_PER_SUBJECT,
   type TrialResultStore,
   type TrialRun,
 } from './store';
 
-export interface HistoryEvent {
-  type: 'release-changed' | 'medal-earned';
-  at: string;
-  from?: string;
-  to?: string;
-  medal?: string;
-  first?: boolean;
-}
+// Re-exported rather than redeclared: gildi-common owns the response shape so
+// the chart reads the same declaration this router writes.
+export type { HistoryEvent } from '@siliconsaga/plugin-gildi-common';
 
 /**
  * The one spelling of an entity reference this plugin stores and looks up.
