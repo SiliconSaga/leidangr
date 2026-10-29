@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-gitea smoke-gitea smoke-catalog smoke-facts test test-app tsc lint config-check secrets ci
+.PHONY: doctor deps dev dev-facts dev-gitea smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches test test-app tsc lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -25,6 +25,13 @@ deps:
 ## `make dev` behaves identically however it is launched.
 dev:
 	bash scripts/with-mkdocs.sh corepack yarn start
+
+## dev-facts — `make dev` with the trial store seeded, so the medal badges are
+## already there on load instead of appearing two minutes in (the dev database is
+## in-memory, so it starts empty on every boot). Needs network; GH_TOKEN for the
+## Pages trial.
+dev-facts:
+	bash scripts/dev-facts.sh
 
 ## dev-gitea — start Backstage with the Gitea catalog source (after `make secrets`)
 dev-gitea:
@@ -50,8 +57,17 @@ smoke-facts:
 ## theme-swatches — render every page-theme colour (stock + ours) with the
 ## spec.types using them, to .tmp/theme-swatches.html. Propose colours with
 ## ARGS='--candidate plum:#4A1942,#7A2E63:why this one'
+##
+## Both swatch targets import a .ts module through Node's type stripping, which
+## is only unflagged from 22.18. package.json engines allows plain "22", so the
+## flag is what keeps 22.6–22.17 working; it is accepted and harmless on 24.
 theme-swatches:
-	node scripts/lib/run-theme-swatches.mjs $(ARGS)
+	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-theme-swatches.mjs $(ARGS)
+
+## medal-swatches — render every medal badge state to .tmp/medal-swatches.html
+## so the six states can be compared side by side without booting the app
+medal-swatches:
+	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-medal-swatches.mjs $(ARGS)
 
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:
