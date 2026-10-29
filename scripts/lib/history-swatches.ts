@@ -2,9 +2,12 @@
 // histories on one page, so the shapes can be judged against each other
 // without booting the app.
 //
-// ⚠ WHY THIS EXISTS AT ALL. The chart needs at least two measured runs, and
-// `dev-facts` seeds exactly one per component — so on a real dev stack the
-// chart renders nothing. There is no way to look at it except here.
+// ⚠ WHY THIS EXISTS AT ALL. The chart needs at least two measured runs, and the
+// sweep writes one an hour stamped `now` — so a freshly booted dev stack draws
+// nothing, and an hour of waiting draws a flat line. `make dev-history` seeds
+// these SAME cases into a running stack from `dev-history.ts`, which is what
+// makes this page evidence rather than an illustration: if the app disagrees
+// with it, one of the two is wrong and both are looking at the same fixtures.
 //
 // ⚠ WHAT IS DUPLICATED, AND WHAT IS NOT. The pixel geometry is restated,
 // because the component is React and this is plain Node. The SERIES LOGIC is

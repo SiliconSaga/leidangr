@@ -45,6 +45,16 @@ backend:
           subject: leidangr-dev-facts
 EOF
 
+# ⚠ OPENS A WRITE PATH FOR FABRICATED RUNS, on this process only. It is what
+# lets `make dev-history` seed a history into the stack this script boots — see
+# devSeed.ts for why that endpoint exists and why it is gated twice.
+#
+# Exported here rather than written into the config file because a config file
+# gets copied to the next environment along with whatever is in it; an
+# environment variable has to be set by whoever starts the process. This is that
+# someone, and this script boots nothing but a local dev stack.
+export GILDI_DEV_SEED=1
+
 DEV_PID=""
 TAIL_PID=""
 

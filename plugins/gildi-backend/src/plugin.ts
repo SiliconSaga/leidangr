@@ -24,6 +24,7 @@ import {
   type TrialRun,
 } from './store';
 import { createRouter } from './router';
+import { createDevSeedRouter, devSeedEnabled } from './devSeed';
 
 const ASPECTS = 'siliconsaga.org/aspects';
 const ASPECT = 'siliconsaga.org/aspect';
@@ -274,6 +275,19 @@ export const gildiPlugin = createBackendPlugin({
         };
 
         httpRouter.use(createRouter({ store, httpAuth, refresh: runOne }));
+
+        // ⚠ A WRITE PATH FOR FABRICATED RUNS. Read devSeed.ts before touching
+        // this: it is the one endpoint that can put something we did not measure
+        // on a component's record, which is what the rest of this plugin exists
+        // to prevent. Both gates must agree, and the warning is loud because an
+        // operator who finds this mounted needs to know immediately.
+        if (devSeedEnabled(process.env)) {
+          httpRouter.use(createDevSeedRouter({ store, httpAuth }));
+          logger.warn(
+            'gildi: the DEV SEED endpoint is mounted — fabricated trial runs can be written to this store. ' +
+              'Unset GILDI_DEV_SEED unless this is a local development stack.',
+          );
+        }
 
         await scheduler.scheduleTask({
           id: 'gildi-trial-sweep',
