@@ -1,5 +1,5 @@
 export { MedalHistoryChart, describePoint } from './MedalHistoryChart';
-export { RUNGS, rungOf, seriesFor } from './series';
+export { RUNGS, canChart, rungOf, seriesFor } from './series';
 export type {
   GapKind,
   Rung,

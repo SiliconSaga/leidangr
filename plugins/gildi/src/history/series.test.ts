@@ -1,5 +1,5 @@
 import type { TrialRun } from '@siliconsaga/plugin-gildi-common';
-import { RUNGS, rungOf, seriesFor } from './series';
+import { RUNGS, canChart, rungOf, seriesFor } from './series';
 
 const run = (over: Partial<TrialRun> = {}): TrialRun => ({
   entityRef: 'component:default/site',
@@ -151,5 +151,26 @@ describe('seriesFor', () => {
 
   it('is empty for no runs at all', () => {
     expect(seriesFor([])).toEqual({ points: [], segments: [] });
+  });
+});
+
+// A HOST needs to know before rendering, because the element exists either way
+// — `<MedalHistoryChart/> ?? fallback` always takes the chart, so a card that
+// checked afterwards would show a silent blank instead of saying why.
+describe('canChart', () => {
+  it('needs two MEASURED runs, not merely two runs', () => {
+    expect(canChart([withheld(2), withheld(1)])).toBe(false);
+    expect(canChart([at(2, { medal: 'gold' }), withheld(1)])).toBe(false);
+    expect(canChart([at(2, { medal: 'gold' }), at(1, { medal: 'gold' })])).toBe(true);
+  });
+
+  // A gap AFTER a measurement carries the held rung, so there are two things to
+  // draw even though only one run was measured.
+  it('counts a gap that has something to hold', () => {
+    expect(canChart([withheld(2), at(1, { medal: 'gold' })])).toBe(true);
+  });
+
+  it.each([[[]], [[at(1)]]])('is false for %j', runs => {
+    expect(canChart(runs)).toBe(false);
   });
 });

@@ -67,4 +67,10 @@ describe('gildi component adoption cards', () => {
   it('registers the unenrolled-component adopt card', () => {
     expect(getExtension('entity-card:gildi/component-adopt')).toBeDefined();
   });
+
+  // Dead code otherwise: the chart exists but nothing mounts it, which is
+  // exactly the state the whole second pass was built to leave behind.
+  it('registers the trial history card', () => {
+    expect(getExtension('entity-card:gildi/component-trial-history')).toBeDefined();
+  });
 });

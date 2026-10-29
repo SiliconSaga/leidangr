@@ -3,7 +3,7 @@ import ShieldIcon from '@material-ui/icons/Security';
 import { rootRouteRef } from './routes';
 import {
   guildOverviewLayout, practiceOverviewLayout,
-  componentAspectsCard, componentAdoptCard,
+  componentAspectsCard, componentAdoptCard, componentTrialHistoryCard,
 } from './entity';
 
 // NOTE: `NavItemBlueprint` was removed in @backstage/frontend-plugin-api@0.17.0
@@ -23,7 +23,7 @@ export const gildiPlugin = createFrontendPlugin({
   pluginId: 'gildi',
   extensions: [
     guildHallPage, guildOverviewLayout, practiceOverviewLayout,
-    componentAspectsCard, componentAdoptCard,
+    componentAspectsCard, componentAdoptCard, componentTrialHistoryCard,
   ],
   routes: { root: rootRouteRef },
 });

@@ -127,6 +127,20 @@ export function seriesFor(runsNewestFirst: TrialRun[]): Series {
 }
 
 /**
+ * Whether there is enough to draw a line at all — two points with something to
+ * hold, which is not the same as two runs.
+ *
+ * Exists so a HOST can say why the chart is absent. Asking the component
+ * instead does not work: `<MedalHistoryChart/>` is an element whether or not it
+ * will render null, so `chart ?? fallback` always takes the chart and the
+ * fallback is dead code. A caller that wants to explain the blank has to know
+ * before rendering.
+ */
+export function canChart(runsNewestFirst: TrialRun[]): boolean {
+  return seriesFor(runsNewestFirst).points.filter(p => p.carried !== null).length >= 2;
+}
+
+/**
  * Spans between consecutive points that both have something to draw at.
  *
  * A span is dashed when EITHER end is a gap, so the dash covers the whole
