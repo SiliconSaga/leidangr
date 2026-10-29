@@ -36,9 +36,16 @@ export function useComponentTrialHistory(entity: Entity, aspectId: string) {
   const discovery = useApi(discoveryApiRef);
   const fetchApi = useApi(fetchApiRef);
 
+  // ⚠ THE DEPENDENCY IS THE REF, NOT THE ENTITY. `useEntity` hands back a new
+  // object whenever the catalog context re-renders, and an object dependency
+  // compares by identity — so depending on `entity` re-fetches a sixty-run
+  // window for every aspect on the page each time, for an entity that has not
+  // changed. The ref string is all this hook reads and it compares by value.
+  const entityRef = stringifyEntityRef(entity);
+
   const { value, loading, error } = useAsync(async () => {
     const base = await discovery.getBaseUrl('gildi');
-    const ref = encodeURIComponent(stringifyEntityRef(entity));
+    const ref = encodeURIComponent(entityRef);
     const res = await fetchApi.fetch(
       `${base}/trials/${ref}/history?aspect=${encodeURIComponent(aspectId)}` +
         `&limit=${HISTORY_LIMIT}`,
@@ -61,7 +68,7 @@ export function useComponentTrialHistory(entity: Entity, aspectId: string) {
       throw new Error('trial history response was not in the expected shape');
     }
     return body;
-  }, [entity, aspectId]);
+  }, [entityRef, aspectId]);
 
   return { history: value, loading, error };
 }

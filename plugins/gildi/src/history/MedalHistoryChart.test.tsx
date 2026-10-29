@@ -109,18 +109,22 @@ describe('MedalHistoryChart', () => {
   // A label clipped by its own viewBox is worse than no label. Placing the end
   // label above the point unconditionally put a gold endpoint at y=4 in a box
   // whose plot starts at 14, so it flips below when there is no room above.
-  it.each([
-    ['gold', 'gold'],
-    ['none', 'none'],
-  ])('keeps the end label inside the plot at the %s rung', async (_label, medal) => {
-    await chart([at(2, { medal: medal as 'gold' }), at(1, { medal: medal as 'gold' })]);
-    const end = screen
-      .getAllByText(medal)
-      .find(el => el.getAttribute('class')?.includes('endLabel'));
-    const y = Number(end?.getAttribute('y'));
-    expect(y).toBeGreaterThan(0);
-    expect(y).toBeLessThan(180);
-  });
+  //
+  // ⚠ BOUNDED BY THE PLOT, NOT THE VIEWBOX. The first version of this test
+  // asserted 0 < y < 180, which the clipped y=4 satisfies — a regression test
+  // that would have passed against the very bug it was written for. The plot
+  // runs from 14 to 150, and a baseline needs the glyph's height inside it.
+  it.each([['gold'], ['none']])(
+    'keeps the end label inside the plot at the %s rung',
+    async medal => {
+      await chart([at(2, { medal: medal as 'gold' }), at(1, { medal: medal as 'gold' })]);
+      const y = Number(
+        screen.getByTestId('history-end-label').getAttribute('y'),
+      );
+      expect(y).toBeGreaterThanOrEqual(14 + 11);
+      expect(y).toBeLessThanOrEqual(180 - 30);
+    },
+  );
 
   it('marks a release change so a medal that moved has an explanation', async () => {
     await chart([at(2, { medal: 'bronze' }), at(1, { medal: 'gold' })], [

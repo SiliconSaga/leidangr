@@ -15,6 +15,7 @@ const svgsIn = (html: string) => html.match(/<svg[\s\S]*?<\/svg>/g) ?? [];
 // shapes a case was written to show, would be measuring that instead.
 const svgOf = (s: Scenario) => historySvg(s.runs, s.events, asOfFor(s));
 const named = (title: string) => SCENARIOS.find(s => s.title === title)!;
+const NOW_ISH = Date.parse('2026-09-05T00:00:00.000Z');
 
 describe('the scenarios', () => {
   // The page exists to let two shapes be COMPARED. A gap and a fall are the
@@ -71,6 +72,16 @@ describe('historySvg', () => {
     const out = svgOf(named('Never seen at all'));
     expect(out).not.toMatch(/<svg/);
     expect(out).toMatch(/no run was ever measured/);
+  });
+
+  // ⚠ TWO DIFFERENT ABSENCES. One measured run draws no line either, but saying
+  // nothing was ever measured about a component we measured once is the chart's
+  // own confusion restated in its own documentation.
+  it('tells one measured run apart from none at all', () => {
+    const one = historySvg([named('Holding gold').runs[0]], [], NOW_ISH);
+    expect(one).not.toMatch(/<svg/);
+    expect(one).toMatch(/two readings/);
+    expect(one).not.toMatch(/never measured/);
   });
 
   it('marks a release change with a rule and its version', () => {

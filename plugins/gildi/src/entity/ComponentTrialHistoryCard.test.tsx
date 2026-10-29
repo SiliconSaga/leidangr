@@ -1,4 +1,4 @@
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { renderInTestApp, TestApiProvider } from '@backstage/frontend-test-utils';
 import { catalogApiRef, entityRouteRef, EntityProvider } from '@backstage/plugin-catalog-react';
 import { discoveryApiRef, fetchApiRef } from '@backstage/core-plugin-api';
@@ -66,12 +66,19 @@ describe('ComponentTrialHistoryCard', () => {
     expect(await screen.findByTestId('medal-history')).toBeInTheDocument();
   });
 
+  // ⚠ WAITS FOR THE CHARTS, not for the sections. Each section's wrapper div
+  // renders as soon as the ASPECTS load, before its own history fetch resolves —
+  // so asserting on the wrappers passed while both charts were still pending,
+  // left their state updates landing after the test had finished (the act
+  // warning that was the symptom), and would have gone on passing for a card
+  // whose charts never drew at all.
   it('renders one section per adopted aspect', async () => {
     await render(
       enrolled('security, operational-readiness'),
       histories({ runs: [at(2), at(1)], events: [] }),
     );
-    expect(await screen.findByTestId('history-security')).toBeInTheDocument();
+    expect(await screen.findAllByTestId('medal-history')).toHaveLength(2);
+    expect(screen.getByTestId('history-security')).toBeInTheDocument();
     expect(screen.getByTestId('history-operational-readiness')).toBeInTheDocument();
   });
 
@@ -105,8 +112,22 @@ describe('ComponentTrialHistoryCard', () => {
     ).toBeInTheDocument();
   });
 
+  // ⚠ WITHOUT THE WAIT THIS TEST PROVED NOTHING. The aspects resolve through
+  // useAsync, so straight after `await render(...)` the card is still showing
+  // Progress — measured, not assumed: the DOM at that point holds
+  // `data-testid="progress"` and nothing else. "Medal history" was absent
+  // because the card had not decided yet, so the test passed whatever it went
+  // on to draw a tick later.
+  //
+  // The spinner is the anchor at both ends: present means the card is mounted,
+  // gone means the aspects resolved. Only then does an absent title mean the
+  // card chose to render nothing.
   it('renders nothing at all for a component with no aspects', async () => {
     await render(component({}), histories({ runs: [], events: [] }));
+    expect(screen.getByTestId('progress')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByTestId('progress')).not.toBeInTheDocument(),
+    );
     expect(screen.queryByText('Medal history')).not.toBeInTheDocument();
   });
 });

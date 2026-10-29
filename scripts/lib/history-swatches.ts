@@ -151,8 +151,17 @@ export const SCENARIOS: Scenario[] = [
   },
 ];
 
+// ⚠ PINNED TO UTC, unlike the component's own formatter. The fixtures sit at
+// midnight UTC, so formatting them in the generator's local zone renders the
+// September 1 run as "Aug 31" anywhere west of Greenwich — a page whose axis
+// labels depend on who generated it. The component is right to use the reader's
+// zone; a fixture page is not read by anyone in particular.
 const day = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
 
 /** The chart as a standalone SVG string. Geometry only — `series.ts` decides. */
 export function historySvg(
@@ -162,8 +171,14 @@ export function historySvg(
 ): string {
   const { points, segments, tail } = seriesFor(runs, asOf);
   const drawable = points.filter(p => p.carried !== null);
+  // TWO DIFFERENT ABSENCES, and the card on the entity page already says so in
+  // two sentences. Collapsing them here would have the page tell a reader that
+  // nothing was ever measured about a component we measured once — which is the
+  // chart's own confusion, reproduced in its documentation.
   if (drawable.length < 2) {
-    return `<p class="nothing">Nothing is drawn: no run was ever measured, so there is no medal to hold.</p>`;
+    return drawable.length === 0
+      ? `<p class="nothing">Nothing is drawn: no run was ever measured, so there is no medal to hold.</p>`
+      : `<p class="nothing">Nothing is drawn: one measured run is not a trend — a medal needs two readings before there is a line between them.</p>`;
   }
 
   const first = Date.parse(points[0].at);

@@ -93,7 +93,7 @@ test:
 ## test-app — the generated app/backend unit tests (backstage-cli)
 ## CI=true forces a single run — without it backstage-cli watches in a TTY and never exits.
 test-app:
-	CI=true corepack yarn backstage-cli repo test
+	CI=true corepack yarn backstage-cli repo test $(ARGS)
 
 ## tsc — typecheck the whole repo (catches wiring/import errors the linter misses)
 tsc:

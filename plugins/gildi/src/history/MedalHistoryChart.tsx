@@ -350,6 +350,7 @@ export function MedalHistoryChart({
         {endPoint && (
           <text
             className={classes.endLabel}
+            data-testid="history-end-label"
             x={W - PAD.right}
             y={endLabelY}
             textAnchor="end"
