@@ -65,7 +65,7 @@ theme-swatches:
 	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-theme-swatches.mjs $(ARGS)
 
 ## medal-swatches — render every medal badge state to .tmp/medal-swatches.html
-## so the six states can be compared side by side without booting the app
+## so the states can be compared side by side without booting the app
 medal-swatches:
 	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-medal-swatches.mjs $(ARGS)
 
