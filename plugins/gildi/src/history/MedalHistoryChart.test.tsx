@@ -22,8 +22,18 @@ const at = (day: number, over: Partial<TrialRun> = {}) =>
 const withheld = (day: number) =>
   at(day, { medal: null, suppressedReasons: ['no-resolver'] });
 
-const chart = (runs: TrialRun[], events: HistoryEvent[] = []) =>
-  renderInTestApp(<MedalHistoryChart runs={runs} events={events} />);
+// ⚠ `asOf` DEFAULTS TO THE NEWEST RUN, so these fixtures are never stale and
+// the tail is a thing each test opts into. Left to the wall clock, every
+// fixture here would be weeks overdue and every expectation below would be
+// about a chart in a state the test never asked for.
+const chart = (runs: TrialRun[], events: HistoryEvent[] = [], asOf?: number) =>
+  renderInTestApp(
+    <MedalHistoryChart
+      runs={runs}
+      events={events}
+      asOf={asOf ?? Math.max(...runs.map(r => Date.parse(r.runAt)))}
+    />,
+  );
 
 const states = () =>
   screen.getAllByTestId('history-point').map(p => p.getAttribute('data-state'));
@@ -131,6 +141,76 @@ describe('MedalHistoryChart', () => {
   it('draws nothing when no run was ever measured', async () => {
     await chart([withheld(2), withheld(1)]);
     expect(screen.queryByTestId('medal-history')).not.toBeInTheDocument();
+  });
+});
+
+// A chart that ends at its last run shows no difference between a sweep that
+// ran this morning and one that died in the spring. The tail is what makes the
+// difference visible, and it is the same dash as a gap because it is the same
+// claim: we have not confirmed this.
+describe('the overdue stretch', () => {
+  const STALE = Date.parse('2026-09-20T00:00:00.000Z');
+
+  it('runs the line past the last point to today, dashed and flat', async () => {
+    await chart([at(3), at(2), at(1)], [], STALE);
+    const d = screen.getByTestId('history-tail').getAttribute('d') ?? '';
+    // H and no V: the medal holds, so the tail cannot change rung.
+    expect(d).toMatch(/^M [\d.]+ [\d.]+ H [\d.]+$/);
+  });
+
+  it('is absent while the next run is not yet due', async () => {
+    await chart([at(3), at(2), at(1)]);
+    expect(screen.queryByTestId('history-tail')).not.toBeInTheDocument();
+  });
+
+  // The axis has to move with the tail, or the tail is drawn off the right-hand
+  // edge. Asserted on the geometry rather than the label, because the label
+  // reading "today" would still be true of a chart scaled to the last run.
+  it('ends the axis at today rather than at the last run', async () => {
+    await chart([at(3), at(2), at(1)], [], STALE);
+    expect(screen.getByText('today')).toBeInTheDocument();
+    const d = screen.getByTestId('history-tail').getAttribute('d') ?? '';
+    // 640 wide, 20 of right padding: the tail reaches the plot's right edge,
+    // which only happens if `now` is the end of the scale.
+    expect(Number(d.split('H')[1])).toBeCloseTo(620, 0);
+  });
+
+  // ⚠ The whole point. The medal was measured as gold and is still the last
+  // thing we know — but the right edge is today, and no run speaks for today.
+  it('labels the right edge unconfirmed even over a clean gold', async () => {
+    await chart([at(3), at(2), at(1)], [], STALE);
+    const end = screen
+      .getAllByText(/unconfirmed/)
+      .find(el => el.getAttribute('class')?.includes('endLabel'));
+    expect(end).toBeDefined();
+  });
+
+  it('says in words how long it has been, not only in pixels', async () => {
+    await chart([at(3), at(2), at(1)], [], STALE);
+    expect(await screen.findByText(/No run since Sep 3/)).toBeInTheDocument();
+  });
+
+  // No run happened at today's edge, so marking one there would invent a
+  // measurement out of our own silence.
+  it('puts no marker at the far end of the tail', async () => {
+    await chart([at(3), at(2), at(1)], [], STALE);
+    expect(screen.getAllByTestId('history-point')).toHaveLength(3);
+  });
+});
+
+// The dash is one channel, so it reads the same on a marker as on a line. A
+// solid ring at a gap would say a medal was measured that day.
+describe('the gap marker', () => {
+  const ringOf = (state: string) =>
+    screen
+      .getAllByTestId('history-point')
+      .find(g => g.getAttribute('data-state') === state)
+      ?.querySelectorAll('circle')[1];
+
+  it('perforates a gap and leaves a measured medal solid', async () => {
+    await chart([at(3), withheld(2), at(1)]);
+    expect(ringOf('withheld')).toHaveAttribute('stroke-dasharray');
+    expect(ringOf('gold')).not.toHaveAttribute('stroke-dasharray');
   });
 });
 

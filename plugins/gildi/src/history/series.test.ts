@@ -150,7 +150,78 @@ describe('seriesFor', () => {
   });
 
   it('is empty for no runs at all', () => {
-    expect(seriesFor([])).toEqual({ points: [], segments: [] });
+    expect(seriesFor([])).toEqual({ points: [], segments: [], tail: null });
+  });
+});
+
+const DAY = 86_400_000;
+const asOf = (day: number) => Date.parse(`2026-09-0${day}T00:00:00.000Z`);
+
+// ⚠ THE OTHER HALF OF THE SAME ARGUMENT. A gap between runs is dashed because
+// we did not confirm the medal. The stretch AFTER the last run is no different —
+// except that a chart which simply ends there hides it, so a sweep that died
+// months ago draws the same picture as one that ran this morning. Omitting the
+// unmeasured stretch turns our silence into an implied "still fine".
+describe('the stale tail', () => {
+  it('holds the last rung and runs to now, dashed by construction', () => {
+    const { tail } = seriesFor([at(3), at(2), at(1)], asOf(9));
+    expect(tail).toEqual({
+      fromAt: '2026-09-03T00:00:00.000Z',
+      toAt: '2026-09-09T00:00:00.000Z',
+      rung: rungOf('gold'),
+    });
+  });
+
+  // Daily runs and it is still the same day: nothing is late, so nothing is
+  // drawn. A tail on a healthy history would cry wolf on every chart.
+  it('is absent while the next run is not yet overdue', () => {
+    const { tail } = seriesFor(
+      [at(3), at(2), at(1)],
+      asOf(3) + DAY / 2,
+    );
+    expect(tail).toBeNull();
+  });
+
+  it('appears once one expected run has failed to arrive', () => {
+    expect(seriesFor([at(3), at(2), at(1)], asOf(3) + DAY + 1).tail).not.toBeNull();
+  });
+
+  // MEDIAN, not mean. One long outage in the middle of the history would drag an
+  // average out far enough to excuse any amount of later silence — which is
+  // precisely the silence the tail exists to show.
+  it('is not excused by one long outage earlier in the history', () => {
+    const { tail } = seriesFor(
+      [at(9), at(3), at(2), at(1)],
+      asOf(9) + 2 * DAY,
+    );
+    expect(tail).not.toBeNull();
+  });
+
+  // A single run says nothing about how often runs are expected, so nothing
+  // about it can be called late.
+  it('cannot call one run stale, however old it is', () => {
+    expect(seriesFor([at(1)], asOf(9)).tail).toBeNull();
+  });
+
+  // Otherwise every elapsed millisecond counts as overdue.
+  it('draws nothing when every run carries the same timestamp', () => {
+    expect(seriesFor([at(1), at(1), at(1)], asOf(9)).tail).toBeNull();
+  });
+
+  // The tail holds a rung. With nothing ever measured there is no rung to hold,
+  // exactly as there is no line to draw.
+  it('holds nothing when nothing was ever measured', () => {
+    expect(seriesFor([unevaluated(3), unevaluated(2), unevaluated(1)], asOf(9)).tail)
+      .toBeNull();
+  });
+
+  // The held rung, not the last MEASURED one — a gap already carries it
+  // forward, and the tail continues the same held value rather than reaching
+  // back past the gap for a different one.
+  it('continues the rung the line was holding, gap or not', () => {
+    const { tail } = seriesFor([withheld(3), at(2, { medal: 'silver' }), at(1)], asOf(9));
+    expect(tail?.rung).toBe(rungOf('silver'));
+    expect(tail?.fromAt).toBe('2026-09-03T00:00:00.000Z');
   });
 });
 

@@ -27,6 +27,13 @@ const PLOT_H = H - PAD.top - PAD.bottom;
 
 const rungY = (rung: number) => PAD.top + PLOT_H * (1 - rung / (RUNGS.length - 1));
 
+// One dash, used by the line, the overdue tail and the gap marker alike: the
+// channel means "unconfirmed" wherever it turns up. The marker's is its own
+// circumference cut into twelve, so six dashes close the ring evenly.
+const DASH = '4 4';
+const MARKER_R = 4.5;
+const PERFORATED = ((2 * Math.PI * MARKER_R) / 12).toFixed(2);
+
 // The badge's metals and rims. The rim is load-bearing: bare gold is 1.97:1
 // against a light surface and bare silver 1.33:1, both under the 3:1 a graphic
 // owes, so the darker edge is what makes the marker readable.
@@ -42,6 +49,13 @@ export interface Scenario {
   claim: string;
   runs: TrialRun[];
   events?: HistoryEvent[];
+  /**
+   * When "now" is for this case. Defaults to the newest run, which is the only
+   * value that leaves a scenario un-stale — so the overdue tail is something a
+   * case opts into rather than something every case on the page inherits from
+   * the day the page happened to be generated.
+   */
+  asOf?: string;
 }
 
 const run = (day: number, over: Partial<TrialRun> = {}): TrialRun => ({
@@ -120,6 +134,13 @@ export const SCENARIOS: Scenario[] = [
     ],
   },
   {
+    title: 'Nobody has looked in weeks',
+    claim:
+      'The medal was gold and measured cleanly — and then the sweep stopped. The axis runs to TODAY rather than to the last run, so the stretch we did not look at is in the frame instead of cropped out of it. Ending the chart at the last measurement would draw this identically to the first case above.',
+    runs: [run(5), run(4), run(3), run(2), run(1)],
+    asOf: '2026-09-26T00:00:00.000Z',
+  },
+  {
     title: 'Never seen at all',
     claim:
       'The standard could not be read on either run, so there is nothing to hold and no line is drawn. Starting it at the floor would invent a verdict for a component we never measured.',
@@ -131,15 +152,22 @@ const day = (iso: string) =>
   new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 /** The chart as a standalone SVG string. Geometry only — `series.ts` decides. */
-export function historySvg(runs: TrialRun[], events: HistoryEvent[] = []): string {
-  const { points, segments } = seriesFor(runs);
+export function historySvg(
+  runs: TrialRun[],
+  events: HistoryEvent[] = [],
+  asOf?: number,
+): string {
+  const { points, segments, tail } = seriesFor(runs, asOf);
   const drawable = points.filter(p => p.carried !== null);
   if (drawable.length < 2) {
     return `<p class="nothing">Nothing is drawn: no run was ever measured, so there is no medal to hold.</p>`;
   }
 
   const first = Date.parse(points[0].at);
-  const last = Date.parse(points[points.length - 1].at);
+  // To NOW when a run is overdue, not to the last run — see the component. A
+  // chart cropped at its last measurement cannot show that there has not been
+  // one in months.
+  const last = Date.parse(tail?.toAt ?? points[points.length - 1].at);
   const span = last - first || 1;
   const x = (iso: string) =>
     PAD.left + ((Date.parse(iso) - first) / span) * (W - PAD.left - PAD.right);
@@ -162,10 +190,18 @@ export function historySvg(runs: TrialRun[], events: HistoryEvent[] = []): strin
   const spans = segments
     .map(
       seg => `
-    <path class="line${seg.dashed ? ' unconfirmed' : ''}"${seg.dashed ? ' stroke-dasharray="4 4"' : ''}
+    <path class="line${seg.dashed ? ' unconfirmed' : ''}"${seg.dashed ? ` stroke-dasharray="${DASH}"` : ''}
       d="M ${x(seg.fromAt)} ${rungY(seg.fromRung)} H ${x(seg.toAt)} V ${rungY(seg.toRung)}" />`,
     )
     .join('');
+
+  // Flat and dashed, with no marker at its end: no run happened there, and a
+  // marker would invent one out of our own silence.
+  const overdue = tail
+    ? `
+    <path class="line unconfirmed" stroke-dasharray="${DASH}"
+      d="M ${x(tail.fromAt)} ${rungY(tail.rung)} H ${x(tail.toAt)}" />`
+    : '';
 
   const marks = points
     .filter(p => p.carried !== null)
@@ -174,9 +210,13 @@ export function historySvg(runs: TrialRun[], events: HistoryEvent[] = []): strin
       const cy = rungY(p.carried as number);
       const metal = p.medal ? METAL[p.medal] : undefined;
       return `
-    <circle class="ring" cx="${cx}" cy="${cy}" r="5.5" />
-    <circle cx="${cx}" cy="${cy}" r="4.5"
-      ${metal ? `fill="${metal.fill}" stroke="${metal.rim}"` : 'class="hollow"'} stroke-width="1.5" />`;
+    <circle class="ring" cx="${cx}" cy="${cy}" r="${MARKER_R + 1}" />
+    <circle cx="${cx}" cy="${cy}" r="${MARKER_R}"
+      ${
+        metal
+          ? `fill="${metal.fill}" stroke="${metal.rim}"`
+          : `class="hollow" stroke-dasharray="${PERFORATED} ${PERFORATED}"`
+      } stroke-width="1.5" />`;
     })
     .join('');
 
@@ -185,13 +225,15 @@ export function historySvg(runs: TrialRun[], events: HistoryEvent[] = []): strin
   const endLabelY = endY - 10 >= PAD.top + 8 ? endY - 10 : endY + 18;
   const endLabel = `
     <text class="end" x="${W - PAD.right}" y="${endLabelY}" text-anchor="end">${
-      end.gap ? 'unconfirmed' : end.medal ?? ''
+      end.gap || tail ? 'unconfirmed' : end.medal ?? ''
     }</text>`;
 
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Medal history">
-    ${grid}${releases}${spans}${marks}${endLabel}
+    ${grid}${releases}${spans}${overdue}${marks}${endLabel}
     <text class="axis" x="${PAD.left}" y="${H - 10}" text-anchor="start">${day(points[0].at)}</text>
-    <text class="axis" x="${W - PAD.right}" y="${H - 10}" text-anchor="end">${day(points[points.length - 1].at)}</text>
+    <text class="axis" x="${W - PAD.right}" y="${H - 10}" text-anchor="end">${
+      tail ? 'today' : day(points[points.length - 1].at)
+    }</text>
   </svg>`;
 }
 
@@ -299,6 +341,18 @@ h1 {
 .key span { display: inline-flex; align-items: center; gap: 0.5rem; }
 `;
 
+/**
+ * When "now" is for a case. The newest run unless the case says otherwise, so
+ * the page is the same page every day it is generated — a default of the real
+ * clock would quietly turn all six cases stale and hide the one case that is
+ * about staleness.
+ */
+export function asOfFor(s: Scenario): number {
+  return s.asOf
+    ? Date.parse(s.asOf)
+    : Math.max(...s.runs.map(r => Date.parse(r.runAt)));
+}
+
 export function renderHistoryPage(scenarios: Scenario[] = SCENARIOS): string {
   const cases = scenarios
     .map(
@@ -306,7 +360,7 @@ export function renderHistoryPage(scenarios: Scenario[] = SCENARIOS): string {
   <section class="case">
     <h2>${s.title}</h2>
     <p class="claim">${s.claim}</p>
-    ${historySvg(s.runs, s.events)}
+    ${historySvg(s.runs, s.events, asOfFor(s))}
   </section>`,
     )
     .join('');
@@ -333,7 +387,8 @@ export function renderHistoryPage(scenarios: Scenario[] = SCENARIOS): string {
     <p class="key">
       <span>Solid line — measured</span>
       <span>Dashed — not confirmed</span>
-      <span>Hollow marker — a run that learned nothing</span>
+      <span>Broken ring — a run that learned nothing</span>
+      <span>Dashed past the last point — a run is overdue</span>
       <span>Vertical rule — the module's release changed</span>
     </p>
   </header>

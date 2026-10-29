@@ -62,9 +62,30 @@ export interface SeriesSegment {
   dashed: boolean;
 }
 
+/**
+ * The stretch between the last run and now, when that stretch has gone on long
+ * enough that "current" is no longer something we can claim.
+ *
+ * ⚠ WITHOUT THIS THE CHART LIES BY OMISSION. A line that stops at its last run
+ * and leaves the axis there draws a picture that ends in a measurement, however
+ * old that measurement is — so a sweep that died three months ago looks exactly
+ * like one that ran this morning. Cropping the unmeasured stretch out of frame
+ * is the same inversion as plotting a gap at zero, in the other direction: it
+ * turns our silence into an implied verdict of "still fine".
+ *
+ * So the axis runs to `toAt`, not to the last run, and the tail is dashed with
+ * no marker at its end — there is no run there to mark.
+ */
+export interface SeriesTail {
+  fromAt: string;
+  toAt: string;
+  rung: number;
+}
+
 export interface Series {
   points: SeriesPoint[];
   segments: SeriesSegment[];
+  tail: SeriesTail | null;
 }
 
 function gapOf(run: TrialRun): GapKind | null {
@@ -91,8 +112,13 @@ function gapOf(run: TrialRun): GapKind | null {
  * Runs with an unparseable or missing `runAt` are dropped rather than plotted:
  * a point with no time has no x position, and guessing one would silently
  * reorder real history.
+ *
+ * `asOf` is when "now" is, and it decides whether the history has gone stale —
+ * see `SeriesTail`. It is a parameter rather than a `Date.now()` read inside
+ * the loop so that tests and the preview page are deterministic; callers in the
+ * app leave it alone.
  */
-export function seriesFor(runsNewestFirst: TrialRun[]): Series {
+export function seriesFor(runsNewestFirst: TrialRun[], asOf?: number): Series {
   const chronological = [...runsNewestFirst]
     .filter(run => Number.isFinite(Date.parse(run.runAt)))
     .sort((a, b) => Date.parse(a.runAt) - Date.parse(b.runAt));
@@ -123,7 +149,60 @@ export function seriesFor(runsNewestFirst: TrialRun[]): Series {
     });
   }
 
-  return { points, segments: segmentsFor(points) };
+  return {
+    points,
+    segments: segmentsFor(points),
+    tail: tailFor(points, asOf ?? Date.now()),
+  };
+}
+
+/**
+ * The cadence of the runs we were given, as the MEDIAN interval between them.
+ *
+ * Median rather than mean because one long outage would drag the average out
+ * far enough to excuse any amount of subsequent silence — the very thing the
+ * tail exists to show. Undefined for fewer than two runs: a single run says
+ * nothing about how often runs are expected, so nothing can be called late.
+ */
+function cadenceOf(points: SeriesPoint[]): number | undefined {
+  if (points.length < 2) return undefined;
+  const gaps = points
+    .slice(1)
+    .map((p, i) => Date.parse(p.at) - Date.parse(points[i].at))
+    .sort((a, b) => a - b);
+  return gaps[Math.floor(gaps.length / 2)];
+}
+
+/**
+ * A tail when the next run is overdue — more time has passed since the last run
+ * than usually passes between runs.
+ *
+ * Self-calibrating on purpose: there is no staleness threshold to configure and
+ * none to drift out of step with the sweep's schedule. One missed interval is
+ * the trigger because that is the first moment we can say something factual —
+ * a run we expected did not arrive.
+ *
+ * Nothing is drawn before the first measurement, for the same reason no line is:
+ * with no rung to hold there is nothing for a tail to hold either.
+ */
+function tailFor(points: SeriesPoint[], asOf: number): SeriesTail | null {
+  const lastPoint = points[points.length - 1];
+  if (!lastPoint || lastPoint.carried === null) return null;
+
+  // A cadence of zero means every run we hold carries the same timestamp, which
+  // tells us nothing about when the next one is due — and would make any
+  // elapsed time whatsoever count as overdue.
+  const cadence = cadenceOf(points);
+  if (cadence === undefined || cadence <= 0) return null;
+
+  const lastAt = Date.parse(lastPoint.at);
+  if (!(asOf - lastAt > cadence)) return null;
+
+  return {
+    fromAt: lastPoint.at,
+    toAt: new Date(asOf).toISOString(),
+    rung: lastPoint.carried,
+  };
 }
 
 /**

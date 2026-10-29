@@ -36,6 +36,17 @@ const PLOT_H = H - PAD.top - PAD.bottom;
 const rungY = (rung: number) =>
   PAD.top + PLOT_H * (1 - rung / (RUNGS.length - 1));
 
+// The dash that means "unconfirmed", stated once and used on the line, the tail
+// and the marker alike — so the reader learns one channel rather than three
+// unrelated treatments that happen to all mean the same thing.
+const DASH = '4 4';
+
+// The marker's radius, and its circumference cut into twelve so the perforated
+// ring lands six even dashes and closes on itself. An arbitrary dash array ends
+// mid-gap and reads as a mistake rather than as a pattern.
+const MARKER_R = 4.5;
+const PERFORATED = `${((2 * Math.PI * MARKER_R) / 12).toFixed(2)}`;
+
 const useStyles = makeStyles(theme => ({
   figure: { margin: 0, position: 'relative' },
   svg: { display: 'block', width: '100%', height: 'auto' },
@@ -139,17 +150,30 @@ export function describePoint(point: SeriesPoint): string {
  * plotting an unmeasured run at the bottom of the ladder draws a cliff that
  * reads as a measured regression, which inverts a gap in our knowledge into a
  * verdict about the component.
+ *
+ * The same dash runs PAST THE LAST RUN when one is overdue, and the axis goes
+ * with it. A chart that stops at its last measurement leaves the unmeasured
+ * stretch outside the frame, which is the quieter half of the same inversion:
+ * our silence read back as "still fine".
  */
 export function MedalHistoryChart({
   runs,
   events = [],
+  asOf,
 }: {
   runs: TrialRun[];
   events?: HistoryEvent[];
+  /**
+   * When "now" is, for deciding whether a run is overdue. The app leaves it
+   * unset and gets the wall clock; it exists so tests and the preview page can
+   * pin an instant, because every expectation about the tail is an expectation
+   * about elapsed time.
+   */
+  asOf?: number;
 }) {
   const classes = useStyles();
   const [hover, setHover] = useState<number | undefined>(undefined);
-  const { points, segments } = seriesFor(runs);
+  const { points, segments, tail } = seriesFor(runs, asOf);
   const drawable = points.filter(p => p.carried !== null);
 
   // Counted on what can actually be DRAWN, not on how many runs came back. One
@@ -159,7 +183,13 @@ export function MedalHistoryChart({
   if (drawable.length < 2) return null;
 
   const first = Date.parse(points[0].at);
-  const last = Date.parse(points[points.length - 1].at);
+  // THE AXIS ENDS AT NOW WHEN A RUN IS OVERDUE, not at the last run. Scaling to
+  // the last run instead would crop the unmeasured stretch out of the frame
+  // entirely, so a sweep that stopped months ago would draw the same confident
+  // picture as one that ran this morning. The squeeze a long tail puts on the
+  // history is not a flaw in the scale — a chart that is mostly tail is a chart
+  // saying we stopped looking, which is the thing worth seeing.
+  const last = Date.parse(tail?.toAt ?? points[points.length - 1].at);
   const span = last - first || 1;
   const x = (iso: string) =>
     PAD.left + ((Date.parse(iso) - first) / span) * (W - PAD.left - PAD.right);
@@ -236,7 +266,7 @@ export function MedalHistoryChart({
           <path
             key={`${seg.fromAt}-${seg.toAt}`}
             className={`${classes.line} ${seg.dashed ? classes.unconfirmed : ''}`}
-            strokeDasharray={seg.dashed ? '4 4' : undefined}
+            strokeDasharray={seg.dashed ? DASH : undefined}
             data-testid="history-segment"
             data-dashed={seg.dashed}
             // H then V: a STEP, not a slope. A diagonal would put the
@@ -244,6 +274,19 @@ export function MedalHistoryChart({
             d={`M ${x(seg.fromAt)} ${rungY(seg.fromRung)} H ${x(seg.toAt)} V ${rungY(seg.toRung)}`}
           />
         ))}
+
+        {/* The overdue stretch. Flat, because the medal holds until a run
+            changes it, and DASHED for the same reason a gap is: we have not
+            confirmed it. No marker at the far end — there is no run there, and a
+            marker would invent one. */}
+        {tail && (
+          <path
+            className={`${classes.line} ${classes.unconfirmed}`}
+            strokeDasharray={DASH}
+            data-testid="history-tail"
+            d={`M ${x(tail.fromAt)} ${rungY(tail.rung)} H ${x(tail.toAt)}`}
+          />
+        )}
 
         {points.map((point, i) => {
           if (point.carried === null) return null;
@@ -261,18 +304,23 @@ export function MedalHistoryChart({
                   border drawn around the mark — a border adds ink that is not
                   data, and this adds none. */}
               <circle className={classes.ring} cx={cx} cy={cy} r={5.5} />
-              {/* HOLLOW where a run told us nothing. A filled marker would
-                  assert a medal at this moment — the honest claim is only that
-                  a run happened and did not confirm one. The hollow centre
-                  takes the surface colour rather than `transparent`, so the
-                  line does not show through and read as a filled dot. */}
+              {/* HOLLOW AND PERFORATED where a run told us nothing. A filled
+                  marker would assert a medal at this moment — the honest claim
+                  is only that a run happened and did not confirm one.
+
+                  The broken ring is the SAME dash the line uses, so the channel
+                  means one thing everywhere it appears rather than the reader
+                  having to learn that hollow-here equals dashed-there. The
+                  centre takes the surface colour rather than `transparent`, so
+                  the line does not show through and read as a filled dot. */}
               <circle
                 cx={cx}
                 cy={cy}
-                r={4.5}
+                r={MARKER_R}
                 className={metal ? undefined : classes.hollow}
                 fill={metal ? metal.fill : undefined}
                 stroke={metal ? metal.rim : undefined}
+                strokeDasharray={metal ? undefined : `${PERFORATED} ${PERFORATED}`}
                 strokeWidth={1.5}
               />
               {/* The hit area, not the mark. A 9px dot you must land on
@@ -306,7 +354,11 @@ export function MedalHistoryChart({
             y={endLabelY}
             textAnchor="end"
           >
-            {endPoint.gap ? 'unconfirmed' : endPoint.medal ?? ''}
+            {/* The label names the rung AT THE RIGHT EDGE, and with a tail that
+                edge is today — a day no run has spoken for. So it says
+                `unconfirmed` even over a medal that was measured cleanly, and
+                the medal itself stays available on its own marker. */}
+            {endPoint.gap || tail ? 'unconfirmed' : endPoint.medal ?? ''}
           </text>
         )}
 
@@ -324,7 +376,7 @@ export function MedalHistoryChart({
           y={H - 10}
           textAnchor="end"
         >
-          {day(points[points.length - 1].at)}
+          {tail ? 'today' : day(points[points.length - 1].at)}
         </text>
       </svg>
 
@@ -344,6 +396,7 @@ export function MedalHistoryChart({
       <figcaption className={classes.caption}>
         A dashed line means we could not confirm the medal in that stretch, not
         that it was lost.
+        {tail && ` No run since ${day(tail.fromAt)}, so the line is dashed to today — the medal is the last one we measured, not one we can vouch for now.`}
       </figcaption>
 
       <table className={classes.srOnly}>

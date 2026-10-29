@@ -1,11 +1,20 @@
 import {
   SCENARIOS,
+  type Scenario,
+  asOfFor,
   historySvg,
   renderHistoryPage,
   standalone,
 } from './history-swatches';
 
 const svgsIn = (html: string) => html.match(/<svg[\s\S]*?<\/svg>/g) ?? [];
+
+// ⚠ ALWAYS THROUGH `asOfFor`, never with the wall clock. These fixtures are
+// dated, so a bare `historySvg(runs)` grows an overdue tail that gets longer
+// every day the suite is run — and the assertions below, which are about the
+// shapes a case was written to show, would be measuring that instead.
+const svgOf = (s: Scenario) => historySvg(s.runs, s.events, asOfFor(s));
+const named = (title: string) => SCENARIOS.find(s => s.title === title)!;
 
 describe('the scenarios', () => {
   // The page exists to let two shapes be COMPARED. A gap and a fall are the
@@ -24,26 +33,31 @@ describe('the scenarios', () => {
 });
 
 describe('historySvg', () => {
-  const gapCase = SCENARIOS.find(s => s.title === 'A gap, not a fall')!;
-  const fallCase = SCENARIOS.find(s => s.title === 'A real fall')!;
+  const gapCase = named('A gap, not a fall');
+  const fallCase = named('A real fall');
 
   // Dashes come from the component's own `seriesFor`, not from a second
   // implementation here — which is the point of importing it rather than
   // restating it. Two withheld runs in the middle leave three unconfirmed
   // spans: into the gap, across it, and out of it.
   it('dashes the unconfirmed spans of the gap case', () => {
-    const svg = historySvg(gapCase.runs, gapCase.events);
-    expect(svg.match(/stroke-dasharray/g) ?? []).toHaveLength(3);
+    expect(svgOf(gapCase).match(/class="line unconfirmed"/g) ?? []).toHaveLength(3);
+  });
+
+  // The same channel on the markers. A solid ring at a run that learned nothing
+  // would assert a medal was measured that day.
+  it('perforates the marker on each run that learned nothing', () => {
+    expect(svgOf(gapCase).match(/class="hollow"/g) ?? []).toHaveLength(2);
   });
 
   // The whole argument in one assertion: a measured decline carries no dash,
   // so it cannot be mistaken for an outage.
   it('draws the measured fall with no dash at all', () => {
-    expect(historySvg(fallCase.runs)).not.toMatch(/stroke-dasharray/);
+    expect(svgOf(fallCase)).not.toMatch(/stroke-dasharray/);
   });
 
   it('steps rather than slopes', () => {
-    const svg = historySvg(fallCase.runs);
+    const svg = svgOf(fallCase);
     // Every span is a horizontal move then a vertical one. A diagonal would be
     // a single L or a bare coordinate pair.
     for (const path of svg.match(/d="M[^"]+"/g) ?? []) {
@@ -54,17 +68,29 @@ describe('historySvg', () => {
   // Nothing was ever measured, so there is nothing to hold. A chart with
   // gridlines and no data would be a confident picture of nothing.
   it('says so in words when no run was ever measured', () => {
-    const neverSeen = SCENARIOS.find(s => s.title === 'Never seen at all')!;
-    const out = historySvg(neverSeen.runs);
+    const out = svgOf(named('Never seen at all'));
     expect(out).not.toMatch(/<svg/);
     expect(out).toMatch(/no run was ever measured/);
   });
 
   it('marks a release change with a rule and its version', () => {
-    const bar = SCENARIOS.find(s => s.title === 'The bar moved, not the component')!;
-    const svg = historySvg(bar.runs, bar.events);
+    const svg = svgOf(named('The bar moved, not the component'));
     expect(svg).toMatch(/class="release"/);
     expect(svg).toMatch(/>1\.1</);
+  });
+
+  // ⚠ The case that proves the page is still worth looking at. Five clean gold
+  // runs and a stopped sweep must NOT draw the same picture as five clean gold
+  // runs and a healthy one — which is exactly what a chart cropped at its last
+  // measurement does.
+  it('tells a stopped sweep apart from a healthy one', () => {
+    const stale = svgOf(named('Nobody has looked in weeks'));
+    const healthy = svgOf(named('Holding gold'));
+    expect(stale).not.toEqual(healthy);
+    // Flat, dashed, ending at the plot's right edge, and labelled as today.
+    expect(stale).toMatch(/d="M [\d.]+ [\d.]+ H 620"/);
+    expect(stale).toMatch(/>today</);
+    expect(healthy).not.toMatch(/>today</);
   });
 });
 
@@ -96,10 +122,19 @@ describe('renderHistoryPage', () => {
 
   // Dashing is not self-explanatory, and a reader who guesses gets the
   // component's record wrong in exactly the direction the model forbids.
-  it('states what the dash and the hollow marker mean', () => {
+  it('states what the dash and the broken ring mean', () => {
     const page = renderHistoryPage();
     expect(page).toMatch(/Dashed — not confirmed/);
-    expect(page).toMatch(/Hollow marker/);
+    expect(page).toMatch(/Broken ring/);
+    expect(page).toMatch(/a run is overdue/);
+  });
+
+  // ⚠ THE PAGE MUST NOT AGE. Staleness is decided against an instant, so a page
+  // that let `seriesFor` read the clock would show every case as overdue a
+  // fortnight after these fixtures were written — burying the one case that is
+  // about being overdue among five that are not.
+  it('goes stale only in the case that is about going stale', () => {
+    expect(renderHistoryPage().match(/>today</g) ?? []).toHaveLength(1);
   });
 
   // Theming matches the other swatch pages: tokens on a bare :root, a
