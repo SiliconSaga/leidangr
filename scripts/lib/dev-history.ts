@@ -89,8 +89,15 @@ export function plan(
 
 /**
  * The enrolled pairs in a catalog response, discovered rather than hardcoded —
- * the same annotation the sweep itself looks for, and the same lowercasing the
- * store canonicalises to, so a seeded row and a requested one meet.
+ * the same annotation the sweep itself looks for.
+ *
+ * ⚠ THE ENTITY REF IS LOWERCASED AND THE ASPECT ID IS NOT, because that is what
+ * the two sides actually do. `stringifyEntityRef` canonicalises kind, namespace
+ * and name, so a ref has one spelling whatever the metadata says; an aspect id
+ * has none — the sweep's `aspectsOf` trims the annotation and stores it
+ * verbatim, and the card reads it back the same way. Folding its case here
+ * would write `website-hygiene` under a component annotated `Website-Hygiene`,
+ * and the chart would stay empty with nothing anywhere to say why.
  */
 export function pairsIn(entities: unknown): Pair[] {
   const items = Array.isArray(entities) ? entities : [];
@@ -108,7 +115,7 @@ export function pairsIn(entities: unknown): Pair[] {
     const namespace = (entity.metadata?.namespace ?? 'default').toLowerCase();
     const aspects = (entity.metadata?.annotations?.['siliconsaga.org/aspects'] ?? '')
       .split(',')
-      .map(a => a.trim().toLowerCase())
+      .map(a => a.trim())
       .filter(Boolean);
     for (const aspectId of aspects) {
       pairs.push({

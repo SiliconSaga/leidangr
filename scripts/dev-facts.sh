@@ -55,6 +55,12 @@ EOF
 # someone, and this script boots nothing but a local dev stack.
 export GILDI_DEV_SEED=1
 
+# The second gate names the environment rather than ruling one out, so it has to
+# be set here. `backstage-cli start` sets it too, but relying on that would mean
+# the seed endpoint silently stops mounting the day the CLI changes its mind —
+# and a gate that fails shut fails invisibly.
+export NODE_ENV=development
+
 DEV_PID=""
 TAIL_PID=""
 

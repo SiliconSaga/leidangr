@@ -31,15 +31,22 @@ import type { TrialResultStore, TrialRun } from './store';
 /**
  * Both gates, in one place that can be tested without starting a backend.
  *
- * `nodeEnv` is a parameter rather than a `process.env` read so the production
- * refusal is a test rather than a claim.
+ * The env is a parameter rather than a `process.env` read so the refusals are
+ * tests rather than claims.
+ *
+ * ⚠ AN ALLOWLIST, NOT A DENYLIST. Refusing `production` and admitting everything
+ * else inverts the burden of proof: an unset or misspelled `NODE_ENV` — staging,
+ * `Production`, nothing at all — would then be enough to open the endpoint, and
+ * the one environment that must never have it is the one most likely to be
+ * started by something other than our own scripts. So a named development
+ * environment has to assert itself, and silence keeps the gate shut.
  */
 export function devSeedEnabled(env: {
   GILDI_DEV_SEED?: string;
   NODE_ENV?: string;
 }): boolean {
-  if (env.NODE_ENV === 'production') return false;
-  return env.GILDI_DEV_SEED === '1';
+  if (env.GILDI_DEV_SEED !== '1') return false;
+  return env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
 }
 
 const asCount = (value: unknown, field: string): number | null => {

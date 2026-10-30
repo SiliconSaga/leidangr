@@ -23,13 +23,15 @@ describe('pairsIn', () => {
     expect(pairsIn([entity('plain'), entity('blank', '  ')])).toEqual([]);
   });
 
-  // ⚠ THE SPELLING HAS TO MATCH THE STORE'S. Backstage canonicalises kind,
-  // namespace and name to lower case, so a row seeded as `MySite` is requested
-  // as `mysite` and the two never meet — a permanent empty chart that reads as
-  // though the seeding silently failed.
-  it('lowercases the reference the way the store canonicalises it', () => {
+  // ⚠ THE SPELLING HAS TO MATCH THE STORE'S, AND THE TWO HALVES DIFFER.
+  // Backstage canonicalises kind, namespace and name to lower case, so a row
+  // seeded as `MySite` is requested as `mysite` and the two never meet. An
+  // aspect id goes through nothing of the kind — the sweep trims the annotation
+  // and stores it verbatim — so folding ITS case is the same permanent empty
+  // chart in the other direction, and this test is the only place that says so.
+  it('canonicalises the reference but leaves the aspect id spelt as adopted', () => {
     expect(pairsIn([entity('MySite', 'Website-Hygiene', 'Prod')])).toEqual([
-      { entityRef: 'component:prod/mysite', aspectId: 'website-hygiene' },
+      { entityRef: 'component:prod/mysite', aspectId: 'Website-Hygiene' },
     ]);
   });
 

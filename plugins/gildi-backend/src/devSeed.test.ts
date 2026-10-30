@@ -21,9 +21,11 @@ describe('devSeedEnabled', () => {
   });
 
   it('is on only for the exact opt-in', () => {
-    expect(devSeedEnabled({ GILDI_DEV_SEED: '1' })).toBe(true);
+    expect(devSeedEnabled({ GILDI_DEV_SEED: '1', NODE_ENV: 'development' })).toBe(true);
     for (const value of ['', '0', 'true', 'yes', 'TRUE']) {
-      expect(devSeedEnabled({ GILDI_DEV_SEED: value })).toBe(false);
+      expect(devSeedEnabled({ GILDI_DEV_SEED: value, NODE_ENV: 'development' })).toBe(
+        false,
+      );
     }
   });
 
@@ -32,6 +34,21 @@ describe('devSeedEnabled', () => {
     expect(devSeedEnabled({ GILDI_DEV_SEED: '1', NODE_ENV: 'production' })).toBe(
       false,
     );
+  });
+
+  // ⚠ THE DENYLIST VERSION OF THIS GATE PASSED EVERY TEST ABOVE. Refusing only
+  // `production` left an unset, misspelled or unfamiliar NODE_ENV wide open, and
+  // an environment nobody named is exactly the one we know least about.
+  it('stays shut for any environment that does not name itself', () => {
+    for (const value of [undefined, '', 'Production', 'PRODUCTION', 'staging', 'prod']) {
+      expect(devSeedEnabled({ GILDI_DEV_SEED: '1', NODE_ENV: value })).toBe(false);
+    }
+  });
+
+  // `test` is admitted alongside `development` because the app's own suites run
+  // under it, and a gate that only a human can open cannot be exercised by one.
+  it('admits the test environment as well as development', () => {
+    expect(devSeedEnabled({ GILDI_DEV_SEED: '1', NODE_ENV: 'test' })).toBe(true);
   });
 });
 
