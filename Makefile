@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-facts dev-gitea smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches test test-app tsc lint config-check secrets ci
+.PHONY: doctor deps dev dev-facts dev-gitea dev-history smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches history-swatches test test-app tsc lint config-check secrets ci
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -65,9 +65,26 @@ theme-swatches:
 	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-theme-swatches.mjs $(ARGS)
 
 ## medal-swatches — render every medal badge state to .tmp/medal-swatches.html
-## so the six states can be compared side by side without booting the app
+## so the states can be compared side by side without booting the app
 medal-swatches:
 	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-medal-swatches.mjs $(ARGS)
+
+## history-swatches — render representative medal histories to
+## .tmp/history-swatches.html, so the shapes can be compared side by side
+## without booting anything. `make dev-history` puts the same cases in the app.
+history-swatches:
+	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-history-swatches.mjs $(ARGS)
+
+## dev-history — seed a fabricated medal history into an ALREADY RUNNING dev
+## stack, so the history chart can be seen in the app: it needs several runs
+## spread over time, and the real sweep writes one an hour stamped now.
+##
+## Run `make dev-facts` in another terminal first — it boots the stack, writes
+## the token this reuses, and sets the GILDI_DEV_SEED gate on the server. The
+## runs this writes are FICTION; the dev database is in-memory, so restarting
+## the app is the reset.
+dev-history:
+	node --experimental-strip-types --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/lib/run-dev-history.mjs $(ARGS)
 
 ## test — envelope tooling + BDD acceptance (jest-cucumber)
 test:
@@ -76,7 +93,7 @@ test:
 ## test-app — the generated app/backend unit tests (backstage-cli)
 ## CI=true forces a single run — without it backstage-cli watches in a TTY and never exits.
 test-app:
-	CI=true corepack yarn backstage-cli repo test
+	CI=true corepack yarn backstage-cli repo test $(ARGS)
 
 ## tsc — typecheck the whole repo (catches wiring/import errors the linter misses)
 tsc:
