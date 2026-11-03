@@ -57,6 +57,22 @@ export const componentAspectsCard = EntityCardBlueprint.make({
   },
 });
 
+// A `content` card, NOT an `info` one — the only one of these that is. The
+// chart needs the layout's wide 2fr column to be legible at all, and the badge
+// it complements already sits in the info rail beside it, so putting the two
+// in the same narrow column would squeeze the chart for no gain.
+export const componentTrialHistoryCard = EntityCardBlueprint.make({
+  name: 'component-trial-history',
+  params: {
+    type: 'content',
+    filter: isAdoptingComponent,
+    loader: async () => {
+      const { ComponentTrialHistoryCard } = await import('./ComponentTrialHistoryCard');
+      return <ComponentTrialHistoryCard />;
+    },
+  },
+});
+
 // Disable the call to action in app-config to switch it off entirely — the
 // extension then never mounts:
 //

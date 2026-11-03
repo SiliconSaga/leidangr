@@ -60,7 +60,12 @@ describe('eventsFor', () => {
       run({ runAt: '2026-09-02T00:00:00.000Z', medal: 'gold' }),
       run({ runAt: '2026-09-01T00:00:00.000Z', medal: 'silver' }),
     ]);
-    expect(events.map(e => e.medal)).toEqual(['silver', 'gold']);
+    // Narrowed before reading `medal`, which is the discriminated union doing
+    // its job: mapping over every event would also have passed had a
+    // `release-changed` leaked in carrying a medal it has no business having.
+    expect(
+      events.flatMap(e => (e.type === 'medal-earned' ? [e.medal] : [])),
+    ).toEqual(['silver', 'gold']);
   });
 
   it('does not treat none or a suppressed run as an earned medal', () => {

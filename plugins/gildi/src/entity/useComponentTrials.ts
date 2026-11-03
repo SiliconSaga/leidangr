@@ -40,9 +40,15 @@ export function useComponentTrials(entity: Entity, aspectId: string) {
   const discovery = useApi(discoveryApiRef);
   const fetchApi = useApi(fetchApiRef);
 
+  // The REF, not the entity — see useComponentTrialHistory for the argument.
+  // It bites harder here: this hook runs once per aspect row of every component
+  // card, so a dependency that compares by identity refetches the whole badge
+  // column every time the catalog context re-renders.
+  const entityRef = stringifyEntityRef(entity);
+
   const { value, loading, error } = useAsync(async () => {
     const base = await discovery.getBaseUrl('gildi');
-    const ref = encodeURIComponent(stringifyEntityRef(entity));
+    const ref = encodeURIComponent(entityRef);
     const res = await fetchApi.fetch(
       `${base}/trials/${ref}?aspect=${encodeURIComponent(aspectId)}`,
     );
@@ -55,7 +61,7 @@ export function useComponentTrials(entity: Entity, aspectId: string) {
       throw new Error(`trials request failed: ${res.status}`);
     }
     return (await res.json()) as TrialRunView;
-  }, [entity, aspectId]);
+  }, [entityRef, aspectId]);
 
   return { run: value, medal: medalFromRun(value), loading, error };
 }
