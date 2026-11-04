@@ -19,3 +19,4 @@ These are written as files from the first decision. The Backstage ADR plugin (`@
 | [0011](0011-instance-as-system-of-cornerstones.md) | The instance is a System of cornerstones; the hub type retires |
 | [0012](0012-entity-page-composition.md) | Entity pages: filtered layout for narrow types, appended cards for broad ones |
 | [0013](0013-derived-medals.md) | Medals are derived from applicable trials, not assigned to rungs |
+| [0014](0014-ci-publishes-cd-pulls.md) | CI publishes an image and holds no secrets; the cluster pulls its own |

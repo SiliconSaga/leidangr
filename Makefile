@@ -9,7 +9,7 @@ SHELL := bash
 COREPACK_ENABLE_DOWNLOAD_PROMPT ?= 0
 export COREPACK_ENABLE_DOWNLOAD_PROMPT
 
-.PHONY: doctor deps dev dev-facts dev-gitea dev-history smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches history-swatches test test-app tsc lint config-check secrets ci
+.PHONY: doctor deps dev dev-facts dev-gitea dev-history smoke-gitea smoke-catalog smoke-facts theme-swatches medal-swatches history-swatches test test-app tsc lint config-check secrets ci build-backend image
 
 ## doctor — check Node, Corepack, bao, and required dev ports (no secret values printed)
 doctor:
@@ -113,3 +113,27 @@ secrets:
 
 ## ci — the full local gate: config-check, lint, typecheck, envelope tests, app/backend unit tests
 ci: config-check lint tsc test test-app
+
+## build-backend — compile the bundle the container image is built FROM.
+## packages/backend/Dockerfile is the stock Backstage host-build shape: it does
+## not compile anything, it unpacks dist/skeleton.tar.gz and dist/bundle.tar.gz,
+## which only exist after this runs. Skip it and `docker build` fails on a
+## missing COPY rather than producing a stale image — but run it on a dirty tree
+## and the image carries whatever was compiled, with no record of from what.
+## That is why CI builds from a clean checkout and tags by commit sha.
+build-backend:
+	corepack yarn tsc
+	corepack yarn build:backend
+
+## image — build the container image locally, from the same inputs CI uses.
+## Tags `backstage:latest` locally; CI tags by sha and pushes to GHCR.
+##
+## ⚠ A LOCAL IMAGE IS NOT A CI IMAGE. `build-backend` compiles the frontend
+## through backstage-cli, which loads app-config.local.yaml if it exists and
+## BAKES IT INTO THE STATIC BUNDLE — before docker ever runs, so .dockerignore
+## excluding *.local.yaml does not help. Your `app.baseUrl` ends up inside
+## dist/static/*.js. No secret leaks (those live in .env.local, which nothing
+## compiles), but do not ship a locally built image. CI builds from a clean
+## checkout where that file does not exist, which is the one to deploy.
+image: build-backend
+	corepack yarn build-image

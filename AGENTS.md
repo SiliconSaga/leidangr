@@ -9,7 +9,8 @@ The Backstage control-plane for the Leiðangr stack — a local-first skeleton. 
 ## Working here
 
 - **Yarn runs through Corepack** — never assume a global `yarn`; use `make` / `corepack yarn`. (`corepack enable` needs admin on Windows; the Makefile avoids it.)
-- **One command per workflow** via the `Makefile` (`doctor`/`dev`/`dev-gitea`/`smoke-gitea`/`test`/`test-app`/`lint`/`config-check`/`secrets`/`ci`). In the GDD workspace, `ws test leidangr` / `ws lint leidangr` run the same suites (allowlisted).
+- **One command per workflow** via the `Makefile` (`doctor`/`dev`/`dev-gitea`/`smoke-gitea`/`test`/`test-app`/`lint`/`config-check`/`secrets`/`ci`/`build-backend`/`image`). In the GDD workspace, `ws test leidangr` / `ws lint leidangr` run the same suites (allowlisted).
+- **CI calls those same targets** — `.github/workflows/ci.yml` runs `make ci`, nothing more. Add a check by adding it to the Makefile, so local and CI cannot drift. The image pipeline holds no secret but `GITHUB_TOKEN` by decision ([ADR 0014](docs/adrs/0014-ci-publishes-cd-pulls.md)); if a change seems to need another, it belongs in the deployment.
 - **Secrets** only ever come from `make secrets` (OpenBao → gitignored `.env.local`); never hand-edit or commit secrets. The app reads only `${ENV}` references.
 - **Gitea mode needs `gitea.localhost` in your hosts file** (Node doesn't resolve `*.localhost` like curl/git); `make dev-gitea` / `make smoke-gitea` preflight-check it and print the fix.
 
