@@ -1,0 +1,57 @@
+# .github/workflows/ci.yml
+#
+# The gate. Runs `make ci` — the same target a contributor runs locally, which
+# is the point: one definition of "green", not a drifting copy in YAML. See
+# AGENTS.md ("one command per workflow via the Makefile").
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Needs nothing beyond reading the repo. Stub mode is zero-secret by decision
+# (docs/adrs/0002), so the gate never touches OpenBao, Gitea, or a cluster, and
+# a fork PR runs it identically.
+permissions:
+  contents: read
+
+# A new push supersedes the in-flight run for the same ref. A full Backstage
+# install-plus-build is not cheap enough to run twice for a force-push.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    # Install + lint + tsc + two jest suites. Generous, but finite: the GHA
+    # default is no limit at all, and a hung jest worker would burn the hour.
+    timeout-minutes: 25
+    env:
+      # Put yarn's cache inside the workspace so actions/cache can see it. Yarn
+      # 4 defaults to a global cache under ~/.yarn, which this repo's
+      # .gitignore and .dockerignore know nothing about.
+      YARN_ENABLE_GLOBAL_CACHE: 'false'
+      # Corepack would otherwise stop and ask before fetching the pinned Yarn.
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+    steps:
+    - uses: actions/checkout@v4
+    # .nvmrc is the single source of the Node version — package.json `engines`
+    # allows 22 as well, but CI should assert one, and it should be the one
+    # packages/backend/Dockerfile runs on.
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+    # Deliberately NOT setup-node's `cache: yarn`. That probes the cache folder
+    # by shelling out to `yarn`, which on a GitHub runner is the preinstalled
+    # Yarn 1 — a different tool with a different cache layout from the Yarn 4
+    # this repo pins. Cache the path we set above instead.
+    - uses: actions/cache@v4
+      with:
+        path: .yarn/cache
+        key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+        restore-keys: yarn-${{ runner.os }}-
+    # --immutable: a lockfile that would have to change is a failure here, not
+    # a silent resolution. (`make deps`.)
+    - run: make deps
+    - run: make ci

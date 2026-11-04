@@ -44,6 +44,8 @@ Gitea mode needs one-time setup (unseal OpenBao, seed the repo + KV) — see [`d
 
 Secrets are **never** committed and **never** hand-edited into config. `make secrets` is the only supported path: it logs you into OpenBao via your browser and renders a gitignored `.env.local`. The app reads only `${ENV}` references, so it never knows (or cares) which OpenBao — local or remote — the secret came from. Non-secret personal overrides go in `app-config.local.yaml` (copy from the `.example`).
 
+Deployed, the same `${ENV}` references are resolved by a cluster-side ExternalSecret rather than a file — the build pipeline never holds a secret. See [ADR 0014](docs/adrs/0014-ci-publishes-cd-pulls.md).
+
 ## Commands
 
 | Command | Does |
@@ -58,7 +60,9 @@ Secrets are **never** committed and **never** hand-edited into config. `make sec
 | `make test-app` | The generated app/backend unit tests |
 | `make lint` | Lint the app workspaces |
 | `make config-check` | Validate `app-config.yaml` |
-| `make ci` | `config-check` + `lint` + `test` |
+| `make ci` | `config-check` + `lint` + `tsc` + `test` + `test-app` — what GitHub Actions runs |
+| `make build-backend` | Compile the bundle the container image is built from |
+| `make image` | Build the container image locally, from the inputs CI uses |
 
 ## Testing
 

@@ -1,0 +1,105 @@
+# .github/workflows/image.yml
+#
+# Publishes the backend image to GHCR. Follows the SiliconSaga house pattern
+# (see ting, skipta, xenforo-k8s) — GHCR, sha + latest tags, gha cache, and no
+# credential beyond the automatic GITHUB_TOKEN.
+#
+# ⚠ THIS PIPELINE HOLDS NO APPLICATION SECRETS, ON PURPOSE. The predecessor
+# (CervTest/backstage-infra) sed-substituted six Jenkins credentials into a
+# Secret manifest and applied it with a cluster kubeconfig, so the build server
+# held every production secret and a write path into the cluster. Here the
+# secrets stay in OpenBao and the cluster pulls them through ESO at deploy time
+# (docs/adrs/0003, docs/adrs/0014). Keep it that way: if a change to this file
+# seems to need a `secrets.*` other than GITHUB_TOKEN, it belongs in the
+# deployment, not the build.
+name: image
+on:
+  push:
+    branches: [main]
+  # On a PR, build without pushing — but only when an input to the image itself
+  # changed. The whole repo is an input to the BUNDLE, which ci.yml already
+  # compiles via `make ci`; what this adds is the Dockerfile layer, and paying
+  # a second full Backstage build on every PR to re-prove that is not worth it.
+  pull_request:
+    paths:
+      - 'packages/backend/Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/image.yml'
+      - 'yarn.lock'
+      - 'app-config*.yaml'
+  # Weekly, so node:24-trixie-slim security fixes reach the image without a
+  # code change. Debian base + native modules (better-sqlite3, isolated-vm)
+  # means the CVE surface here is real and moves on its own.
+  schedule:
+    - cron: "0 5 * * MON"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      YARN_ENABLE_GLOBAL_CACHE: 'false'
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: .nvmrc
+    - uses: actions/cache@v4
+      with:
+        path: .yarn/cache
+        key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+        restore-keys: yarn-${{ runner.os }}-
+    - run: make deps
+    # The Dockerfile unpacks dist/*.tar.gz rather than compiling, so the bundle
+    # has to exist before buildx starts. `make build-backend` is the same target
+    # `make image` uses locally.
+    - run: make build-backend
+    # buildx with the docker-container driver is required for cache-to type=gha.
+    # The default docker driver doesn't support cache exporters.
+    - uses: docker/setup-buildx-action@v3
+    - uses: docker/login-action@v3
+      # Pull requests from forks get a read-only token, so skip the login
+      # entirely rather than failing at the registry.
+      if: github.event_name != 'pull_request'
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - uses: docker/metadata-action@v5
+      id: meta
+      with:
+        images: ghcr.io/siliconsaga/leidangr
+        tags: |
+          type=sha,format=long
+          type=raw,value=latest,enable={{is_default_branch}}
+    - uses: docker/build-push-action@v6
+      with:
+        # The Dockerfile's own header: build with the repo root as context.
+        # .dockerignore keeps node_modules, sources, and *.local.yaml out —
+        # the last of those is load-bearing, since app-config.local.yaml is
+        # where a contributor's rendered secrets live.
+        context: .
+        file: packages/backend/Dockerfile
+        # amd64 only, deliberately. Unlike xenforo-k8s this image compiles
+        # native modules (isolated-vm for the scaffolder, better-sqlite3), and
+        # under QEMU that turns a few minutes into an hour or more. Every node
+        # this currently deploys to is amd64. Revisit when one is not.
+        platforms: linux/amd64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        # Always re-resolve node:24-trixie-slim, so the weekly run cannot be
+        # satisfied by the same stale base it was scheduled to get away from.
+        pull: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
