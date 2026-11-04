@@ -16,17 +16,13 @@ name: image
 on:
   push:
     branches: [main]
-  # On a PR, build without pushing — but only when an input to the image itself
-  # changed. The whole repo is an input to the BUNDLE, which ci.yml already
-  # compiles via `make ci`; what this adds is the Dockerfile layer, and paying
-  # a second full Backstage build on every PR to re-prove that is not worth it.
+  # On a PR, build without pushing — on EVERY PR, with no paths filter. This
+  # job is the only thing that compiles the bundle: `make ci` typechecks, which
+  # is not the same as surviving `backstage-cli repo build`, so a PR that
+  # breaks bundling would otherwise go green and fail here after merge. The
+  # first run measured 4m08s start to finish, against 2m26s for the gate it
+  # runs beside, so the whole-repo build is cheap enough not to filter.
   pull_request:
-    paths:
-      - 'packages/backend/Dockerfile'
-      - '.dockerignore'
-      - '.github/workflows/image.yml'
-      - 'yarn.lock'
-      - 'app-config*.yaml'
   # Weekly, so node:24-trixie-slim security fixes reach the image without a
   # code change. Debian base + native modules (better-sqlite3, isolated-vm)
   # means the CVE surface here is real and moves on its own.
@@ -51,6 +47,11 @@ jobs:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
     steps:
     - uses: actions/checkout@v4
+      with:
+        # Nothing here talks to git after the clone, and `make deps` runs
+        # package lifecycle scripts — so don't leave a usable push token in
+        # .git/config for them to find.
+        persist-credentials: false
     - uses: actions/setup-node@v4
       with:
         node-version-file: .nvmrc

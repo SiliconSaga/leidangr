@@ -36,6 +36,10 @@ jobs:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: '0'
     steps:
     - uses: actions/checkout@v4
+      with:
+        # The gate never pushes, and `make deps` runs package lifecycle
+        # scripts — so don't leave a usable token in .git/config for them.
+        persist-credentials: false
     # .nvmrc is the single source of the Node version — package.json `engines`
     # allows 22 as well, but CI should assert one, and it should be the one
     # packages/backend/Dockerfile runs on.
