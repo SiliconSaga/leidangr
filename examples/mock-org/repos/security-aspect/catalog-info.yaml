@@ -16,6 +16,18 @@ metadata:
     # registry is a raw file, not a catalog entity). Components record what they
     # adopted in siliconsaga.org/aspect-versions; the gap is what a drive closes.
     siliconsaga.org/module-release: '1.4'
+    # The standard the fact source evaluates enrolled components against. It is
+    # resolved against the source location, which has to be a web URL: this
+    # entity is registered from a local file, and the backend refuses to read a
+    # standard off the operator's disk. So the copy that is evaluated is the one
+    # on GitHub main — an edit to ./standard.yaml shows up after it merges.
+    #
+    # None of this standard's three fact sources has a resolver (they describe
+    # fictional artifacts), so every trial is unmeasured and the medal is
+    # withheld. That is the honest answer, and it is still a real run: facets
+    # are resolved, so tracking-api's `batch` shows as matching no block.
+    siliconsaga.org/standard: './standard.yaml'
+    backstage.io/source-location: 'url:https://github.com/SiliconSaga/leidangr/tree/main/examples/mock-org/repos/security-aspect/'
     siliconsaga.org/visir: './docs/runbooks/rotate-leaked-credential.md'
     backstage.io/techdocs-ref: dir:.
   links:

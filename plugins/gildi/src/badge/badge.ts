@@ -55,8 +55,8 @@ export const isGap = (s: BadgeState): boolean => GAP.has(s);
  *
  * ⚠ `unevaluated` is deliberately NOT here. It means a standard could not be
  * read, which is routinely just a practice that has not published one yet —
- * six rows in the demo catalog sit in exactly that state, and painting them
- * all red would cry wolf until nobody reads the colour at all. Red is reserved
+ * an ordinary state for a young catalog, and painting every such row red would
+ * cry wolf until nobody reads the colour at all. Red is reserved
  * for the case where something actually broke: we could not even ask.
  *
  * `none` is not here either, and never will be. It is a real verdict about the
@@ -133,7 +133,15 @@ export function badgeTitleFor(run: TrialRun, state: BadgeState): string {
     // exists to say.
     const reasons = run.suppressedReasons ?? [];
     const tail = reasons.length ? ` (${reasons.join(', ')})` : '';
-    return `Medal withheld — a trial could not be measured${tail}. This is a gap in what we could read, not a failing grade.`;
+    // A withheld run still resolved facets and chose trials by them — it is
+    // the measuring that fell short, not the selecting.
+    let chosenBy = '';
+    if (run.facets) {
+      chosenBy = run.facets.length
+        ? ` Trials were chosen by facets: ${run.facets.join(', ')}.`
+        : ' The component presented no facets.';
+    }
+    return `Medal withheld — a trial could not be measured${tail}. This is a gap in what we could read, not a failing grade.${chosenBy}`;
   }
   const { passing, applicable } = run;
   const counted =

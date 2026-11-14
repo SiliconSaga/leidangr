@@ -192,6 +192,22 @@ describe('badgeTitleFor', () => {
     expect(title).toContain('not a failing grade');
   });
 
+  // Withheld is still an evaluated run: the facets chose its trials, and it is
+  // exactly the badge someone hovers to find out what was being asked.
+  it('names the facets on a withheld medal too', () => {
+    const title = badgeTitleFor(
+      run({ medal: null, suppressedReasons: ['no-resolver'], facets: ['api', 'batch'] }),
+      'withheld',
+    );
+    expect(title).toContain('no-resolver');
+    expect(title).toContain('Trials were chosen by facets: api, batch.');
+  });
+
+  it('leaves facets out of a withheld title when the run recorded none', () => {
+    const title = badgeTitleFor(run({ medal: null, suppressedReasons: ['error'] }), 'withheld');
+    expect(title).not.toMatch(/facets/);
+  });
+
   it('explains an unevaluated run with its detail', () => {
     expect(
       badgeTitleFor(

@@ -90,7 +90,15 @@ export const SCENARIOS: Scenario[] = [
     title: 'Holding gold',
     claim:
       'The boring case, and it should look boring. A component that keeps its medal is a flat line, not an achievement re-announced every sweep.',
-    runs: [run(5), run(4), run(3), run(2), run(1)],
+    // Carries a mistyped facet, which the chart ignores and `make dev-history`
+    // does not: seeded into a running stack, the component card shows the
+    // unmatched-facet chip beside a medal it leaves alone. The line staying
+    // flat is the same claim from the chart's side.
+    runs: [run(5), run(4), run(3), run(2), run(1)].map(r => ({
+      ...r,
+      facets: ['web-ui', 'webui'],
+      unmatchedFacets: ['webui'],
+    })),
   },
   {
     title: 'A gap, not a fall',
