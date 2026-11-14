@@ -140,7 +140,14 @@ export function badgeTitleFor(run: TrialRun, state: BadgeState): string {
     typeof passing === 'number' && typeof applicable === 'number'
       ? `${passing} of ${applicable} applicable trials passed`
       : 'measured';
+  // "Applicable" is decided by the component's facets, so the count is only
+  // checkable with them beside it. Omitted when the run did not record any —
+  // an older row — rather than guessed at.
+  let facets = '';
+  if (run.facets) {
+    facets = run.facets.length ? ` (facets: ${run.facets.join(', ')})` : ' (no facets)';
+  }
   return state === 'none'
-    ? `No medal — ${counted}`
-    : `${state.charAt(0).toUpperCase()}${state.slice(1)} — ${counted}`;
+    ? `No medal — ${counted}${facets}`
+    : `${state.charAt(0).toUpperCase()}${state.slice(1)} — ${counted}${facets}`;
 }

@@ -36,6 +36,28 @@ export function facetsOf(entity: Entity, standard: Standard): string[] {
 }
 
 /**
+ * Declared facets that no block in the standard applies to.
+ *
+ * The other door to the failure the blank-annotation rule closes. A facet is
+ * only ever consulted by a block naming it, so `webui` for `web-ui` selects
+ * nothing and says nothing: the component stays enrolled and is asked less than
+ * its author meant, or nothing at all.
+ *
+ * Reported, never enforced. A facet can legitimately be ahead of its block —
+ * declared before anyone has written the trials for it — so refusing it would
+ * punish the honest case to catch the typo.
+ *
+ * Only the ANNOTATION is checked. A type default naming no block is the
+ * standard disagreeing with itself, and would put the same finding on every
+ * component of that type.
+ */
+export function unmatchedFacets(entity: Entity, standard: Standard): string[] {
+  const declared = parseList(entity.metadata.annotations?.[FACETS_ANNOTATION]);
+  const named = new Set((standard.blocks ?? []).flatMap(b => b.appliesTo ?? []));
+  return declared.filter(f => !named.has(f));
+}
+
+/**
  * The trials that apply to this component, already filtered.
  *
  * `not applicable` is NOT an outcome (design §3) — a skipped trial is simply

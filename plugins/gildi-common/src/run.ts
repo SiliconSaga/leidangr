@@ -41,4 +41,17 @@ export interface TrialRun {
   outcomes: TrialOutcomeRow[] | null;
   unevaluatedReason?: string;
   unevaluatedDetail?: string;
+  /**
+   * The facets the component presented, which is what decided `applicable`.
+   *
+   * Absent means UNKNOWN — an unevaluated run, or a row written before this was
+   * recorded. An empty list is a finding: facets resolved, and there were none.
+   */
+  facets?: string[];
+  /**
+   * Declared facets no block applies to. Usually a typo, sometimes a facet
+   * whose block is not written yet, so it rides beside the verdict and never
+   * changes it. Absent means unknown, as above.
+   */
+  unmatchedFacets?: string[];
 }

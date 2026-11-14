@@ -8,7 +8,7 @@ import {
   type Standard,
   type Verdict,
 } from '@siliconsaga/plugin-gildi-common';
-import { applicableTrials } from './facets';
+import { applicableTrials, facetsOf, unmatchedFacets } from './facets';
 import type { Resolver, ResolverContext } from './resolvers/types';
 
 export interface EvaluateInput {
@@ -28,6 +28,13 @@ export interface RunResult {
   verdict: Verdict;
   outcomes: Array<{ trialId: string } & Outcome>;
   moduleRelease?: string;
+  /**
+   * What the component presented to the standard, and which of those selected
+   * no block. Both absent when there was no standard to resolve against —
+   * unknown, which is not the same as none.
+   */
+  facets?: string[];
+  unmatchedFacets?: string[];
 }
 
 // A trial is meant to be small: read one artifact, compare one value. Five
@@ -119,5 +126,9 @@ export async function evaluate(input: EvaluateInput): Promise<RunResult> {
     verdict: verdictFor(outcomes.map(({ trialId: _id, ...o }) => o as Outcome)),
     outcomes,
     moduleRelease: input.moduleRelease,
+    facets: facetsOf(input.entity, input.standard),
+    // Beside the verdict, never inside it: an unmatched facet is a question for
+    // whoever wrote the annotation, not a trial the component failed.
+    unmatchedFacets: unmatchedFacets(input.entity, input.standard),
   };
 }

@@ -164,6 +164,23 @@ describe('badgeTitleFor', () => {
     );
   });
 
+  // "Applicable" is decided by the component's facets, so a count of applicable
+  // trials with no facets beside it cannot be checked by the person reading it.
+  it('names the facets that decided which trials applied', () => {
+    expect(
+      badgeTitleFor(
+        run({ medal: 'silver', passing: 3, applicable: 4, facets: ['api', 'batch'] }),
+        'silver',
+      ),
+    ).toBe('Silver — 3 of 4 applicable trials passed (facets: api, batch)');
+  });
+
+  it('says so when the component presented no facets at all', () => {
+    expect(
+      badgeTitleFor(run({ medal: 'none', passing: 0, applicable: 0, facets: [] }), 'none'),
+    ).toBe('No medal — 0 of 0 applicable trials passed (no facets)');
+  });
+
   // Plural: several trials can be unmeasured for different reasons in one run,
   // and the hover is the only place that can say which.
   it('lists every suppression reason', () => {

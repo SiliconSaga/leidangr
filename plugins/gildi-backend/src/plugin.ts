@@ -269,6 +269,8 @@ export const gildiPlugin = createBackendPlugin({
             unevaluatedReason: v.kind === 'unevaluated' ? v.reason : undefined,
             unevaluatedDetail:
               v.kind === 'unevaluated' ? (v.detail ?? detail) : undefined,
+            facets: result.facets,
+            unmatchedFacets: result.unmatchedFacets,
           };
           await store.append(run);
           return run;
