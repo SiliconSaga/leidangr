@@ -57,6 +57,16 @@ const asCount = (value: unknown, field: string): number | null => {
   return value;
 };
 
+// Absent stays absent — unknown — and is not defaulted to an empty list, which
+// would claim the run resolved facets and found none.
+const asFacets = (value: unknown, field: string): string[] | undefined => {
+  if (value === null || value === undefined) return undefined;
+  if (!Array.isArray(value) || !value.every(f => typeof f === 'string' && f.trim())) {
+    throw new InputError(`${field} must be an array of non-empty strings`);
+  }
+  return value as string[];
+};
+
 /**
  * One fabricated run, checked as strictly as a real one.
  *
@@ -103,9 +113,22 @@ export function asRun(
     throw new InputError('suppressedReasons must be an array of strings or null');
   }
 
+  const facets = asFacets(raw.facets, 'facets');
+  const unmatchedFacets = asFacets(raw.unmatchedFacets, 'unmatchedFacets');
+  // Facets are resolved against a standard, and an unevaluated run never had
+  // one. The real writer cannot produce this row, so a fixture must not either.
+  if (raw.kind === 'unevaluated' && (facets || unmatchedFacets)) {
+    throw new InputError('an unevaluated run cannot carry facets');
+  }
+  if (unmatchedFacets && !unmatchedFacets.every(f => facets?.includes(f))) {
+    throw new InputError('every unmatched facet must also be listed in facets');
+  }
+
   return {
     entityRef,
     aspectId,
+    facets,
+    unmatchedFacets,
     runAt: new Date(raw.runAt).toISOString(),
     kind: raw.kind,
     moduleRelease:

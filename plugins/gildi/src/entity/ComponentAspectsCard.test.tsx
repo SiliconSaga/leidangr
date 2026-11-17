@@ -256,6 +256,34 @@ describe('ComponentAspectsCard', () => {
       expect(await screen.findByTestId('medal-silver')).toHaveAttribute('aria-label', 'silver');
     });
 
+    // A facet that selected nothing is the one enrolment mistake that looks
+    // exactly like compliance, so it is said on the row rather than only in a
+    // tooltip — and beside the medal, which it does not change.
+    it('flags a declared facet that no block applies to, and keeps the medal', async () => {
+      await render(
+        enrolled(),
+        practices,
+        trials(run({ medal: 'gold', facets: ['web-ui', 'webui'], unmatchedFacets: ['webui'] })),
+      );
+      expect(await screen.findByText('unmatched facet: webui')).toBeInTheDocument();
+      expect(screen.getByTestId('medal-gold')).toBeInTheDocument();
+    });
+
+    it('pluralises when several facets matched nothing', async () => {
+      await render(
+        enrolled(),
+        practices,
+        trials(run({ facets: ['a', 'b'], unmatchedFacets: ['a', 'b'] })),
+      );
+      expect(await screen.findByText('unmatched facets: a, b')).toBeInTheDocument();
+    });
+
+    it('says nothing about facets when every one matched, or none were recorded', async () => {
+      await render(enrolled(), practices, trials(run({ facets: ['web-ui'], unmatchedFacets: [] })));
+      expect(await screen.findByTestId('medal-gold')).toBeInTheDocument();
+      expect(screen.queryByText(/unmatched facet/)).not.toBeInTheDocument();
+    });
+
     // A FAILED REQUEST IS NOT "no run yet". Rendering nothing for it would make
     // our own outage look exactly like a component the sweep has not reached.
     it('marks the badge unavailable when the request fails outright', async () => {

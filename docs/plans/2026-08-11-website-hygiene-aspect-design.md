@@ -19,9 +19,11 @@ The full arc, for context — each piece is independently useful and gets its ow
 | # | Piece | Status |
 |---|---|---|
 | 1 | The aspect module and real adoption | **this design** |
-| 2 | Facet resolution — `spec.type` + `siliconsaga.org/facets` to a resolved facet set | later |
-| 3 | Fact source — reads an adopting repo and answers each trial | later |
-| 4 | Scorecard surface — the tier badge in the slot `ComponentAspectsCard` already leaves empty | later |
+| 2 | Facet resolution — `spec.type` + `siliconsaga.org/facets` to a resolved facet set | shipped with 3 (`gildi-backend/src/facets.ts`) |
+| 3 | Fact source — reads an adopting repo and answers each trial | shipped (#27, #28) |
+| 4 | Scorecard surface — the tier badge in `ComponentAspectsCard`, and the medal history chart | shipped (#31, #33) |
+
+The statuses above were updated on 2026-11-13. The rest of this document describes the state at the time of writing, so read "stays unbuilt" below as history.
 
 Sub-project 3 carries the real unknowns (facts read live from the API, published by the workflows, or refreshed by a processor) and will be far better informed once a real repo has actually adopted.
 

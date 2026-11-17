@@ -115,4 +115,36 @@ describe('asRun', () => {
   it('keeps a zero count as zero', () => {
     expect(asRunOf({ applicable: 0, passing: 0 }).applicable).toBe(0);
   });
+
+  it('carries the facets a fixture declares', () => {
+    const run = asRunOf({ facets: ['web-ui', 'webui'], unmatchedFacets: ['webui'] });
+    expect(run.facets).toEqual(['web-ui', 'webui']);
+    expect(run.unmatchedFacets).toEqual(['webui']);
+  });
+
+  // Absent means unknown. Defaulting to [] would claim the run resolved facets
+  // and found none, on a row that says nothing about them.
+  it('leaves facets absent when the fixture gives none', () => {
+    const run = asRunOf();
+    expect(run.facets).toBeUndefined();
+    expect(run.unmatchedFacets).toBeUndefined();
+  });
+
+  it.each([
+    ['a string, not a list', { facets: 'web-ui' }],
+    ['a non-string entry', { facets: ['web-ui', 3] }],
+    ['a blank entry', { facets: ['web-ui', ' '] }],
+    ['an unmatched facet that was never declared', { facets: ['api'], unmatchedFacets: ['batch'] }],
+    ['unmatched facets with no facets at all', { unmatchedFacets: ['batch'] }],
+  ])('rejects %s', (_name, over) => {
+    expect(() => asRunOf(over)).toThrow();
+  });
+
+  // The real writer cannot produce this row: facets are resolved against a
+  // standard, and an unevaluated run never had one.
+  it('rejects facets on an unevaluated run', () => {
+    expect(() =>
+      asRunOf({ kind: 'unevaluated', medal: null, facets: ['api'] }),
+    ).toThrow(/cannot carry facets/);
+  });
 });

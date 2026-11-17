@@ -164,6 +164,23 @@ describe('badgeTitleFor', () => {
     );
   });
 
+  // "Applicable" is decided by the component's facets, so a count of applicable
+  // trials with no facets beside it cannot be checked by the person reading it.
+  it('names the facets that decided which trials applied', () => {
+    expect(
+      badgeTitleFor(
+        run({ medal: 'silver', passing: 3, applicable: 4, facets: ['api', 'batch'] }),
+        'silver',
+      ),
+    ).toBe('Silver — 3 of 4 applicable trials passed (facets: api, batch)');
+  });
+
+  it('says so when the component presented no facets at all', () => {
+    expect(
+      badgeTitleFor(run({ medal: 'none', passing: 0, applicable: 0, facets: [] }), 'none'),
+    ).toBe('No medal — 0 of 0 applicable trials passed (no facets)');
+  });
+
   // Plural: several trials can be unmeasured for different reasons in one run,
   // and the hover is the only place that can say which.
   it('lists every suppression reason', () => {
@@ -173,6 +190,22 @@ describe('badgeTitleFor', () => {
     );
     expect(title).toContain('no-resolver, error');
     expect(title).toContain('not a failing grade');
+  });
+
+  // Withheld is still an evaluated run: the facets chose its trials, and it is
+  // exactly the badge someone hovers to find out what was being asked.
+  it('names the facets on a withheld medal too', () => {
+    const title = badgeTitleFor(
+      run({ medal: null, suppressedReasons: ['no-resolver'], facets: ['api', 'batch'] }),
+      'withheld',
+    );
+    expect(title).toContain('no-resolver');
+    expect(title).toContain('Trials were chosen by facets: api, batch.');
+  });
+
+  it('leaves facets out of a withheld title when the run recorded none', () => {
+    const title = badgeTitleFor(run({ medal: null, suppressedReasons: ['error'] }), 'withheld');
+    expect(title).not.toMatch(/facets/);
   });
 
   it('explains an unevaluated run with its detail', () => {

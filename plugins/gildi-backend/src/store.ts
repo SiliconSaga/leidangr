@@ -111,6 +111,12 @@ export class DatabaseTrialResultStore implements TrialResultStore {
       outcomes: run.outcomes ? JSON.stringify(run.outcomes) : null,
       unevaluated_reason: run.unevaluatedReason ?? null,
       unevaluated_detail: run.unevaluatedDetail ?? null,
+      // Truthiness would be wrong here: an empty list is a finding and has to
+      // be stored as '[]', not collapsed into the NULL that means unknown.
+      facets: run.facets ? JSON.stringify(run.facets) : null,
+      unmatched_facets: run.unmatchedFacets
+        ? JSON.stringify(run.unmatchedFacets)
+        : null,
     });
   }
 
@@ -145,6 +151,8 @@ export class DatabaseTrialResultStore implements TrialResultStore {
       outcomes: parseJson<TrialOutcomeRow[]>(r.outcomes),
       unevaluatedReason: (r.unevaluated_reason as string) ?? undefined,
       unevaluatedDetail: (r.unevaluated_detail as string) ?? undefined,
+      facets: parseJson<string[]>(r.facets) ?? undefined,
+      unmatchedFacets: parseJson<string[]>(r.unmatched_facets) ?? undefined,
     }));
   }
 

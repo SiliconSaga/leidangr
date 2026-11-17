@@ -55,6 +55,28 @@ describe('DatabaseTrialResultStore', () => {
     expect(got?.outcomes).toEqual([{ trialId: 'a', state: 'pass' }]);
   });
 
+  it('round-trips the resolved and unmatched facets', async () => {
+    const s = await store();
+    await s.append(run({ facets: ['web-ui', 'webui'], unmatchedFacets: ['webui'] }));
+    const got = await s.latest('component:default/site', 'website-hygiene');
+    expect(got?.facets).toEqual(['web-ui', 'webui']);
+    expect(got?.unmatchedFacets).toEqual(['webui']);
+  });
+
+  // An EMPTY list is a finding — facets resolved and all of them matched — and
+  // must not come back as "unknown", which is what a row from before these
+  // columns existed reads as.
+  it('keeps an empty facet list distinct from an absent one', async () => {
+    const s = await store();
+    await s.append(run({ runAt: '2026-09-05T10:00:00.000Z' }));
+    await s.append(run({ runAt: '2026-09-05T11:00:00.000Z', facets: [], unmatchedFacets: [] }));
+    const [newer, older] = await s.history('component:default/site', 'website-hygiene');
+    expect(newer.unmatchedFacets).toEqual([]);
+    expect(newer.facets).toEqual([]);
+    expect(older.unmatchedFacets).toBeUndefined();
+    expect(older.facets).toBeUndefined();
+  });
+
   // APPEND-ONLY. A second run must not replace the first.
   it('keeps earlier runs rather than overwriting them', async () => {
     const s = await store();

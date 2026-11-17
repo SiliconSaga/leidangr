@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Chip, Divider, Typography, makeStyles } from '@material-ui/core';
+import { Chip, Divider, Tooltip, Typography, makeStyles } from '@material-ui/core';
 import CheckIcon from '@material-ui/icons/CheckCircleOutline';
 import UpgradeIcon from '@material-ui/icons/ArrowUpward';
 import { InfoCard, Link, Progress, ResponseErrorPanel } from '@backstage/core-components';
@@ -108,6 +108,31 @@ function PillLink({ to, label }: { to: string; label: string }) {
   );
 }
 
+// A declared facet no block applies to. On the row rather than in the badge's
+// tooltip, because it is the one enrolment mistake that looks exactly like
+// compliance — the component is asked less than its author meant and nothing
+// else on the card changes. Amber, not red: it is usually a typo but can be a
+// facet whose block is not written yet, so it asks a question rather than
+// reporting a fault, and it never alters the medal beside it.
+function UnmatchedFacets({ facets }: { facets: string[] }) {
+  const classes = useStyles();
+  const noun = facets.length === 1 ? 'facet' : 'facets';
+  return (
+    <Tooltip
+      title={`No block in this aspect's standard applies to ${facets.join(', ')}, so it selected no trials. Check the siliconsaga.org/facets annotation for a typo. A facet whose block is not written yet can stay.`}
+    >
+      <Chip
+        label={`unmatched ${noun}: ${facets.join(', ')}`}
+        size="small"
+        variant="outlined"
+        className={classes.behind}
+        style={chip}
+        tabIndex={0}
+      />
+    </Tooltip>
+  );
+}
+
 function AspectRow({
   aspect,
   entity,
@@ -125,6 +150,8 @@ function AspectRow({
   // outage look exactly like a component the sweep has not reached.
   const { run, error } = useComponentTrials(entity, aspect.aspectId);
   const entityRoute = useRouteRef(entityRouteRef);
+  // Checked at runtime: it arrives over HTTP, and an older backend sends none.
+  const unmatched = Array.isArray(run?.unmatchedFacets) ? run.unmatchedFacets : [];
 
   let practiceHref: string | undefined;
   if (aspect.practiceRef) {
@@ -162,10 +189,11 @@ function AspectRow({
         <MedalBadge run={run} error={error} />
       </div>
 
-      {(practiceHref || aspect.recordUrl) && (
+      {(practiceHref || aspect.recordUrl || unmatched.length > 0) && (
         <div style={links}>
           {practiceHref && <PillLink to={practiceHref} label={aspect.practiceTitle!} />}
           {aspect.recordUrl && <PillLink to={aspect.recordUrl} label="record" />}
+          {unmatched.length > 0 && <UnmatchedFacets facets={unmatched} />}
         </div>
       )}
     </div>

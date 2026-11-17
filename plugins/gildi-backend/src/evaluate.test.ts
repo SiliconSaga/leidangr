@@ -168,6 +168,49 @@ describe('evaluate', () => {
     });
   });
 
+  // WARN, NOT FAIL. An unmatched facet is usually a typo but can be a facet
+  // whose block is not written yet, so it is reported beside the verdict and
+  // never changes it.
+  it('reports an unmatched facet without changing the verdict', async () => {
+    const oneTrial: Standard = {
+      ...STANDARD,
+      blocks: [{ ...STANDARD.blocks[0], trials: [STANDARD.blocks[0].trials[0]] }],
+    };
+    const result = await evaluate({
+      ...base,
+      entity: {
+        ...entity,
+        metadata: {
+          name: 'site',
+          annotations: { 'siliconsaga.org/facets': 'web-ui, webui' },
+        },
+      },
+      standard: oneTrial,
+      resolverFor: () => ({ answer: async () => pass() }),
+    });
+    expect(result.facets).toEqual(['web-ui', 'webui']);
+    expect(result.unmatchedFacets).toEqual(['webui']);
+    expect(result.verdict).toMatchObject({ kind: 'medal', medal: 'gold', applicable: 1 });
+  });
+
+  it('records the resolved facets even when nothing is unmatched', async () => {
+    const result = await evaluate({
+      ...base,
+      standard: STANDARD,
+      resolverFor: () => ({ answer: async () => pass() }),
+    });
+    expect(result.facets).toEqual(['web-ui']);
+    expect(result.unmatchedFacets).toEqual([]);
+  });
+
+  // Facets are resolved against a standard. With none there is nothing to
+  // resolve against, so they are unknown rather than empty.
+  it('leaves facets unknown when the standard is absent', async () => {
+    const result = await evaluate({ ...base, standard: undefined, resolverFor: () => undefined });
+    expect(result.facets).toBeUndefined();
+    expect(result.unmatchedFacets).toBeUndefined();
+  });
+
   it('marks every trial unmeasured when no resolver is registered', async () => {
     const result = await evaluate({
       ...base,

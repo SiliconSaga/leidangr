@@ -17,8 +17,8 @@ const STANDARD_ANNOTATION = 'siliconsaga.org/standard';
  * Where this practice's standard.yaml lives, or undefined if it declares none.
  *
  * Resolved against the entity's own source location so the standard travels
- * with the module. Undefined is a legitimate answer — the seeded security
- * practice has no standard annotation.
+ * with the module. Undefined is a legitimate answer — a practice need not have
+ * published a standard yet.
  */
 export function standardUrlFor(practice: Entity): string | undefined {
   const rel = practice.metadata.annotations?.[STANDARD_ANNOTATION]?.trim();
